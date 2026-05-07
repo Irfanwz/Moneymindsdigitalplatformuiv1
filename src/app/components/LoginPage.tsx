@@ -19,7 +19,7 @@ export function LoginPage() {
   const [searchParams] = useSearchParams();
   const initialMode = searchParams.get("mode") === "admin" ? "admin" : "user";
 
-  const [mode, setMode] = useState<LoginMode>(initialMode);
+  const mode = initialMode; // Fixed to URL parameter, no toggle
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -97,22 +97,6 @@ export function LoginPage() {
             <p className="text-muted-foreground">{helperText}</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 mb-6">
-            <Button
-              type="button"
-              variant={mode === "user" ? "default" : "outline"}
-              onClick={() => setMode("user")}
-            >
-              User Sign In
-            </Button>
-            <Button
-              type="button"
-              variant={mode === "admin" ? "default" : "outline"}
-              onClick={() => setMode("admin")}
-            >
-              Admin Sign In
-            </Button>
-          </div>
 
           <form className="space-y-4" onSubmit={handleSubmit}>
             <div className="space-y-2">
