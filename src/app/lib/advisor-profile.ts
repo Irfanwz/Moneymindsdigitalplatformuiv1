@@ -1,0 +1,41 @@
+import type { AuthUser } from "@/app/types/auth";
+import type { AdvisorProfile } from "@/app/types/advisor-profile";
+
+export function createEmptyAdvisorProfile(user?: AuthUser | null): AdvisorProfile {
+  return {
+    id: null,
+    userId: user?.id ?? "",
+    title: "",
+    bio: user?.bio ?? "",
+    website: "",
+    linkedin: "",
+    twitter: "",
+    contactEmail: user?.email ?? "",
+    yearsExperience: "",
+    clientsHelped: "",
+    specialization: "",
+    previousRoles: "",
+    expertiseAreas: [{ area: "", level: 50 }],
+    certifications: [{ name: "", issuer: "", year: "" }],
+    industries: [],
+    preferredStage: "",
+    engagementType: "",
+    availability: "",
+    typicalRate: "",
+    servicesOffered: "",
+    defaultGroupType: "free",
+    defaultJoiningFee: "",
+    defaultMonthlyFee: "",
+    autoApproveMembers: true,
+    allowGroupDiscovery: true,
+    enablePaymentProcessing: false,
+    paymentEmail: "",
+    taxId: "",
+    isPublic: true,
+    showContactInfo: true,
+    allowConnectionRequests: true,
+    showTestimonials: true,
+    createdAt: null,
+    updatedAt: null,
+  };
+}

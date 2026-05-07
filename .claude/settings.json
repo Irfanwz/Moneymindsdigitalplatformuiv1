@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls -la /e/Moneymindsdigitalplatformuiv1-main/src/app/components/*.tsx)",
+      "Bash(xargs wc:*)",
+      "Bash(wc -l /e/Moneymindsdigitalplatformuiv1-main/server/*.js)",
+      "Bash(timeout 5 node server/index.js)",
+      "Bash(SUPABASE_URL=\"\" SUPABASE_SERVICE_ROLE_KEY=\"\" timeout 5 node server/index.js)"
+    ]
+  }
+}
