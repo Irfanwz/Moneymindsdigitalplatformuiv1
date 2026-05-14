@@ -18,6 +18,19 @@ import { buildStartupProfile, normalizeStartupProfileInput } from "./startupProf
 import { buildInvestorProfile, normalizeInvestorProfileInput } from "./investorProfiles.js";
 import { buildAdvisorProfile, normalizeAdvisorProfileInput } from "./advisorProfiles.js";
 import { normalizeGroupInput, normalizeSignalInput } from "./advisorGroups.js";
+
+function paginate(items, query) {
+  if (!query.page && !query.limit) return { data: items, pagination: null };
+  const page = Math.max(1, parseInt(query.page ?? "1", 10) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(query.limit ?? "20", 10) || 20));
+  const total = items.length;
+  const totalPages = Math.ceil(total / limit);
+  const start = (page - 1) * limit;
+  return {
+    data: items.slice(start, start + limit),
+    pagination: { page, limit, total, totalPages },
+  };
+}
 import { normalizeTrainingInput } from "./trainings.js";
 
 function isEmail(value) {
@@ -223,9 +236,8 @@ export function createApp(store) {
       const requestedStatus = trimText(req.query.status);
       const status = approvalStatuses.includes(requestedStatus) ? requestedStatus : undefined;
       const users = await store.listUsers({ status });
-      res.json({
-        users: users.map(sanitizeUser),
-      });
+      const { data, pagination } = paginate(users.map(sanitizeUser), req.query);
+      res.json({ users: data, ...(pagination && { pagination }) });
     } catch (error) {
       next(error);
     }
@@ -440,7 +452,8 @@ export function createApp(store) {
       const stage = trimText(req.query.stage) || undefined;
       const query = trimText(req.query.q) || undefined;
       const startups = await store.searchStartups({ industry, stage, query });
-      res.json({ startups });
+      const { data, pagination } = paginate(startups, req.query);
+      res.json({ startups: data, ...(pagination && { pagination }) });
     } catch (error) {
       next(error);
     }
@@ -452,7 +465,8 @@ export function createApp(store) {
       const specialization = trimText(req.query.specialization) || undefined;
       const query = trimText(req.query.q) || undefined;
       const advisors = await store.searchAdvisors({ industry, specialization, query });
-      res.json({ advisors });
+      const { data, pagination } = paginate(advisors, req.query);
+      res.json({ advisors: data, ...(pagination && { pagination }) });
     } catch (error) {
       next(error);
     }
@@ -474,7 +488,8 @@ export function createApp(store) {
           isJoined: joinedGroupIds.has(g.id),
         };
       }));
-      res.json({ groups: enriched });
+      const { data, pagination } = paginate(enriched, req.query);
+      res.json({ groups: data, ...(pagination && { pagination }) });
     } catch (error) {
       next(error);
     }
@@ -652,7 +667,8 @@ export function createApp(store) {
         return res.status(404).json({ message: "Group not found." });
       }
       const signals = await store.listSignalsByGroup(groupId);
-      res.json({ signals });
+      const { data, pagination } = paginate(signals, req.query);
+      res.json({ signals: data, ...(pagination && { pagination }) });
     } catch (error) {
       next(error);
     }
@@ -772,7 +788,8 @@ export function createApp(store) {
   app.get("/api/trainings", authenticate, async (req, res, next) => {
     try {
       const trainings = await store.listTrainings();
-      res.json({ trainings });
+      const { data, pagination } = paginate(trainings, req.query);
+      res.json({ trainings: data, ...(pagination && { pagination }) });
     } catch (error) { next(error); }
   });
 
@@ -891,7 +908,8 @@ export function createApp(store) {
         };
       }));
 
-      res.json({ connections: enriched });
+      const { data, pagination } = paginate(enriched, req.query);
+      res.json({ connections: data, ...(pagination && { pagination }) });
     } catch (error) { next(error); }
   });
 
@@ -927,7 +945,8 @@ export function createApp(store) {
   app.get("/api/notifications", authenticate, async (req, res, next) => {
     try {
       const notifications = await store.listNotificationsByUser(req.auth.userId);
-      res.json({ notifications });
+      const { data, pagination } = paginate(notifications, req.query);
+      res.json({ notifications: data, ...(pagination && { pagination }) });
     } catch (error) { next(error); }
   });
 
@@ -944,6 +963,97 @@ export function createApp(store) {
       await store.markAllNotificationsRead(req.auth.userId);
       res.json({ message: "All notifications marked as read." });
     } catch (error) { next(error); }
+  });
+
+  // --- Payments ---
+
+  app.post("/api/payments/checkout", authenticate, async (req, res, next) => {
+    try {
+      const itemType = trimText(req.body?.itemType);
+      const itemId = trimText(req.body?.itemId);
+      const paymentMethod = trimText(req.body?.paymentMethod) || "card";
+
+      if (!["group_join", "group_monthly", "training"].includes(itemType)) {
+        return res.status(400).json({ message: "Invalid payment type." });
+      }
+      if (!itemId) {
+        return res.status(400).json({ message: "Item ID is required." });
+      }
+
+      // Check if already paid
+      const alreadyPaid = await store.hasActivePayment(req.auth.userId, itemType, itemId);
+      if (alreadyPaid) {
+        return res.status(400).json({ message: "You have already paid for this item." });
+      }
+
+      // Determine amount
+      let amount = 0;
+      if (itemType === "training") {
+        const training = await store.findTrainingById(itemId);
+        if (!training) return res.status(404).json({ message: "Training not found." });
+        if (training.type !== "paid") return res.status(400).json({ message: "This training is free." });
+        amount = training.price;
+      } else {
+        const group = await store.findGroupById(itemId);
+        if (!group) return res.status(404).json({ message: "Group not found." });
+        if (!group.isPaid) return res.status(400).json({ message: "This group is free." });
+        amount = parseFloat(itemType === "group_join" ? group.joiningFee || "0" : group.monthlyFee || "0");
+      }
+
+      if (amount <= 0) {
+        return res.status(400).json({ message: "No payment required." });
+      }
+
+      // Create payment record
+      const payment = await store.createPayment(req.auth.userId, {
+        itemType, itemId, amount, currency: "USD", paymentMethod,
+      });
+
+      // Simulate payment processing (in production, integrate Stripe/PayPal here)
+      const completed = await store.completePayment(payment.id, `TXN-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
+
+      // Auto-enroll/join after successful payment
+      if (itemType === "training") {
+        try { await store.enrollInTraining(itemId, req.auth.userId); } catch { /* may already be enrolled */ }
+      } else if (itemType === "group_join") {
+        try { await store.joinGroup(itemId, req.auth.userId); } catch { /* may already be member */ }
+      }
+
+      // Notify user
+      try {
+        await store.createNotification(req.auth.userId, {
+          title: "Payment Successful",
+          message: `Your payment of $${amount.toFixed(2)} has been processed successfully.`,
+          type: "success",
+        });
+      } catch { /* non-critical */ }
+
+      res.status(201).json({ message: "Payment successful.", payment: completed });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get("/api/payments", authenticate, async (req, res, next) => {
+    try {
+      const payments = await store.listPaymentsByUser(req.auth.userId);
+      const { data, pagination } = paginate(payments, req.query);
+      res.json({ payments: data, ...(pagination && { pagination }) });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get("/api/payments/check", authenticate, async (req, res, next) => {
+    try {
+      const itemType = trimText(req.query.itemType);
+      const itemId = trimText(req.query.itemId);
+      if (!itemType || !itemId) return res.status(400).json({ message: "itemType and itemId required." });
+      const paid = await store.hasActivePayment(req.auth.userId, itemType, itemId);
+      res.json({ paid });
+    } catch (error) {
+      next(error);
+    }
   });
 
   // --- File Uploads ---
@@ -969,6 +1079,102 @@ export function createApp(store) {
       res.json({ message: "File uploaded successfully.", url: publicUrl, filename });
     } catch (err) {
       next(err);
+    }
+  });
+
+  // --- Public Market Data (cached, no auth) ---
+
+  let marketCache = { data: null, fetchedAt: 0 };
+  const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+  app.get("/api/public/market", async (_req, res, next) => {
+    try {
+      if (marketCache.data && Date.now() - marketCache.fetchedAt < CACHE_TTL) {
+        return res.json(marketCache.data);
+      }
+
+      const [priceRes, chartRes] = await Promise.all([
+        fetch("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana&vs_currencies=usd&include_24hr_change=true&include_24hr_vol=true&include_market_cap=true"),
+        fetch("https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=1"),
+      ]);
+
+      if (!priceRes.ok || !chartRes.ok) {
+        return res.status(502).json({ message: "Failed to fetch market data." });
+      }
+
+      const prices = await priceRes.json();
+      const chart = await chartRes.json();
+
+      // Build 24h chart data from CoinGecko sparkline
+      const chartData = (chart.prices || [])
+        .filter((_, i) => i % 3 === 0) // Sample every ~3rd point for ~24 points
+        .slice(0, 24)
+        .map((point) => ({
+          time: new Date(point[0]).toLocaleTimeString("en-US", { hour: "numeric", hour12: true }),
+          btc: Math.round(point[1]),
+        }));
+
+      const btc = prices.bitcoin || {};
+      const eth = prices.ethereum || {};
+      const sol = prices.solana || {};
+
+      const result = {
+        stats: [
+          {
+            label: "Bitcoin",
+            value: `$${(btc.usd || 0).toLocaleString()}`,
+            change: `${(btc.usd_24h_change || 0) >= 0 ? "+" : ""}${(btc.usd_24h_change || 0).toFixed(1)}%`,
+          },
+          {
+            label: "Ethereum",
+            value: `$${(eth.usd || 0).toLocaleString()}`,
+            change: `${(eth.usd_24h_change || 0) >= 0 ? "+" : ""}${(eth.usd_24h_change || 0).toFixed(1)}%`,
+          },
+          {
+            label: "24h Volume",
+            value: `$${((btc.usd_24h_vol || 0) / 1e9).toFixed(1)}B`,
+            change: `${(btc.usd_24h_change || 0) >= 0 ? "+" : ""}${(btc.usd_24h_change || 0).toFixed(1)}%`,
+          },
+          {
+            label: "Solana",
+            value: `$${(sol.usd || 0).toLocaleString()}`,
+            change: `${(sol.usd_24h_change || 0) >= 0 ? "+" : ""}${(sol.usd_24h_change || 0).toFixed(1)}%`,
+          },
+        ],
+        cryptoChart: chartData,
+        prices: {
+          btc: btc.usd || 0,
+          eth: eth.usd || 0,
+          sol: sol.usd || 0,
+          btcChange: btc.usd_24h_change || 0,
+          ethChange: eth.usd_24h_change || 0,
+          solChange: sol.usd_24h_change || 0,
+          btcMarketCap: btc.usd_market_cap || 0,
+        },
+      };
+
+      marketCache = { data: result, fetchedAt: Date.now() };
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get("/api/public/stats", async (_req, res, next) => {
+    try {
+      const allUsers = await store.listUsers({});
+      const approved = allUsers.filter((u) => u.status === "approved" || u.isAdmin);
+      const startups = approved.filter((u) => u.approvedRoles?.includes("startup")).length;
+      const investors = approved.filter((u) => u.approvedRoles?.includes("investor")).length;
+      const advisors = approved.filter((u) => u.approvedRoles?.includes("advisor")).length;
+      res.json({
+        totalUsers: approved.length,
+        startups,
+        investors,
+        advisors,
+      });
+    } catch (error) {
+      next(error);
     }
   });
 

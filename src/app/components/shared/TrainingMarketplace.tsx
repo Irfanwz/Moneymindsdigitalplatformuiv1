@@ -9,10 +9,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/ta
 import { CredibilityBadge } from "@/app/components/CredibilityBadge";
 import {
   GraduationCap, Search, Filter, Users, DollarSign, Calendar, Clock, Video, MapPin,
-  CheckCircle2, BookOpen, TrendingUp, User, Loader2, BarChart3,
+  CheckCircle2, BookOpen, TrendingUp, User, Loader2, BarChart3, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { listTrainings, getMyEnrollments, enrollInTraining, unenrollFromTraining } from "@/app/lib/api";
+import { CheckoutDialog } from "@/app/components/shared/CheckoutDialog";
 import type { Training, TrainingEnrollment } from "@/app/types/training";
 
 interface TrainingMarketplaceProps {
@@ -26,6 +27,9 @@ export function TrainingMarketplace({ userRole }: TrainingMarketplaceProps) {
   const [enrolledIds, setEnrolledIds] = useState<Set<string>>(new Set());
   const [enrollments, setEnrollments] = useState<TrainingEnrollment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [trainingPage, setTrainingPage] = useState(1);
+  const trainingPageSize = 5;
+  const [checkoutTraining, setCheckoutTraining] = useState<Training | null>(null);
 
   const userName = user?.fullName ?? "";
 
@@ -62,12 +66,22 @@ export function TrainingMarketplace({ userRole }: TrainingMarketplaceProps) {
         await unenrollFromTraining(session.token, training.id);
         setEnrolledIds((prev) => { const next = new Set(prev); next.delete(training.id); return next; });
         setTrainings((prev) => prev.map((t) => t.id === training.id ? { ...t, enrolled: Math.max(0, t.enrolled - 1) } : t));
+      } else if (training.type === "paid") {
+        setCheckoutTraining(training);
       } else {
         await enrollInTraining(session.token, training.id);
         setEnrolledIds((prev) => new Set(prev).add(training.id));
         setTrainings((prev) => prev.map((t) => t.id === training.id ? { ...t, enrolled: t.enrolled + 1 } : t));
       }
     } catch { /* ignore */ }
+  };
+
+  const handlePaymentSuccess = () => {
+    if (checkoutTraining) {
+      setEnrolledIds((prev) => new Set(prev).add(checkoutTraining.id));
+      setTrainings((prev) => prev.map((t) => t.id === checkoutTraining.id ? { ...t, enrolled: t.enrolled + 1 } : t));
+      setCheckoutTraining(null);
+    }
   };
 
   const audienceKey = userRole === "investor" ? "Investors" : "Startups";
@@ -107,7 +121,7 @@ export function TrainingMarketplace({ userRole }: TrainingMarketplaceProps) {
         <div className="grid md:grid-cols-3 gap-8">
           <div className="md:col-span-2">
             <Card className="p-6">
-              <Tabs defaultValue="all">
+              <Tabs defaultValue="all" onValueChange={() => setTrainingPage(1)}>
                 <TabsList className="grid w-full grid-cols-4 mb-6">
                   <TabsTrigger value="all">All</TabsTrigger>
                   <TabsTrigger value="enrolled">Enrolled ({enrolledIds.size})</TabsTrigger>
@@ -115,15 +129,19 @@ export function TrainingMarketplace({ userRole }: TrainingMarketplaceProps) {
                   <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
                 </TabsList>
 
-                {(["all", "enrolled", "free", "upcoming"] as const).map((tab) => (
+                {(["all", "enrolled", "free", "upcoming"] as const).map((tab) => {
+                  const tabFiltered = relevantTrainings.filter((t) => {
+                    if (tab === "enrolled") return isEnrolled(t.id);
+                    if (tab === "free") return t.type === "free";
+                    if (tab === "upcoming") return t.status === "upcoming";
+                    return true;
+                  });
+                  const tabTotalPages = Math.ceil(tabFiltered.length / trainingPageSize);
+                  const tabPage = Math.min(trainingPage, tabTotalPages || 1);
+                  const tabPaginated = tabFiltered.slice((tabPage - 1) * trainingPageSize, tabPage * trainingPageSize);
+                  return (
                   <TabsContent key={tab} value={tab} className="space-y-4">
-                    {relevantTrainings
-                      .filter((t) => {
-                        if (tab === "enrolled") return isEnrolled(t.id);
-                        if (tab === "free") return t.type === "free";
-                        if (tab === "upcoming") return t.status === "upcoming";
-                        return true;
-                      })
+                    {tabPaginated
                       .map((training) => (
                         <Card key={training.id} className={`p-6 hover:shadow-lg transition-shadow ${isEnrolled(training.id) ? "border-accent/50 bg-accent/5" : ""}`}>
                           <div className="flex items-start justify-between mb-4">
@@ -181,19 +199,31 @@ export function TrainingMarketplace({ userRole }: TrainingMarketplaceProps) {
                           </div>
                         </Card>
                       ))}
-                    {relevantTrainings.filter((t) => {
-                      if (tab === "enrolled") return isEnrolled(t.id);
-                      if (tab === "free") return t.type === "free";
-                      if (tab === "upcoming") return t.status === "upcoming";
-                      return true;
-                    }).length === 0 && (
+                    {tabFiltered.length === 0 && (
                       <div className="text-center py-12 text-muted-foreground">
                         <GraduationCap className="h-12 w-12 mx-auto mb-4 opacity-50" />
                         <p>No trainings found</p>
                       </div>
                     )}
+                    {tabTotalPages > 1 && (
+                      <div className="flex items-center justify-between pt-4">
+                        <span className="text-sm text-muted-foreground">
+                          {(tabPage - 1) * trainingPageSize + 1}–{Math.min(tabPage * trainingPageSize, tabFiltered.length)} of {tabFiltered.length}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <Button variant="outline" size="sm" disabled={tabPage <= 1} onClick={() => setTrainingPage((p) => p - 1)}>
+                            <ChevronLeft className="h-4 w-4" />
+                          </Button>
+                          <span className="text-sm">{tabPage} / {tabTotalPages}</span>
+                          <Button variant="outline" size="sm" disabled={tabPage >= tabTotalPages} onClick={() => setTrainingPage((p) => p + 1)}>
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </TabsContent>
-                ))}
+                  );
+                })}
               </Tabs>
             </Card>
           </div>
@@ -239,6 +269,18 @@ export function TrainingMarketplace({ userRole }: TrainingMarketplaceProps) {
           </div>
         </div>
       </div>
+
+      {checkoutTraining && (
+        <CheckoutDialog
+          open={!!checkoutTraining}
+          onClose={() => setCheckoutTraining(null)}
+          onSuccess={handlePaymentSuccess}
+          itemType="training"
+          itemId={checkoutTraining.id}
+          itemName={checkoutTraining.title}
+          amount={checkoutTraining.price}
+        />
+      )}
     </div>
   );
 }

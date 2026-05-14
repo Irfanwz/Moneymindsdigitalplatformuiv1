@@ -8,6 +8,18 @@ import type { Training, TrainingEnrollment, CreateTrainingPayload } from "@/app/
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "";
 
+export interface Pagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface PaginationParams {
+  page?: number;
+  limit?: number;
+}
+
 export class ApiError extends Error {
   status: number;
   code?: string;
@@ -538,5 +550,41 @@ export function getMyEnrollments(token: string) {
 export function updateTrainingProgress(token: string, id: string, progress: number) {
   return request<{ message: string; enrollment: TrainingEnrollment }>(`/api/trainings/${id}/progress`, {
     method: "PATCH", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ progress }),
+  });
+}
+
+// --- Payments ---
+
+export interface Payment {
+  id: string;
+  userId: string;
+  itemType: "group_join" | "group_monthly" | "training";
+  itemId: string;
+  amount: number;
+  currency: string;
+  status: "pending" | "completed" | "failed" | "refunded";
+  paymentMethod: string;
+  transactionRef: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export function checkout(token: string, payload: { itemType: string; itemId: string; paymentMethod?: string }) {
+  return request<{ message: string; payment: Payment }>("/api/payments/checkout", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function listPayments(token: string) {
+  return request<{ payments: Payment[] }>("/api/payments", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export function checkPayment(token: string, itemType: string, itemId: string) {
+  return request<{ paid: boolean }>(`/api/payments/check?itemType=${itemType}&itemId=${itemId}`, {
+    headers: { Authorization: `Bearer ${token}` },
   });
 }

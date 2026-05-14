@@ -40,6 +40,7 @@ export function CreatePostSignalPage() {
   const { session, user } = useAuth();
   const [postType, setPostType] = useState<"post" | "signal">("signal");
   const [isPublishing, setIsPublishing] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Groups loaded from API
@@ -422,13 +423,137 @@ export function CreatePostSignalPage() {
             <X className="mr-2 h-4 w-4" />Cancel
           </Button>
           <div className="flex items-center gap-3">
-            <Button variant="outline"><Eye className="mr-2 h-4 w-4" />Preview</Button>
+            <Button variant="outline" onClick={() => setShowPreview(true)} disabled={!title.trim()}>
+              <Eye className="mr-2 h-4 w-4" />Preview
+            </Button>
             <Button onClick={handlePublish} disabled={isPublishing}>
               {isPublishing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
               {isPublishing ? "Publishing..." : `Publish ${postType === "signal" ? "Signal" : "Post"}`}
             </Button>
           </div>
         </div>
+
+        {/* Preview Modal */}
+        {showPreview && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setShowPreview(false)}>
+            <div className="bg-background rounded-xl shadow-xl w-full max-w-2xl max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between p-4 border-b">
+                <div className="flex items-center gap-2">
+                  <Eye className="h-4 w-4 text-muted-foreground" />
+                  <h3 className="font-semibold">Preview</h3>
+                </div>
+                <button onClick={() => setShowPreview(false)} className="text-muted-foreground hover:text-foreground">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="p-6">
+                {/* Post Card Preview */}
+                <Card className="p-6">
+                  {/* Author Header */}
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-accent/10 flex items-center justify-center">
+                        <span className="text-sm font-semibold text-accent">{userName.charAt(0)}</span>
+                      </div>
+                      <div>
+                        <div className="font-medium">{userName}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {groups.find((g) => g.id === selectedGroup)?.name || "Select a group"} · Just now
+                        </div>
+                      </div>
+                    </div>
+                    {postType === "signal" && (
+                      <div className={`px-3 py-1 rounded-full text-sm font-medium border ${getSignalColor(signalType)}`}>
+                        {signalType.charAt(0).toUpperCase() + signalType.slice(1)}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Title */}
+                  <h2 className="text-lg font-semibold mb-3">{title || "Untitled"}</h2>
+
+                  {/* Signal Details */}
+                  {postType === "signal" && (targetPrice || timeHorizon || confidenceLevel) && (
+                    <div className="grid grid-cols-3 gap-3 mb-4">
+                      {targetPrice && (
+                        <div className="p-3 bg-muted/50 rounded-lg text-center">
+                          <div className="text-xs text-muted-foreground mb-1">Target Price</div>
+                          <div className="text-sm font-semibold">{targetPrice}</div>
+                        </div>
+                      )}
+                      {timeHorizon && (
+                        <div className="p-3 bg-muted/50 rounded-lg text-center">
+                          <div className="text-xs text-muted-foreground mb-1">Time Horizon</div>
+                          <div className="text-sm font-semibold capitalize">{timeHorizon}-term</div>
+                        </div>
+                      )}
+                      {confidenceLevel && (
+                        <div className="p-3 bg-muted/50 rounded-lg text-center">
+                          <div className="text-xs text-muted-foreground mb-1">Confidence</div>
+                          <div className="text-sm font-semibold capitalize">{confidenceLevel}</div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Content */}
+                  {content && (
+                    <div className="text-sm text-muted-foreground whitespace-pre-wrap mb-4">{content}</div>
+                  )}
+
+                  {/* Attachments Preview */}
+                  {attachments.length > 0 && (
+                    <div className="mb-4">
+                      {attachments.filter((a) => a.type === "image").length > 0 && (
+                        <div className="grid grid-cols-2 gap-2 mb-2">
+                          {attachments.filter((a) => a.type === "image").map((att) => (
+                            <div key={att.filename} className="rounded-lg overflow-hidden bg-muted aspect-video flex items-center justify-center">
+                              <img src={att.url} alt={att.filename} className="w-full h-full object-cover" />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {attachments.filter((a) => a.type === "file").map((att) => (
+                        <div key={att.filename} className="flex items-center gap-2 p-2 bg-muted/50 rounded-lg text-sm">
+                          <Paperclip className="h-4 w-4 text-muted-foreground" />
+                          <span>{att.filename}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Tags */}
+                  {tags.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      {tags.map((tag) => (
+                        <Badge key={tag} variant="outline" className="text-xs">{tag}</Badge>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Footer */}
+                  <div className="flex items-center gap-4 pt-4 border-t text-muted-foreground text-xs">
+                    <span>0 reactions</span>
+                    <span>0 comments</span>
+                    {notifyMembers && <span className="ml-auto">Members will be notified</span>}
+                  </div>
+                </Card>
+              </div>
+
+              {/* Preview Actions */}
+              <div className="flex items-center justify-end gap-3 p-4 border-t">
+                <Button variant="outline" onClick={() => setShowPreview(false)}>
+                  Edit
+                </Button>
+                <Button onClick={() => { setShowPreview(false); handlePublish(); }} disabled={isPublishing}>
+                  <Send className="mr-2 h-4 w-4" />
+                  Publish {postType === "signal" ? "Signal" : "Post"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

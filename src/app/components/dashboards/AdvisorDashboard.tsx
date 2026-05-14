@@ -19,6 +19,7 @@ import {
   UserPlus,
   GraduationCap,
   ArrowRight,
+  BarChart3,
 } from "lucide-react";
 import { useAuth } from "@/app/contexts/AuthContext";
 import {
@@ -466,6 +467,12 @@ export function AdvisorDashboard() {
                   <Button variant="outline" className="w-full justify-start">
                     <TrendingUp className="mr-2 h-4 w-4" />
                     Edit Profile
+                  </Button>
+                </Link>
+                <Link to="/advisor/analytics">
+                  <Button variant="outline" className="w-full justify-start">
+                    <BarChart3 className="mr-2 h-4 w-4" />
+                    View Analytics
                   </Button>
                 </Link>
               </div>

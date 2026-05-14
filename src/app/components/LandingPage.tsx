@@ -2,60 +2,125 @@ import { Link } from "react-router-dom";
 import { Button } from "@/app/components/ui/button";
 import { Card } from "@/app/components/ui/card";
 import { Header } from "@/app/components/Header";
-import { Building2, TrendingUp, Users, Shield, Sparkles, BarChart3, ArrowUpRight, ArrowDownRight, Activity, Bitcoin, DollarSign, Zap } from "lucide-react";
+import { Building2, TrendingUp, Users, Shield, Sparkles, BarChart3, ArrowUpRight, ArrowDownRight, Activity, Bitcoin, DollarSign, Zap, Loader2 } from "lucide-react";
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 
-// Mock market data generators
-const generateCryptoData = () => {
-  const basePrice = 45000;
-  return Array.from({ length: 24 }, (_, i) => ({
-    time: `${i}:00`,
-    btc: basePrice + Math.random() * 2000 - 1000,
-    eth: 2800 + Math.random() * 200 - 100,
-    sol: 98 + Math.random() * 10 - 5,
-  }));
-};
-
-const generateStockData = () => {
-  return Array.from({ length: 30 }, (_, i) => ({
-    day: i + 1,
-    sp500: 4500 + Math.random() * 200 - 100,
-    nasdaq: 14000 + Math.random() * 400 - 200,
-    dow: 35000 + Math.random() * 500 - 250,
-  }));
-};
-
-const cryptoNews = [
-  { title: "Bitcoin ETF Inflows Reach Record Highs", change: "+12.4%", trend: "up", time: "2h ago" },
-  { title: "Ethereum Layer-2 TVL Surpasses $40B", change: "+8.7%", trend: "up", time: "4h ago" },
-  { title: "DeFi Protocol Launches AI Trading Agents", change: "+15.2%", trend: "up", time: "6h ago" },
-  { title: "Solana Network Processes 3,000 TPS Milestone", change: "+5.8%", trend: "up", time: "8h ago" },
+// Fallback data in case API fails
+const fallbackStats = [
+  { label: "Bitcoin", value: "$—", change: "—" },
+  { label: "Ethereum", value: "$—", change: "—" },
+  { label: "24h Volume", value: "$—", change: "—" },
+  { label: "Solana", value: "$—", change: "—" },
 ];
 
-const stockNews = [
-  { title: "Tech Sector Leads Market Rally", ticker: "NASDAQ", change: "+2.3%", trend: "up" },
-  { title: "Financial Services AI Adoption Accelerates", ticker: "XLF", change: "+1.8%", trend: "up" },
-  { title: "FinTech IPOs Show Strong Performance", ticker: "IPOX", change: "+4.2%", trend: "up" },
-  { title: "Global Markets React to Fed Policy", ticker: "SPY", change: "-0.5%", trend: "down" },
-];
+const statIcons = [Bitcoin, TrendingUp, Activity, DollarSign];
+const statColors = ["text-orange-500", "text-blue-500", "text-purple-500", "text-emerald-500"];
 
-const marketStats = [
-  { label: "Bitcoin", value: "$45,234", change: "+5.2%", icon: Bitcoin, color: "text-orange-500" },
-  { label: "S&P 500", value: "4,521", change: "+1.8%", icon: TrendingUp, color: "text-blue-500" },
-  { label: "24h Volume", value: "$124B", change: "+12.4%", icon: Activity, color: "text-purple-500" },
-  { label: "DeFi TVL", value: "$85.4B", change: "+3.6%", icon: DollarSign, color: "text-emerald-500" },
-];
+interface MarketStat {
+  label: string;
+  value: string;
+  change: string;
+}
+
+interface ChartPoint {
+  time: string;
+  btc: number;
+}
+
+interface MarketData {
+  stats: MarketStat[];
+  cryptoChart: ChartPoint[];
+  prices: {
+    btc: number;
+    eth: number;
+    sol: number;
+    btcChange: number;
+    ethChange: number;
+    solChange: number;
+    btcMarketCap: number;
+  };
+}
+
+interface PlatformStats {
+  totalUsers: number;
+  startups: number;
+  investors: number;
+  advisors: number;
+}
 
 export function LandingPage() {
-  const [cryptoData] = useState(generateCryptoData());
-  const [stockData] = useState(generateStockData());
   const [mounted, setMounted] = useState(false);
+  const [marketData, setMarketData] = useState<MarketData | null>(null);
+  const [platformStats, setPlatformStats] = useState<PlatformStats | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setMounted(true);
+
+    async function fetchData() {
+      try {
+        const [marketRes, statsRes] = await Promise.all([
+          fetch("/api/public/market").then((r) => r.ok ? r.json() : null).catch(() => null),
+          fetch("/api/public/stats").then((r) => r.ok ? r.json() : null).catch(() => null),
+        ]);
+        if (marketRes) setMarketData(marketRes);
+        if (statsRes) setPlatformStats(statsRes);
+      } catch {
+        // Use fallbacks
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
   }, []);
+
+  const displayStats = marketData?.stats ?? fallbackStats;
+  const cryptoChart = marketData?.cryptoChart ?? [];
+  const prices = marketData?.prices;
+
+  // Compute overall crypto performance from BTC 24h change
+  const cryptoPerformance = prices ? `${prices.btcChange >= 0 ? "+" : ""}${prices.btcChange.toFixed(1)}%` : "—";
+  const cryptoUp = (prices?.btcChange ?? 0) >= 0;
+
+  // Build crypto news from real price data
+  const cryptoNews = prices
+    ? [
+        {
+          title: `Bitcoin at $${prices.btc.toLocaleString()}`,
+          change: `${prices.btcChange >= 0 ? "+" : ""}${prices.btcChange.toFixed(1)}%`,
+          trend: prices.btcChange >= 0 ? "up" : "down",
+          time: "Live",
+        },
+        {
+          title: `Ethereum at $${prices.eth.toLocaleString()}`,
+          change: `${prices.ethChange >= 0 ? "+" : ""}${prices.ethChange.toFixed(1)}%`,
+          trend: prices.ethChange >= 0 ? "up" : "down",
+          time: "Live",
+        },
+        {
+          title: `Solana at $${prices.sol.toLocaleString()}`,
+          change: `${prices.solChange >= 0 ? "+" : ""}${prices.solChange.toFixed(1)}%`,
+          trend: prices.solChange >= 0 ? "up" : "down",
+          time: "Live",
+        },
+        {
+          title: `BTC Market Cap: $${(prices.btcMarketCap / 1e12).toFixed(2)}T`,
+          change: `${prices.btcChange >= 0 ? "+" : ""}${prices.btcChange.toFixed(1)}%`,
+          trend: prices.btcChange >= 0 ? "up" : "down",
+          time: "Live",
+        },
+      ]
+    : [];
+
+  // Platform stats for the second card
+  const platformStatsDisplay = [
+    { label: "Verified Users", value: platformStats?.totalUsers ?? 0 },
+    { label: "Startups", value: platformStats?.startups ?? 0 },
+    { label: "Investors", value: platformStats?.investors ?? 0 },
+    { label: "Advisors", value: platformStats?.advisors ?? 0 },
+  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
@@ -123,23 +188,36 @@ export function LandingPage() {
       {/* Live Market Stats */}
       <section className="container mx-auto px-6 py-12">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-7xl mx-auto">
-          {marketStats.map((stat, index) => (
-            <motion.div
-              key={stat.label}
-              initial={{ opacity: 0, y: 20 }}
-              animate={mounted ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.5, delay: index * 0.1 }}
-            >
-              <Card className="p-4 bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 backdrop-blur-sm">
-                <div className="flex items-center justify-between mb-2">
-                  <stat.icon className={`h-5 w-5 ${stat.color}`} />
-                  <span className="text-emerald-500 dark:text-emerald-400 text-sm font-medium">{stat.change}</span>
-                </div>
-                <p className="text-slate-500 dark:text-slate-400 text-sm">{stat.label}</p>
-                <p className="text-slate-900 dark:text-white text-2xl font-bold">{stat.value}</p>
-              </Card>
-            </motion.div>
-          ))}
+          {displayStats.map((stat, index) => {
+            const Icon = statIcons[index] ?? Activity;
+            const color = statColors[index] ?? "text-slate-500";
+            const isPositive = stat.change.startsWith("+");
+            return (
+              <motion.div
+                key={stat.label}
+                initial={{ opacity: 0, y: 20 }}
+                animate={mounted ? { opacity: 1, y: 0 } : {}}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+              >
+                <Card className="p-4 bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 backdrop-blur-sm">
+                  <div className="flex items-center justify-between mb-2">
+                    <Icon className={`h-5 w-5 ${color}`} />
+                    {loading ? (
+                      <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+                    ) : (
+                      <span className={`text-sm font-medium ${isPositive ? "text-emerald-500 dark:text-emerald-400" : "text-red-500 dark:text-red-400"}`}>
+                        {stat.change}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-slate-500 dark:text-slate-400 text-sm">{stat.label}</p>
+                  <p className="text-slate-900 dark:text-white text-2xl font-bold">
+                    {loading ? "..." : stat.value}
+                  </p>
+                </Card>
+              </motion.div>
+            );
+          })}
         </div>
       </section>
 
@@ -167,51 +245,68 @@ export function LandingPage() {
                     <p className="text-sm text-slate-500 dark:text-slate-400">24h Performance</p>
                   </div>
                 </div>
-                <span className="text-emerald-500 dark:text-emerald-400 text-sm font-medium flex items-center gap-1">
-                  <ArrowUpRight className="h-4 w-4" />
-                  +8.4%
-                </span>
+                {!loading && (
+                  <span className={`text-sm font-medium flex items-center gap-1 ${cryptoUp ? "text-emerald-500 dark:text-emerald-400" : "text-red-500 dark:text-red-400"}`}>
+                    {cryptoUp ? <ArrowUpRight className="h-4 w-4" /> : <ArrowDownRight className="h-4 w-4" />}
+                    {cryptoPerformance}
+                  </span>
+                )}
               </div>
 
               <div className="w-full mb-6" style={{ height: '256px' }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={cryptoData}>
-                    <defs>
-                      <linearGradient id="cryptoGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="#06b6d4" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                    <XAxis dataKey="time" stroke="#64748b" />
-                    <YAxis stroke="#64748b" />
-                    <Tooltip
-                      contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }}
-                      labelStyle={{ color: '#cbd5e1' }}
-                    />
-                    <Area type="monotone" dataKey="btc" stroke="#06b6d4" fill="url(#cryptoGradient)" strokeWidth={2} />
-                  </AreaChart>
-                </ResponsiveContainer>
+                {cryptoChart.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={cryptoChart}>
+                      <defs>
+                        <linearGradient id="cryptoGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="#06b6d4" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                      <XAxis dataKey="time" stroke="#64748b" />
+                      <YAxis stroke="#64748b" domain={["auto", "auto"]} />
+                      <Tooltip
+                        contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }}
+                        labelStyle={{ color: '#cbd5e1' }}
+                        formatter={(value: number) => [`$${value.toLocaleString()}`, "BTC"]}
+                      />
+                      <Area type="monotone" dataKey="btc" stroke="#06b6d4" fill="url(#cryptoGradient)" strokeWidth={2} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-full text-slate-500">
+                    {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : "Chart data unavailable"}
+                  </div>
+                )}
               </div>
 
               <div className="space-y-3">
-                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Latest Crypto News</h4>
-                {cryptoNews.slice(0, 3).map((news) => (
-                  <div key={news.title} className="flex items-center justify-between p-3 rounded-lg bg-slate-100 dark:bg-slate-800/50 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
-                    <div className="flex-1">
-                      <p className="text-sm text-slate-900 dark:text-white mb-1">{news.title}</p>
-                      <span className="text-xs text-slate-500 dark:text-slate-500">{news.time}</span>
+                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Live Prices</h4>
+                {cryptoNews.length > 0 ? (
+                  cryptoNews.map((news) => (
+                    <div key={news.title} className="flex items-center justify-between p-3 rounded-lg bg-slate-100 dark:bg-slate-800/50 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
+                      <div className="flex-1">
+                        <p className="text-sm text-slate-900 dark:text-white mb-1">{news.title}</p>
+                        <span className="text-xs text-slate-500 dark:text-slate-500">{news.time}</span>
+                      </div>
+                      <span className={`text-sm font-medium flex items-center gap-1 ml-4 ${
+                        news.trend === "up" ? "text-emerald-500 dark:text-emerald-400" : "text-red-500 dark:text-red-400"
+                      }`}>
+                        {news.trend === "up" ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+                        {news.change}
+                      </span>
                     </div>
-                    <span className="text-emerald-500 dark:text-emerald-400 text-sm font-medium flex items-center gap-1 ml-4">
-                      <ArrowUpRight className="h-3 w-3" />
-                      {news.change}
-                    </span>
+                  ))
+                ) : (
+                  <div className="text-sm text-slate-500 text-center py-4">
+                    {loading ? "Loading prices..." : "Price data unavailable"}
                   </div>
-                ))}
+                )}
               </div>
             </Card>
 
-            {/* Stock Market */}
+            {/* Platform Activity */}
             <Card className="p-6 bg-white dark:bg-slate-900/70 border-slate-200 dark:border-slate-800 backdrop-blur-sm">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
@@ -219,48 +314,92 @@ export function LandingPage() {
                     <BarChart3 className="h-6 w-6 text-white" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Stock Market</h3>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">30 Day Trends</p>
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Platform Activity</h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Community Overview</p>
                   </div>
                 </div>
                 <span className="text-emerald-500 dark:text-emerald-400 text-sm font-medium flex items-center gap-1">
                   <ArrowUpRight className="h-4 w-4" />
-                  +2.3%
+                  Growing
                 </span>
               </div>
 
-              <div className="w-full mb-6" style={{ height: '256px' }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={stockData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                    <XAxis dataKey="day" stroke="#64748b" />
-                    <YAxis stroke="#64748b" />
-                    <Tooltip
-                      contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }}
-                      labelStyle={{ color: '#cbd5e1' }}
-                    />
-                    <Line type="monotone" dataKey="sp500" stroke="#3b82f6" strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="nasdaq" stroke="#8b5cf6" strokeWidth={2} dot={false} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-
-              <div className="space-y-3">
-                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Market Movers</h4>
-                {stockNews.map((news) => (
-                  <div key={news.title} className="flex items-center justify-between p-3 rounded-lg bg-slate-100 dark:bg-slate-800/50 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
-                    <div className="flex-1">
-                      <p className="text-sm text-slate-900 dark:text-white mb-1">{news.title}</p>
-                      <span className="text-xs text-slate-500 dark:text-slate-500">{news.ticker}</span>
+              {/* Platform Stats Visual */}
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                {platformStatsDisplay.map((item) => (
+                  <div key={item.label} className="p-4 rounded-lg bg-slate-100 dark:bg-slate-800/50 text-center">
+                    <div className="text-3xl font-bold text-slate-900 dark:text-white mb-1">
+                      {loading ? "..." : item.value}
                     </div>
-                    <span className={`text-sm font-medium flex items-center gap-1 ml-4 ${
-                      news.trend === 'up' ? 'text-emerald-500 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'
-                    }`}>
-                      {news.trend === 'up' ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-                      {news.change}
-                    </span>
+                    <div className="text-sm text-slate-500 dark:text-slate-400">{item.label}</div>
                   </div>
                 ))}
+              </div>
+
+              {/* Role Distribution Bar */}
+              {platformStats && platformStats.totalUsers > 0 && (
+                <div className="mb-6">
+                  <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Community Distribution</h4>
+                  <div className="flex rounded-full overflow-hidden h-4 bg-slate-200 dark:bg-slate-800">
+                    {platformStats.startups > 0 && (
+                      <div
+                        className="bg-gradient-to-r from-blue-500 to-cyan-500 transition-all"
+                        style={{ width: `${(platformStats.startups / platformStats.totalUsers) * 100}%` }}
+                        title={`Startups: ${platformStats.startups}`}
+                      />
+                    )}
+                    {platformStats.investors > 0 && (
+                      <div
+                        className="bg-gradient-to-r from-purple-500 to-pink-500 transition-all"
+                        style={{ width: `${(platformStats.investors / platformStats.totalUsers) * 100}%` }}
+                        title={`Investors: ${platformStats.investors}`}
+                      />
+                    )}
+                    {platformStats.advisors > 0 && (
+                      <div
+                        className="bg-gradient-to-r from-emerald-500 to-teal-500 transition-all"
+                        style={{ width: `${(platformStats.advisors / platformStats.totalUsers) * 100}%` }}
+                        title={`Advisors: ${platformStats.advisors}`}
+                      />
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between mt-2 text-xs text-slate-500 dark:text-slate-400">
+                    <span className="flex items-center gap-1">
+                      <span className="h-2 w-2 rounded-full bg-blue-500" /> Startups
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="h-2 w-2 rounded-full bg-purple-500" /> Investors
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="h-2 w-2 rounded-full bg-emerald-500" /> Advisors
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-3">
+                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Why MoneyMinds</h4>
+                <div className="flex items-center justify-between p-3 rounded-lg bg-slate-100 dark:bg-slate-800/50">
+                  <div className="flex items-center gap-3">
+                    <Shield className="h-5 w-5 text-cyan-500" />
+                    <p className="text-sm text-slate-900 dark:text-white">AI-Verified Profiles</p>
+                  </div>
+                  <span className="text-emerald-500 text-xs font-medium">Active</span>
+                </div>
+                <div className="flex items-center justify-between p-3 rounded-lg bg-slate-100 dark:bg-slate-800/50">
+                  <div className="flex items-center gap-3">
+                    <Sparkles className="h-5 w-5 text-purple-500" />
+                    <p className="text-sm text-slate-900 dark:text-white">Smart Matching Engine</p>
+                  </div>
+                  <span className="text-emerald-500 text-xs font-medium">Active</span>
+                </div>
+                <div className="flex items-center justify-between p-3 rounded-lg bg-slate-100 dark:bg-slate-800/50">
+                  <div className="flex items-center gap-3">
+                    <BarChart3 className="h-5 w-5 text-emerald-500" />
+                    <p className="text-sm text-slate-900 dark:text-white">Real-Time Market Data</p>
+                  </div>
+                  <span className="text-emerald-500 text-xs font-medium">Live</span>
+                </div>
               </div>
             </Card>
           </div>

@@ -6,6 +6,9 @@ import { RoleSelectionPage } from "@/app/components/RoleSelectionPage";
 import { StartupDashboard } from "@/app/components/dashboards/StartupDashboard";
 import { InvestorDashboard } from "@/app/components/dashboards/InvestorDashboard";
 import { AdvisorDashboard } from "@/app/components/dashboards/AdvisorDashboard";
+import { StartupAnalytics } from "@/app/components/dashboards/StartupAnalytics";
+import { InvestorAnalytics } from "@/app/components/dashboards/InvestorAnalytics";
+import { AdvisorAnalytics } from "@/app/components/dashboards/AdvisorAnalytics";
 import { AdminDashboard } from "@/app/components/dashboards/AdminDashboard";
 import { StartupProfile } from "@/app/components/profiles/StartupProfile";
 import { InvestorProfile } from "@/app/components/profiles/InvestorProfile";
@@ -49,6 +52,7 @@ export default function App() {
 
             <Route element={<RequireRole role="startup" />}>
               <Route path="/startup/dashboard" element={<StartupDashboard />} />
+              <Route path="/startup/analytics" element={<StartupAnalytics />} />
               <Route path="/startup/profile" element={<StartupProfile />} />
               <Route path="/startup/edit-profile" element={<StartupEditProfile />} />
               <Route path="/startup/trainings" element={<TrainingMarketplace userRole="startup" />} />
@@ -59,6 +63,7 @@ export default function App() {
 
             <Route element={<RequireRole role="investor" />}>
               <Route path="/investor/dashboard" element={<InvestorDashboard />} />
+              <Route path="/investor/analytics" element={<InvestorAnalytics />} />
               <Route path="/investor/profile" element={<InvestorProfile />} />
               <Route path="/investor/edit-profile" element={<InvestorEditProfile />} />
               <Route path="/investor/ai-agents" element={<AIAgentsPage />} />
@@ -70,6 +75,7 @@ export default function App() {
 
             <Route element={<RequireRole role="advisor" />}>
               <Route path="/advisor/dashboard" element={<AdvisorDashboard />} />
+              <Route path="/advisor/analytics" element={<AdvisorAnalytics />} />
               <Route path="/advisor/profile" element={<AdvisorProfile />} />
               <Route path="/advisor/edit-profile" element={<AdvisorEditProfile />} />
               <Route path="/advisor/sessions" element={<AdvisorSessionsPage />} />

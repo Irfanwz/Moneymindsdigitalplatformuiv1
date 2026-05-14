@@ -14,21 +14,25 @@ import {
   Sparkles,
   Calendar,
   GraduationCap,
+  BarChart3,
 } from "lucide-react";
 import { useAuth } from "@/app/contexts/AuthContext";
 import {
   getStartupProfile,
   getMyEnrollments,
   searchAdvisors,
+  listTrainings,
 } from "@/app/lib/api";
+import { Badge } from "@/app/components/ui/badge";
 import type { StartupProfile } from "@/app/types/startup-profile";
-import type { TrainingEnrollment } from "@/app/types/training";
+import type { Training, TrainingEnrollment } from "@/app/types/training";
 import type { AdvisorSearchResult } from "@/app/types/search";
 
 export function StartupDashboard() {
   const { session, user } = useAuth();
   const [profile, setProfile] = useState<StartupProfile | null>(null);
   const [enrollments, setEnrollments] = useState<TrainingEnrollment[]>([]);
+  const [trainings, setTrainings] = useState<Training[]>([]);
   const [advisors, setAdvisors] = useState<AdvisorSearchResult[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -37,15 +41,17 @@ export function StartupDashboard() {
     let active = true;
     async function load() {
       try {
-        const [profileRes, enrollRes, advisorRes] = await Promise.all([
+        const [profileRes, enrollRes, advisorRes, trainingsRes] = await Promise.all([
           getStartupProfile(session!.token),
           getMyEnrollments(session!.token),
           searchAdvisors(session!.token),
+          listTrainings(session!.token),
         ]);
         if (active) {
           setProfile(profileRes.profile);
           setEnrollments(enrollRes.enrollments);
           setAdvisors(advisorRes.advisors.slice(0, 3));
+          setTrainings(trainingsRes.trainings);
         }
       } catch {
         // fallback to defaults
@@ -275,6 +281,12 @@ export function StartupDashboard() {
                     View Profile
                   </Button>
                 </Link>
+                <Link to="/startup/analytics">
+                  <Button variant="outline" className="w-full justify-start">
+                    <BarChart3 className="mr-2 h-4 w-4" />
+                    View Analytics
+                  </Button>
+                </Link>
               </div>
             </Card>
 
@@ -326,28 +338,85 @@ export function StartupDashboard() {
               </div>
             </Card>
 
-            {/* Upcoming Trainings */}
+            {/* Upcoming Events */}
             <Card className="p-6">
-              <h3 className="font-semibold mb-4">Upcoming</h3>
+              <div className="flex items-center gap-2 mb-4">
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+                <h3 className="font-semibold">Upcoming Events</h3>
+              </div>
               <div className="space-y-3">
-                {enrollments.length > 0 ? (
-                  enrollments.slice(0, 2).map((enrollment) => (
-                    <div key={enrollment.id} className="flex gap-3">
-                      <div className="flex flex-col items-center justify-center bg-muted rounded-lg p-2 w-14 h-14">
-                        <Calendar className="h-4 w-4 text-muted-foreground mb-1" />
-                        <div className="text-xs font-medium">{enrollment.progress}%</div>
+                {(() => {
+                  // Enrolled trainings with real titles
+                  const enrolledTrainings = enrollments
+                    .map((e) => {
+                      const training = trainings.find((t) => t.id === e.trainingId);
+                      return training ? { ...training, progress: e.progress, enrolledAt: e.enrolledAt, enrollmentId: e.id } : null;
+                    })
+                    .filter(Boolean) as (Training & { progress: number; enrolledAt: string; enrollmentId: string })[];
+
+                  // Upcoming trainings not yet enrolled in
+                  const enrolledIds = new Set(enrollments.map((e) => e.trainingId));
+                  const upcomingTrainings = trainings
+                    .filter((t) => (t.status === "upcoming" || t.status === "ongoing") && !enrolledIds.has(t.id) && (t.targetAudience?.includes("startup") || t.targetAudience?.includes("all") || t.targetAudience?.length === 0))
+                    .slice(0, 2);
+
+                  const hasEvents = enrolledTrainings.length > 0 || upcomingTrainings.length > 0;
+
+                  if (!hasEvents) {
+                    return (
+                      <div className="text-center py-4">
+                        <Calendar className="h-6 w-6 mx-auto mb-2 text-muted-foreground opacity-50" />
+                        <div className="text-sm text-muted-foreground">No upcoming events</div>
+                        <Link to="/startup/trainings">
+                          <Button variant="outline" size="sm" className="mt-2">Browse Trainings</Button>
+                        </Link>
                       </div>
-                      <div className="flex-1">
-                        <div className="text-sm font-medium">Training #{enrollment.trainingId.slice(0, 6)}</div>
-                        <div className="text-xs text-muted-foreground">
-                          Enrolled {new Date(enrollment.enrolledAt).toLocaleDateString()}
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-sm text-muted-foreground">No upcoming trainings</div>
-                )}
+                    );
+                  }
+
+                  return (
+                    <>
+                      {enrolledTrainings.slice(0, 3).map((t) => (
+                        <Link key={t.enrollmentId} to={`/startup/trainings/${t.id}`}>
+                          <div className="flex gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                            <div className="flex flex-col items-center justify-center bg-accent/10 rounded-lg p-2 w-14 h-14 shrink-0">
+                              <GraduationCap className="h-4 w-4 text-accent mb-1" />
+                              <div className="text-xs font-medium">{t.progress}%</div>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-medium truncate">{t.title}</div>
+                              <div className="text-xs text-muted-foreground">{t.schedule || t.duration}</div>
+                              <div className="flex items-center gap-2 mt-1">
+                                <Badge variant={t.status === "ongoing" ? "default" : "outline"} className="text-xs">
+                                  {t.status}
+                                </Badge>
+                                <span className="text-xs text-muted-foreground">{t.format}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </Link>
+                      ))}
+                      {upcomingTrainings.map((t) => (
+                        <Link key={t.id} to={`/startup/trainings/${t.id}`}>
+                          <div className="flex gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors border border-dashed border-border">
+                            <div className="flex flex-col items-center justify-center bg-muted rounded-lg p-2 w-14 h-14 shrink-0">
+                              <Calendar className="h-4 w-4 text-muted-foreground mb-1" />
+                              <div className="text-xs font-medium">New</div>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-medium truncate">{t.title}</div>
+                              <div className="text-xs text-muted-foreground">{t.schedule || t.duration}</div>
+                              <div className="flex items-center gap-2 mt-1">
+                                <Badge variant="outline" className="text-xs">upcoming</Badge>
+                                <span className="text-xs text-muted-foreground">{t.type === "free" ? "Free" : `$${t.price}`}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </Link>
+                      ))}
+                    </>
+                  );
+                })()}
               </div>
             </Card>
 

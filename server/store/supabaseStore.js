@@ -12,6 +12,9 @@ const SIGNAL_COMMENTS_TABLE = "signal_comments";
 const SIGNAL_REACTIONS_TABLE = "signal_reactions";
 const TRAININGS_TABLE = "trainings";
 const TRAINING_ENROLLMENTS_TABLE = "training_enrollments";
+const NOTIFICATIONS_TABLE = "notifications";
+const CONNECTIONS_TABLE = "connections";
+const PAYMENTS_TABLE = "payments";
 
 function mapRow(row) {
   return {
@@ -1043,6 +1046,167 @@ export function createSupabaseStore({ supabaseUrl, supabaseServiceRoleKey }) {
       if (error) throw toStoreError(error);
       if (!data) return null;
       return { id: data.id, trainingId: data.training_id, userId: data.user_id, progress: data.progress, enrolledAt: data.enrolled_at };
+    },
+
+    // --- Signal Update (was missing) ---
+
+    async updateSignal(signalId, input) {
+      const payload = {
+        post_type: input.postType,
+        title: input.title,
+        content: input.content,
+        signal_type: input.signalType,
+        target_price: input.targetPrice,
+        time_horizon: input.timeHorizon,
+        confidence_level: input.confidenceLevel,
+        tags: input.tags,
+        notify_members: input.notifyMembers,
+      };
+      const { data, error } = await client.from(ADVISOR_SIGNALS_TABLE).update(payload).eq("id", signalId).select("*").maybeSingle();
+      if (error) throw toStoreError(error);
+      return data ? mapSignalRow(data) : null;
+    },
+
+    // --- Notifications ---
+
+    async createNotification(userId, { title, message, type }) {
+      const { data, error } = await client
+        .from(NOTIFICATIONS_TABLE)
+        .insert({ user_id: userId, title, message: message || "", type: type || "info", read: false })
+        .select("*")
+        .single();
+      if (error) throw toStoreError(error);
+      return { id: data.id, userId: data.user_id, title: data.title, message: data.message, type: data.type, read: data.read, createdAt: data.created_at };
+    },
+
+    async listNotificationsByUser(userId) {
+      const { data, error } = await client
+        .from(NOTIFICATIONS_TABLE)
+        .select("*")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (error) throw toStoreError(error);
+      return (data ?? []).map((r) => ({ id: r.id, userId: r.user_id, title: r.title, message: r.message, type: r.type, read: r.read, createdAt: r.created_at }));
+    },
+
+    async markNotificationRead(notificationId) {
+      const { data, error } = await client
+        .from(NOTIFICATIONS_TABLE)
+        .update({ read: true })
+        .eq("id", notificationId)
+        .select("*")
+        .maybeSingle();
+      if (error) throw toStoreError(error);
+      if (!data) return null;
+      return { id: data.id, userId: data.user_id, title: data.title, message: data.message, type: data.type, read: data.read, createdAt: data.created_at };
+    },
+
+    async markAllNotificationsRead(userId) {
+      const { error } = await client
+        .from(NOTIFICATIONS_TABLE)
+        .update({ read: true })
+        .eq("user_id", userId)
+        .eq("read", false);
+      if (error) throw toStoreError(error);
+    },
+
+    // --- Connections ---
+
+    async createConnection(fromUserId, toUserId, message) {
+      // Check for existing connection
+      const { data: existing } = await client
+        .from(CONNECTIONS_TABLE)
+        .select("*")
+        .or(`and(from_user_id.eq.${fromUserId},to_user_id.eq.${toUserId}),and(from_user_id.eq.${toUserId},to_user_id.eq.${fromUserId})`)
+        .maybeSingle();
+      if (existing) {
+        return { id: existing.id, fromUserId: existing.from_user_id, toUserId: existing.to_user_id, message: existing.message ?? "", status: existing.status, createdAt: existing.created_at, updatedAt: existing.updated_at };
+      }
+
+      const { data, error } = await client
+        .from(CONNECTIONS_TABLE)
+        .insert({ from_user_id: fromUserId, to_user_id: toUserId, message: message || "", status: "pending" })
+        .select("*")
+        .single();
+      if (error) throw toStoreError(error);
+      return { id: data.id, fromUserId: data.from_user_id, toUserId: data.to_user_id, message: data.message ?? "", status: data.status, createdAt: data.created_at, updatedAt: data.updated_at };
+    },
+
+    async updateConnectionStatus(connectionId, status) {
+      const { data, error } = await client
+        .from(CONNECTIONS_TABLE)
+        .update({ status })
+        .eq("id", connectionId)
+        .select("*")
+        .maybeSingle();
+      if (error) throw toStoreError(error);
+      if (!data) return null;
+      return { id: data.id, fromUserId: data.from_user_id, toUserId: data.to_user_id, message: data.message ?? "", status: data.status, createdAt: data.created_at, updatedAt: data.updated_at };
+    },
+
+    async listConnectionsByUser(userId) {
+      const { data, error } = await client
+        .from(CONNECTIONS_TABLE)
+        .select("*")
+        .or(`from_user_id.eq.${userId},to_user_id.eq.${userId}`)
+        .order("created_at", { ascending: false });
+      if (error) throw toStoreError(error);
+      return (data ?? []).map((r) => ({ id: r.id, fromUserId: r.from_user_id, toUserId: r.to_user_id, message: r.message ?? "", status: r.status, createdAt: r.created_at, updatedAt: r.updated_at }));
+    },
+
+    async findConnectionById(connectionId) {
+      const { data, error } = await client
+        .from(CONNECTIONS_TABLE)
+        .select("*")
+        .eq("id", connectionId)
+        .maybeSingle();
+      if (error) throw toStoreError(error);
+      if (!data) return null;
+      return { id: data.id, fromUserId: data.from_user_id, toUserId: data.to_user_id, message: data.message ?? "", status: data.status, createdAt: data.created_at, updatedAt: data.updated_at };
+    },
+
+    // --- Payments ---
+
+    async createPayment(userId, { itemType, itemId, amount, currency, paymentMethod }) {
+      const { data, error } = await client
+        .from(PAYMENTS_TABLE)
+        .insert({ user_id: userId, item_type: itemType, item_id: itemId, amount: parseFloat(amount) || 0, currency: currency || "USD", status: "pending", payment_method: paymentMethod || "card" })
+        .select("*")
+        .single();
+      if (error) throw toStoreError(error);
+      return { id: data.id, userId: data.user_id, itemType: data.item_type, itemId: data.item_id, amount: data.amount, currency: data.currency, status: data.status, paymentMethod: data.payment_method, transactionRef: data.transaction_ref, createdAt: data.created_at, updatedAt: data.updated_at };
+    },
+
+    async completePayment(paymentId, transactionRef) {
+      const { data, error } = await client
+        .from(PAYMENTS_TABLE)
+        .update({ status: "completed", transaction_ref: transactionRef || `TXN-${Date.now()}` })
+        .eq("id", paymentId)
+        .select("*")
+        .maybeSingle();
+      if (error) throw toStoreError(error);
+      if (!data) return null;
+      return { id: data.id, userId: data.user_id, itemType: data.item_type, itemId: data.item_id, amount: data.amount, currency: data.currency, status: data.status, paymentMethod: data.payment_method, transactionRef: data.transaction_ref, createdAt: data.created_at, updatedAt: data.updated_at };
+    },
+
+    async findPaymentById(paymentId) {
+      const { data, error } = await client.from(PAYMENTS_TABLE).select("*").eq("id", paymentId).maybeSingle();
+      if (error) throw toStoreError(error);
+      if (!data) return null;
+      return { id: data.id, userId: data.user_id, itemType: data.item_type, itemId: data.item_id, amount: data.amount, currency: data.currency, status: data.status, paymentMethod: data.payment_method, transactionRef: data.transaction_ref, createdAt: data.created_at, updatedAt: data.updated_at };
+    },
+
+    async listPaymentsByUser(userId) {
+      const { data, error } = await client.from(PAYMENTS_TABLE).select("*").eq("user_id", userId).order("created_at", { ascending: false });
+      if (error) throw toStoreError(error);
+      return (data ?? []).map((r) => ({ id: r.id, userId: r.user_id, itemType: r.item_type, itemId: r.item_id, amount: r.amount, currency: r.currency, status: r.status, paymentMethod: r.payment_method, transactionRef: r.transaction_ref, createdAt: r.created_at, updatedAt: r.updated_at }));
+    },
+
+    async hasActivePayment(userId, itemType, itemId) {
+      const { data, error } = await client.from(PAYMENTS_TABLE).select("id").eq("user_id", userId).eq("item_type", itemType).eq("item_id", itemId).eq("status", "completed").limit(1);
+      if (error) throw toStoreError(error);
+      return (data?.length ?? 0) > 0;
     },
   };
 }

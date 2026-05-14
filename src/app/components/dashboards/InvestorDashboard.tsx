@@ -18,6 +18,8 @@ import {
   Bot,
   ArrowRight,
   GraduationCap,
+  BarChart3,
+  Users,
 } from "lucide-react";
 import { Input } from "@/app/components/ui/input";
 import { useAuth } from "@/app/contexts/AuthContext";
@@ -26,10 +28,13 @@ import {
   updateInvestorProfile,
   searchStartups,
   getMyEnrollments,
+  listConnections,
+  getStartupPublicProfile,
 } from "@/app/lib/api";
 import type { InvestorProfile } from "@/app/types/investor-profile";
 import type { StartupSearchResult } from "@/app/types/search";
 import type { TrainingEnrollment } from "@/app/types/training";
+import type { Connection } from "@/app/lib/api";
 
 export function InvestorDashboard() {
   const { session, user } = useAuth();
@@ -42,21 +47,55 @@ export function InvestorDashboard() {
   const [savedStartups, setSavedStartups] = useState<Set<string>>(
     () => new Set(JSON.parse(localStorage.getItem("savedStartups") || "[]"))
   );
+  const [followingStartups, setFollowingStartups] = useState<
+    { userId: string; name: string; industry: string; stage: string; tagline: string; totalRaised: string; description: string }[]
+  >([]);
 
   useEffect(() => {
     if (!session?.token) return;
     let active = true;
     async function load() {
       try {
-        const [profileRes, startupsRes, enrollRes] = await Promise.all([
+        const [profileRes, startupsRes, enrollRes, connectionsRes] = await Promise.all([
           getInvestorProfile(session!.token),
           searchStartups(session!.token),
           getMyEnrollments(session!.token),
+          listConnections(session!.token),
         ]);
         if (active) {
           setProfile(profileRes.profile);
           setStartupResults(startupsRes.startups);
           setEnrollments(enrollRes.enrollments);
+
+          // Load startup profiles for accepted connections
+          const accepted = connectionsRes.connections.filter((c: Connection) => c.status === "accepted");
+          const followingProfiles = await Promise.all(
+            accepted.map(async (c: Connection) => {
+              try {
+                const res = await getStartupPublicProfile(session!.token, c.otherUserId);
+                return {
+                  userId: c.otherUserId,
+                  name: res.profile?.companyName || res.name || c.otherUserName,
+                  industry: res.profile?.industry || "",
+                  stage: res.profile?.stage || "",
+                  tagline: res.profile?.tagline || "",
+                  totalRaised: res.profile?.totalRaised || "",
+                  description: res.profile?.description?.slice(0, 100) || "",
+                };
+              } catch {
+                return {
+                  userId: c.otherUserId,
+                  name: c.otherUserName,
+                  industry: "",
+                  stage: "",
+                  tagline: "",
+                  totalRaised: "",
+                  description: "",
+                };
+              }
+            })
+          );
+          if (active) setFollowingStartups(followingProfiles.filter((p) => p.name));
         }
       } catch {
         // Use fallbacks
@@ -265,11 +304,66 @@ export function InvestorDashboard() {
                 )}
               </TabsContent>
 
-              <TabsContent value="following">
-                <div className="text-center py-12 text-slate-500 dark:text-slate-400">
-                  <Bookmark className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Your following list will appear here</p>
-                </div>
+              <TabsContent value="following" className="space-y-4">
+                {followingStartups.length > 0 ? (
+                  followingStartups.map((startup) => (
+                    <Card key={startup.userId} className="p-6 bg-white dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 hover:border-purple-500/30 dark:hover:border-purple-500/30 hover:shadow-lg hover:shadow-purple-500/10 transition-all">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-start gap-4 flex-1">
+                          <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                            <Building2 className="h-6 w-6 text-white" />
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h3 className="font-semibold text-slate-900 dark:text-white">{startup.name}</h3>
+                              <CredibilityBadge type="verified" label="Connected" />
+                            </div>
+                            <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
+                              {startup.tagline || startup.description || "No description available"}
+                            </p>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {startup.industry && (
+                                <Badge variant="outline" className="border-cyan-500/30 text-cyan-600 dark:text-cyan-400">{startup.industry}</Badge>
+                              )}
+                              {startup.stage && (
+                                <Badge variant="outline" className="border-purple-500/30 text-purple-600 dark:text-purple-400">{startup.stage}</Badge>
+                              )}
+                              {startup.totalRaised && (
+                                <Badge variant="outline" className="border-emerald-500/30 text-emerald-600 dark:text-emerald-400">Raised: {startup.totalRaised}</Badge>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 pt-4 border-t border-slate-200 dark:border-slate-700">
+                        <Button
+                          className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 border-0"
+                          onClick={() => navigate(`/startups/${startup.userId}/profile`)}
+                        >
+                          View Profile
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className={`border-slate-200 dark:border-slate-700 ${savedStartups.has(startup.userId) ? "bg-purple-100 dark:bg-purple-900/30 border-purple-500/50" : ""}`}
+                          onClick={() => toggleSaveStartup(startup.userId)}
+                        >
+                          <Bookmark className={`h-4 w-4 ${savedStartups.has(startup.userId) ? "fill-purple-500 text-purple-500" : ""}`} />
+                        </Button>
+                      </div>
+                    </Card>
+                  ))
+                ) : (
+                  <div className="text-center py-12 text-slate-500 dark:text-slate-400">
+                    <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p className="mb-2">No connections yet</p>
+                    <p className="text-sm">Connect with startups to see them here</p>
+                    <Link to="/investor/find-advisors">
+                      <Button variant="outline" size="sm" className="mt-4">
+                        Discover Startups
+                      </Button>
+                    </Link>
+                  </div>
+                )}
               </TabsContent>
 
               <TabsContent value="saved">
@@ -325,6 +419,16 @@ export function InvestorDashboard() {
 
         {/* Sidebar */}
         <div className="space-y-6">
+          {/* Analytics Quick Access */}
+          <Card className="p-6 bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800">
+            <Link to="/investor/analytics">
+              <Button variant="outline" className="w-full justify-start border-slate-200 dark:border-slate-700">
+                <BarChart3 className="mr-2 h-4 w-4" />
+                View Analytics
+              </Button>
+            </Link>
+          </Card>
+
           {/* Privacy Controls */}
           <Card className="p-6 bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800">
             <h3 className="font-bold text-slate-900 dark:text-white mb-4">Profile Visibility</h3>

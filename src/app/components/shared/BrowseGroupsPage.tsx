@@ -22,9 +22,12 @@ import {
   LogIn,
   LogOut,
   UserCircle,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { browseGroups, joinAdvisorGroup, leaveAdvisorGroup } from "@/app/lib/api";
+import { CheckoutDialog } from "@/app/components/shared/CheckoutDialog";
 import type { BrowseGroup } from "@/app/lib/api";
 
 const CATEGORIES = [
@@ -46,6 +49,9 @@ export function BrowseGroupsPage({ userRole }: { userRole: "startup" | "investor
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [paidFilter, setPaidFilter] = useState<"all" | "free" | "paid">("all");
   const [joiningGroupId, setJoiningGroupId] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 9;
+  const [checkoutGroup, setCheckoutGroup] = useState<BrowseGroup | null>(null);
 
   const userName = user?.fullName ?? "User";
 
@@ -68,6 +74,11 @@ export function BrowseGroupsPage({ userRole }: { userRole: "startup" | "investor
 
   const handleJoin = async (groupId: string) => {
     if (!session?.token) return;
+    const group = groups.find((g) => g.id === groupId);
+    if (group?.isPaid && parseFloat(group.joiningFee || "0") > 0) {
+      setCheckoutGroup(group);
+      return;
+    }
     setJoiningGroupId(groupId);
     try {
       await joinAdvisorGroup(session.token, groupId);
@@ -80,6 +91,17 @@ export function BrowseGroupsPage({ userRole }: { userRole: "startup" | "investor
       // ignore
     } finally {
       setJoiningGroupId(null);
+    }
+  };
+
+  const handleGroupPaymentSuccess = () => {
+    if (checkoutGroup) {
+      setGroups((prev) =>
+        prev.map((g) =>
+          g.id === checkoutGroup.id ? { ...g, isJoined: true, memberCount: g.memberCount + 1 } : g
+        )
+      );
+      setCheckoutGroup(null);
     }
   };
 
@@ -117,6 +139,12 @@ export function BrowseGroupsPage({ userRole }: { userRole: "startup" | "investor
     }
     return true;
   });
+
+  // Reset to page 1 when filters change
+  useEffect(() => { setCurrentPage(1); }, [searchQuery, categoryFilter, paidFilter]);
+
+  const totalPages = Math.ceil(filtered.length / pageSize);
+  const paginatedGroups = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const joinedCount = groups.filter((g) => g.isJoined).length;
   const freeCount = groups.filter((g) => !g.isPaid).length;
@@ -213,7 +241,7 @@ export function BrowseGroupsPage({ userRole }: { userRole: "startup" | "investor
         {/* Groups Grid */}
         {!isLoading && (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filtered.map((group) => (
+            {paginatedGroups.map((group) => (
               <Card
                 key={group.id}
                 className="p-6 hover:shadow-lg transition-shadow flex flex-col"
@@ -316,6 +344,35 @@ export function BrowseGroupsPage({ userRole }: { userRole: "startup" | "investor
           </div>
         )}
 
+        {/* Pagination */}
+        {!isLoading && totalPages > 1 && (
+          <div className="flex items-center justify-between mt-6">
+            <span className="text-sm text-muted-foreground">
+              {(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, filtered.length)} of {filtered.length} groups
+            </span>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" disabled={currentPage <= 1} onClick={() => setCurrentPage((p) => p - 1)}>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                let pageNum: number;
+                if (totalPages <= 5) pageNum = i + 1;
+                else if (currentPage <= 3) pageNum = i + 1;
+                else if (currentPage >= totalPages - 2) pageNum = totalPages - 4 + i;
+                else pageNum = currentPage - 2 + i;
+                return (
+                  <Button key={pageNum} variant={pageNum === currentPage ? "default" : "outline"} size="sm" className="w-9" onClick={() => setCurrentPage(pageNum)}>
+                    {pageNum}
+                  </Button>
+                );
+              })}
+              <Button variant="outline" size="sm" disabled={currentPage >= totalPages} onClick={() => setCurrentPage((p) => p + 1)}>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Empty State */}
         {!isLoading && filtered.length === 0 && (
           <Card className="p-12 text-center">
@@ -329,6 +386,18 @@ export function BrowseGroupsPage({ userRole }: { userRole: "startup" | "investor
           </Card>
         )}
       </div>
+
+      {checkoutGroup && (
+        <CheckoutDialog
+          open={!!checkoutGroup}
+          onClose={() => setCheckoutGroup(null)}
+          onSuccess={handleGroupPaymentSuccess}
+          itemType="group_join"
+          itemId={checkoutGroup.id}
+          itemName={checkoutGroup.name}
+          amount={parseFloat(checkoutGroup.joiningFee || "0")}
+        />
+      )}
     </div>
   );
 }

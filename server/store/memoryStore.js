@@ -51,6 +51,7 @@ export function createMemoryStore() {
   const signalReactions = [];
   const notifications = [];
   const connections = [];
+  const payments = [];
 
   return {
     mode: "memory",
@@ -744,6 +745,51 @@ export function createMemoryStore() {
     async findConnectionById(connectionId) {
       const c = connections.find((c) => c.id === connectionId);
       return c ? { ...c } : null;
+    },
+
+    // --- Payments ---
+
+    async createPayment(userId, { itemType, itemId, amount, currency, paymentMethod }) {
+      const payment = {
+        id: randomUUID(),
+        userId,
+        itemType,
+        itemId,
+        amount: parseFloat(amount) || 0,
+        currency: currency || "USD",
+        status: "pending",
+        paymentMethod: paymentMethod || "card",
+        transactionRef: null,
+        createdAt: now(),
+        updatedAt: now(),
+      };
+      payments.push(payment);
+      return { ...payment };
+    },
+
+    async completePayment(paymentId, transactionRef) {
+      const p = payments.find((p) => p.id === paymentId);
+      if (!p) return null;
+      p.status = "completed";
+      p.transactionRef = transactionRef || `TXN-${Date.now()}`;
+      p.updatedAt = now();
+      return { ...p };
+    },
+
+    async findPaymentById(paymentId) {
+      const p = payments.find((p) => p.id === paymentId);
+      return p ? { ...p } : null;
+    },
+
+    async listPaymentsByUser(userId) {
+      return payments
+        .filter((p) => p.userId === userId)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .map((p) => ({ ...p }));
+    },
+
+    async hasActivePayment(userId, itemType, itemId) {
+      return payments.some((p) => p.userId === userId && p.itemType === itemType && p.itemId === itemId && p.status === "completed");
     },
   };
 }
