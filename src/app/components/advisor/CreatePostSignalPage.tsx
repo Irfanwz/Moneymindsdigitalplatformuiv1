@@ -31,8 +31,8 @@ import {
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/app/contexts/AuthContext";
-import { listAdvisorGroups, createAdvisorSignal } from "@/app/lib/api";
-import type { AdvisorGroup } from "@/app/types/advisor-groups";
+import { listAdvisorGroups, createAdvisorSignal, uploadFile } from "@/app/lib/api";
+import type { AdvisorGroup, Attachment } from "@/app/types/advisor-groups";
 
 export function CreatePostSignalPage() {
   const navigate = useNavigate();
@@ -57,6 +57,8 @@ export function CreatePostSignalPage() {
   const [tags, setTags] = useState<string[]>([]);
   const [currentTag, setCurrentTag] = useState("");
   const [notifyMembers, setNotifyMembers] = useState(true);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
 
   const userName = user?.fullName ?? "Advisor";
 
@@ -93,6 +95,28 @@ export function CreatePostSignalPage() {
     setTags(tags.filter((tag) => tag !== tagToRemove));
   };
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: "image" | "file") => {
+    const files = e.currentTarget.files;
+    if (!files || !session?.token) return;
+
+    setUploadingAttachment(true);
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const result = await uploadFile(session.token, file);
+        setAttachments((prev) => [...prev, { ...result, type }]);
+      }
+    } catch (err: any) {
+      setError(err?.message ?? "Failed to upload file");
+    } finally {
+      setUploadingAttachment(false);
+    }
+  };
+
+  const handleRemoveAttachment = (filename: string) => {
+    setAttachments(attachments.filter((att) => att.filename !== filename));
+  };
+
   const handlePublish = async () => {
     if (!session?.token || !selectedGroup) return;
     setIsPublishing(true);
@@ -107,6 +131,7 @@ export function CreatePostSignalPage() {
         timeHorizon: postType === "signal" ? timeHorizon : "",
         confidenceLevel: postType === "signal" ? confidenceLevel : "",
         tags,
+        attachments: attachments.length > 0 ? attachments : undefined,
         notifyMembers,
       });
       navigate("/advisor/groups");
@@ -252,9 +277,35 @@ export function CreatePostSignalPage() {
                 <div>
                   <Label>Attachments</Label>
                   <div className="grid md:grid-cols-2 gap-3 mt-2">
-                    <Button variant="outline" className="justify-start"><ImageIcon className="mr-2 h-4 w-4" />Add Images</Button>
-                    <Button variant="outline" className="justify-start"><Paperclip className="mr-2 h-4 w-4" />Attach Files</Button>
+                    <Button variant="outline" className="justify-start" onClick={() => document.getElementById("signal-images")?.click()} disabled={uploadingAttachment}>
+                      <ImageIcon className="mr-2 h-4 w-4" />
+                      {uploadingAttachment ? "Uploading..." : "Add Images"}
+                    </Button>
+                    <Button variant="outline" className="justify-start" onClick={() => document.getElementById("signal-files")?.click()} disabled={uploadingAttachment}>
+                      <Paperclip className="mr-2 h-4 w-4" />
+                      {uploadingAttachment ? "Uploading..." : "Attach Files"}
+                    </Button>
+                    <input id="signal-images" type="file" multiple accept="image/*" className="hidden" onChange={(e) => handleFileUpload(e, "image")} disabled={uploadingAttachment} />
+                    <input id="signal-files" type="file" multiple className="hidden" onChange={(e) => handleFileUpload(e, "file")} disabled={uploadingAttachment} />
                   </div>
+                  {attachments.length > 0 && (
+                    <div className="mt-4 space-y-2">
+                      <p className="text-sm font-medium">Attached Files ({attachments.length})</p>
+                      <div className="space-y-2">
+                        {attachments.map((att) => (
+                          <div key={att.filename} className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                            <div className="flex items-center gap-2">
+                              {att.type === "image" ? <ImageIcon className="h-4 w-4" /> : <Paperclip className="h-4 w-4" />}
+                              <span className="text-sm">{att.filename}</span>
+                            </div>
+                            <button onClick={() => handleRemoveAttachment(att.filename)} className="text-muted-foreground hover:text-foreground">
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </Card>
@@ -305,9 +356,35 @@ export function CreatePostSignalPage() {
                 <div>
                   <Label>Attachments</Label>
                   <div className="grid md:grid-cols-2 gap-3 mt-2">
-                    <Button variant="outline" className="justify-start"><ImageIcon className="mr-2 h-4 w-4" />Add Images</Button>
-                    <Button variant="outline" className="justify-start"><Paperclip className="mr-2 h-4 w-4" />Attach Files</Button>
+                    <Button variant="outline" className="justify-start" onClick={() => document.getElementById("post-images")?.click()} disabled={uploadingAttachment}>
+                      <ImageIcon className="mr-2 h-4 w-4" />
+                      {uploadingAttachment ? "Uploading..." : "Add Images"}
+                    </Button>
+                    <Button variant="outline" className="justify-start" onClick={() => document.getElementById("post-files")?.click()} disabled={uploadingAttachment}>
+                      <Paperclip className="mr-2 h-4 w-4" />
+                      {uploadingAttachment ? "Uploading..." : "Attach Files"}
+                    </Button>
+                    <input id="post-images" type="file" multiple accept="image/*" className="hidden" onChange={(e) => handleFileUpload(e, "image")} disabled={uploadingAttachment} />
+                    <input id="post-files" type="file" multiple className="hidden" onChange={(e) => handleFileUpload(e, "file")} disabled={uploadingAttachment} />
                   </div>
+                  {attachments.length > 0 && (
+                    <div className="mt-4 space-y-2">
+                      <p className="text-sm font-medium">Attached Files ({attachments.length})</p>
+                      <div className="space-y-2">
+                        {attachments.map((att) => (
+                          <div key={att.filename} className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                            <div className="flex items-center gap-2">
+                              {att.type === "image" ? <ImageIcon className="h-4 w-4" /> : <Paperclip className="h-4 w-4" />}
+                              <span className="text-sm">{att.filename}</span>
+                            </div>
+                            <button onClick={() => handleRemoveAttachment(att.filename)} className="text-muted-foreground hover:text-foreground">
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </Card>

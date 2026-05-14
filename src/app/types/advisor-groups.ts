@@ -22,6 +22,12 @@ export interface AdvisorGroupMember {
   joinedAt: string;
 }
 
+export interface Attachment {
+  url: string;
+  filename: string;
+  type: "image" | "file";
+}
+
 export interface AdvisorSignal {
   id: string;
   groupId: string;
@@ -34,6 +40,7 @@ export interface AdvisorSignal {
   timeHorizon: string;
   confidenceLevel: string;
   tags: string[];
+  attachments?: Attachment[];
   notifyMembers: boolean;
   createdAt: string;
   updatedAt: string;
@@ -58,5 +65,6 @@ export interface CreateSignalPayload {
   timeHorizon: string;
   confidenceLevel: string;
   tags: string[];
+  attachments?: Attachment[];
   notifyMembers: boolean;
 }

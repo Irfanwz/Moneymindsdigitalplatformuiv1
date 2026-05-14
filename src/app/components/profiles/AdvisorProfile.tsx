@@ -6,7 +6,7 @@ import { Button } from "@/app/components/ui/button";
 import { CredibilityBadge } from "@/app/components/CredibilityBadge";
 import { Progress } from "@/app/components/ui/progress";
 import { Users, MapPin, Briefcase, Award, Edit, Target, Globe, Linkedin, Twitter, Mail, Loader2 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { getAdvisorProfile } from "@/app/lib/api";
 import { createEmptyAdvisorProfile } from "@/app/lib/advisor-profile";
@@ -31,6 +31,7 @@ const AVAILABILITY_LABELS: Record<string, string> = {
 
 export function AdvisorProfile() {
   const { session, user } = useAuth();
+  const navigate = useNavigate();
   const [profile, setProfile] = useState<AdvisorProfileType>(() => createEmptyAdvisorProfile(user));
   const [isLoading, setIsLoading] = useState(true);
 
@@ -243,7 +244,7 @@ export function AdvisorProfile() {
                     </Badge>
                   </div>
                 )}
-                <Button className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 border-0">
+                <Button onClick={() => navigate("/advisor/sessions")} className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 border-0">
                   Book Session
                 </Button>
               </CardContent>

@@ -19,6 +19,7 @@ import { AdvisorGroupsPage } from "@/app/components/advisor/AdvisorGroupsPage";
 import { CreatePostSignalPage } from "@/app/components/advisor/CreatePostSignalPage";
 import { AIAgentsPage } from "@/app/components/investor/AIAgentsPage";
 import { AdvisorTrainingsPage } from "@/app/components/advisor/AdvisorTrainingsPage";
+import { AdvisorSessionsPage } from "@/app/components/advisor/AdvisorSessionsPage";
 import { TrainingMarketplace } from "@/app/components/shared/TrainingMarketplace";
 import { TrainingDetailPage } from "@/app/components/shared/TrainingDetailPage";
 import { ForgotPasswordPage } from "@/app/components/ForgotPasswordPage";
@@ -71,6 +72,7 @@ export default function App() {
               <Route path="/advisor/dashboard" element={<AdvisorDashboard />} />
               <Route path="/advisor/profile" element={<AdvisorProfile />} />
               <Route path="/advisor/edit-profile" element={<AdvisorEditProfile />} />
+              <Route path="/advisor/sessions" element={<AdvisorSessionsPage />} />
               <Route path="/advisor/groups" element={<AdvisorGroupsPage />} />
               <Route path="/advisor/groups/:groupId/create-signal" element={<CreatePostSignalPage />} />
               <Route path="/advisor/trainings" element={<AdvisorTrainingsPage />} />

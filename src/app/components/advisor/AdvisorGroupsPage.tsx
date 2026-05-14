@@ -193,6 +193,31 @@ function SignalCardWithComments({
             )}
           </div>
           <p className="text-sm text-muted-foreground mb-3">{signal.content}</p>
+
+          {signal.attachments && signal.attachments.length > 0 && (
+            <div className="mb-3 space-y-2">
+              <p className="text-xs font-medium text-muted-foreground">Attachments ({signal.attachments.length})</p>
+              <div className="space-y-1">
+                {signal.attachments.map((att) => (
+                  <a
+                    key={att.filename}
+                    href={att.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-xs text-accent hover:underline p-2 bg-muted/50 rounded"
+                  >
+                    {att.type === "image" ? (
+                      <span>🖼️</span>
+                    ) : (
+                      <span>📎</span>
+                    )}
+                    {att.filename}
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="flex items-center gap-4 text-xs text-muted-foreground">
             <span>{new Date(signal.createdAt).toLocaleString()}</span>
             {signal.targetPrice && <span>Target: ${signal.targetPrice}</span>}
