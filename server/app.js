@@ -972,6 +972,15 @@ export function createApp(store) {
     }
   });
 
+  // In production, serve the built frontend
+  if (process.env.NODE_ENV === "production") {
+    const distPath = path.resolve(import.meta.dirname, "..", "dist");
+    app.use(express.static(distPath));
+    app.get("*", (_req, res) => {
+      res.sendFile(path.join(distPath, "index.html"));
+    });
+  }
+
   app.use((error, _req, res, _next) => {
     const message = error instanceof Error ? error.message : "Unexpected server error.";
     res.status(500).json({

@@ -1,0 +1,13 @@
+node_modules
+dist
+.git
+.env
+*.log
+*.err.log
+uploads
+.claude
+guidelines
+*.md
+*.pdf
+*.html
+image
