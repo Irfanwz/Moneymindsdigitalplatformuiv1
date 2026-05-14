@@ -81,7 +81,18 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-6">
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Top bar */}
+      <div className="border-b px-6 py-4">
+        <Link to="/" className="flex items-center gap-2 w-fit">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-r from-cyan-500 to-purple-500">
+            <span className="font-bold text-white text-sm">MM</span>
+          </div>
+          <span className="font-semibold text-lg">MoneyMinds</span>
+        </Link>
+      </div>
+
+      <div className="flex-1 flex items-center justify-center p-6">
       <div className="w-full max-w-5xl grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
         <Card className="p-8">
           <div className="mb-8">
@@ -176,6 +187,7 @@ export function LoginPage() {
             </div>
           </div>
         </Card>
+      </div>
       </div>
     </div>
   );

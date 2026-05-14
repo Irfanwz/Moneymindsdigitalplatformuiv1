@@ -99,7 +99,18 @@ export function ProfileApplicationPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background px-6 py-12">
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Top bar */}
+      <div className="border-b px-6 py-4">
+        <Link to="/" className="flex items-center gap-2 w-fit">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-r from-cyan-500 to-purple-500">
+            <span className="font-bold text-white text-sm">MM</span>
+          </div>
+          <span className="font-semibold text-lg">MoneyMinds</span>
+        </Link>
+      </div>
+
+      <div className="flex-1 px-6 py-12">
       <div className="mx-auto max-w-6xl">
         <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
           <div>
@@ -287,6 +298,7 @@ export function ProfileApplicationPage() {
             </Card>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

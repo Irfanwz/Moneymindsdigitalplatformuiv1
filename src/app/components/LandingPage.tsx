@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/app/components/ui/button";
 import { Card } from "@/app/components/ui/card";
 import { Header } from "@/app/components/Header";
@@ -6,6 +6,7 @@ import { Building2, TrendingUp, Users, Shield, Sparkles, BarChart3, ArrowUpRight
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { motion } from "motion/react";
 import { useEffect, useState } from "react";
+import { useAuth } from "@/app/contexts/AuthContext";
 
 // Fallback data in case API fails
 const fallbackStats = [
@@ -51,10 +52,25 @@ interface PlatformStats {
 }
 
 export function LandingPage() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [mounted, setMounted] = useState(false);
   const [marketData, setMarketData] = useState<MarketData | null>(null);
   const [platformStats, setPlatformStats] = useState<PlatformStats | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const handleRoleAction = (role: "startup" | "investor" | "advisor") => {
+    if (!user) {
+      navigate("/apply");
+      return;
+    }
+    // User is logged in — go to dashboard if they have the role, otherwise choose-role
+    if (user.approvedRoles?.includes(role)) {
+      navigate(`/${role}/dashboard`);
+    } else {
+      navigate("/choose-role");
+    }
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -171,16 +187,26 @@ export function LandingPage() {
             transition={{ duration: 0.6, delay: 0.3 }}
             className="flex items-center justify-center gap-4"
           >
-            <Link to="/apply">
-              <Button size="lg" className="h-12 px-8 bg-gradient-to-r from-cyan-500 to-purple-500 hover:from-cyan-600 hover:to-purple-600 border-0 shadow-lg shadow-cyan-500/50">
-                Create Profile
-              </Button>
-            </Link>
-            <Link to="/login">
-              <Button size="lg" variant="outline" className="h-12 px-8 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10">
-                Sign In
-              </Button>
-            </Link>
+            {user ? (
+              <Link to="/choose-role">
+                <Button size="lg" className="h-12 px-8 bg-gradient-to-r from-cyan-500 to-purple-500 hover:from-cyan-600 hover:to-purple-600 border-0 shadow-lg shadow-cyan-500/50">
+                  Go to Dashboard
+                </Button>
+              </Link>
+            ) : (
+              <>
+                <Link to="/apply">
+                  <Button size="lg" className="h-12 px-8 bg-gradient-to-r from-cyan-500 to-purple-500 hover:from-cyan-600 hover:to-purple-600 border-0 shadow-lg shadow-cyan-500/50">
+                    Create Profile
+                  </Button>
+                </Link>
+                <Link to="/login">
+                  <Button size="lg" variant="outline" className="h-12 px-8 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10">
+                    Sign In
+                  </Button>
+                </Link>
+              </>
+            )}
           </motion.div>
         </div>
       </section>
@@ -440,11 +466,9 @@ export function LandingPage() {
                   Advisor Discovery
                 </li>
               </ul>
-              <Link to="/apply">
-                <Button className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 border-0">
-                  Apply as Startup
-                </Button>
-              </Link>
+              <Button className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 border-0" onClick={() => handleRoleAction("startup")}>
+                {user ? "Go to Startup Dashboard" : "Apply as Startup"}
+              </Button>
             </Card>
           </motion.div>
 
@@ -475,11 +499,9 @@ export function LandingPage() {
                   Private Discovery
                 </li>
               </ul>
-              <Link to="/apply">
-                <Button className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 border-0">
-                  Apply as Investor
-                </Button>
-              </Link>
+              <Button className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 border-0" onClick={() => handleRoleAction("investor")}>
+                {user ? "Go to Investor Dashboard" : "Apply as Investor"}
+              </Button>
             </Card>
           </motion.div>
 
@@ -510,11 +532,9 @@ export function LandingPage() {
                   Visibility Boost
                 </li>
               </ul>
-              <Link to="/apply">
-                <Button className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 border-0">
-                  Apply as Advisor
-                </Button>
-              </Link>
+              <Button className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 border-0" onClick={() => handleRoleAction("advisor")}>
+                {user ? "Go to Advisor Dashboard" : "Apply as Advisor"}
+              </Button>
             </Card>
           </motion.div>
         </div>
