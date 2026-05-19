@@ -8,3 +8,4 @@ dist/
 supabase/
 *.pdf
 *.md
+.claude/
