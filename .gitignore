@@ -9,3 +9,6 @@ supabase/
 *.pdf
 *.md
 .claude/
+*.yaml
+*.yml
+*.html
