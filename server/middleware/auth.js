@@ -3,7 +3,8 @@ import { extractBearerToken, verifyToken } from "../auth.js";
 export function createAuthenticate(store) {
   return async function authenticate(req, res, next) {
     try {
-      const token = extractBearerToken(req.headers.authorization);
+      // Accept token from HttpOnly cookie first, fall back to Authorization header
+      const token = req.cookies?.["mm_token"] || extractBearerToken(req.headers.authorization);
 
       if (!token) {
         return res.status(401).json({ message: "Authentication is required." });

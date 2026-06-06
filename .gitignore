@@ -5,10 +5,6 @@ uploads/
 dist/
 .DS_Store
 *.log
-supabase/
 *.pdf
-*.md
 .claude/
-*.yaml
-*.yml
 *.html

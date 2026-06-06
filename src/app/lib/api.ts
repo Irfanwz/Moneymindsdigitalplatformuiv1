@@ -37,6 +37,7 @@ export class ApiError extends Error {
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${apiBaseUrl}${path}`, {
     ...init,
+    credentials: "include", // send HttpOnly cookie on every request
     headers: {
       "Content-Type": "application/json",
       ...(init?.headers ?? {}),
@@ -85,12 +86,14 @@ export function resetPassword(token: string, newPassword: string) {
   });
 }
 
-export function getCurrentUser(token: string) {
+export function getCurrentUser(token?: string) {
   return request<{ user: AuthUser }>("/api/auth/me", {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
   });
+}
+
+export function logoutRequest() {
+  return request<{ message: string }>("/api/auth/logout", { method: "POST" });
 }
 
 export function getAdminUsers(token: string, status?: "pending" | "approved" | "rejected") {
@@ -440,6 +443,7 @@ export async function uploadFile(token: string, file: File): Promise<{ url: stri
 
   const response = await fetch(`${apiBaseUrl}/api/upload`, {
     method: "POST",
+    credentials: "include",
     headers: {
       Authorization: `Bearer ${token}`,
     },

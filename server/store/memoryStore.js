@@ -52,6 +52,7 @@ export function createMemoryStore() {
   const notifications = [];
   const connections = [];
   const payments = [];
+  const twoFASecrets = [];
 
   return {
     mode: "memory",
@@ -790,6 +791,28 @@ export function createMemoryStore() {
 
     async hasActivePayment(userId, itemType, itemId) {
       return payments.some((p) => p.userId === userId && p.itemType === itemType && p.itemId === itemId && p.status === "completed");
+    },
+
+    // --- 2FA ---
+    async setTwoFASecret(userId, secret, enabled) {
+      const existing = twoFASecrets.findIndex((t) => t.userId === userId);
+      const entry = { userId, secret, enabled, updatedAt: now() };
+      if (existing >= 0) {
+        twoFASecrets[existing] = entry;
+      } else {
+        twoFASecrets.push(entry);
+      }
+      return { ...entry };
+    },
+
+    async getTwoFASecret(userId) {
+      const entry = twoFASecrets.find((t) => t.userId === userId);
+      return entry ? { ...entry } : null;
+    },
+
+    async removeTwoFASecret(userId) {
+      const idx = twoFASecrets.findIndex((t) => t.userId === userId);
+      if (idx >= 0) twoFASecrets.splice(idx, 1);
     },
   };
 }

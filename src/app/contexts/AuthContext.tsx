@@ -9,6 +9,7 @@ import {
 import {
   getCurrentUser,
   login as loginRequest,
+  logoutRequest,
   registerProfile,
 } from "@/app/lib/api";
 import type {
@@ -29,33 +30,7 @@ interface AuthContextType {
   selectRole: (role: AppRole) => void;
 }
 
-const sessionStorageKey = "moneyminds-auth-session";
-
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-function readStoredSession() {
-  const rawValue = localStorage.getItem(sessionStorageKey);
-
-  if (!rawValue) {
-    return null;
-  }
-
-  try {
-    return JSON.parse(rawValue) as AuthSession;
-  } catch {
-    localStorage.removeItem(sessionStorageKey);
-    return null;
-  }
-}
-
-function persistSession(session: AuthSession | null) {
-  if (!session) {
-    localStorage.removeItem(sessionStorageKey);
-    return;
-  }
-
-  localStorage.setItem(sessionStorageKey, JSON.stringify(session));
-}
 
 function mergeCurrentRole(previousUser: AuthUser | null, nextUser: AuthUser) {
   if (nextUser.isAdmin) {
@@ -77,64 +52,43 @@ function mergeCurrentRole(previousUser: AuthUser | null, nextUser: AuthUser) {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<AuthSession | null>(() => readStoredSession());
-  const [isLoading, setIsLoading] = useState(() => Boolean(readStoredSession()));
-
-  const updateSession = (nextSession: AuthSession | null) => {
-    setSession(nextSession);
-    persistSession(nextSession);
-  };
+  // Session is kept only in React state — the HttpOnly cookie handles persistence across page reloads.
+  const [session, setSession] = useState<AuthSession | null>(null);
+  const [isLoading, setIsLoading] = useState(true); // always validate on mount via cookie
 
   const refreshUser = async () => {
-    if (!session?.token) {
-      return;
-    }
-
+    if (!session?.token) return;
     const response = await getCurrentUser(session.token);
-    const nextSession = {
-      token: session.token,
-      user: mergeCurrentRole(session.user, response.user),
-    };
-
-    updateSession(nextSession);
+    setSession((prev) => prev
+      ? { ...prev, user: mergeCurrentRole(prev.user, response.user) }
+      : prev
+    );
   };
 
   useEffect(() => {
     let isActive = true;
 
     async function validateSession() {
-      if (!session?.token) {
-        setIsLoading(false);
-        return;
-      }
-
       try {
-        const response = await getCurrentUser(session.token);
+        // Cookie is sent automatically — no token needed here
+        const response = await getCurrentUser();
 
-        if (!isActive) {
-          return;
-        }
+        if (!isActive) return;
 
-        updateSession({
-          token: session.token,
-          user: mergeCurrentRole(session.user, response.user),
-        });
+        setSession((prev) => ({
+          token: prev?.token ?? "",
+          user: mergeCurrentRole(prev?.user ?? null, response.user),
+        }));
       } catch {
-        if (isActive) {
-          updateSession(null);
-        }
+        if (isActive) setSession(null);
       } finally {
-        if (isActive) {
-          setIsLoading(false);
-        }
+        if (isActive) setIsLoading(false);
       }
     }
 
     validateSession();
 
-    return () => {
-      isActive = false;
-    };
+    return () => { isActive = false; };
   }, []);
 
   const value: AuthContextType = {
@@ -143,16 +97,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user: session?.user ?? null,
     async login(email, password) {
       const response = await loginRequest({ email, password });
+      // Server sets HttpOnly cookie; we keep the token in memory for Bearer fallback
       const nextSession = {
         token: response.token,
         user: mergeCurrentRole(null, response.user),
       };
-
-      updateSession(nextSession);
+      setSession(nextSession);
       return nextSession;
     },
     logout() {
-      updateSession(null);
+      logoutRequest().catch(() => {}); // ask server to clear cookie
+      setSession(null);
     },
     refreshUser,
     submitProfile(payload) {
@@ -162,13 +117,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!session || session.user.isAdmin || !session.user.approvedRoles.includes(role)) {
         return;
       }
-
-      updateSession({
+      setSession({
         ...session,
-        user: {
-          ...session.user,
-          currentRole: role,
-        },
+        user: { ...session.user, currentRole: role },
       });
     },
   };

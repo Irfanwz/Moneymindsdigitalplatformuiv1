@@ -16,7 +16,45 @@ export const config = {
   adminName: process.env.ADMIN_NAME ?? "Platform Admin",
   supabaseUrl: process.env.SUPABASE_URL ?? "",
   supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
+  sendgridApiKey: process.env.SENDGRID_API_KEY ?? "",
+  stripeSecretKey: process.env.STRIPE_SECRET_KEY ?? "",
+  stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET ?? "",
+  nodeEnv: process.env.NODE_ENV ?? "development",
 };
 
 export const isSupabaseConfigured =
   config.supabaseUrl.length > 0 && config.supabaseServiceRoleKey.length > 0;
+
+export const isEmailConfigured = config.sendgridApiKey.length > 0;
+
+export const isStripeConfigured =
+  config.stripeSecretKey.length > 0 && config.stripeWebhookSecret.length > 0;
+
+// In production, fail fast if critical env vars are missing
+if (config.nodeEnv === "production") {
+  const required = [
+    ["JWT_SECRET", config.jwtSecret === "moneyminds-dev-secret" ? "" : config.jwtSecret],
+    ["CLIENT_ORIGIN", process.env.CLIENT_ORIGIN],
+    ["ADMIN_EMAIL", process.env.ADMIN_EMAIL],
+    ["ADMIN_PASSWORD", process.env.ADMIN_PASSWORD],
+  ];
+
+  const missing = required.filter(([, value]) => !value).map(([key]) => key);
+
+  if (missing.length > 0) {
+    console.error(`[STARTUP ERROR] Missing required environment variables:\n  ${missing.join("\n  ")}`);
+    process.exit(1);
+  }
+
+  if (!isSupabaseConfigured) {
+    console.warn("[STARTUP WARN] SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY not set — running in memory mode.");
+  }
+
+  if (!isEmailConfigured) {
+    console.warn("[STARTUP WARN] SENDGRID_API_KEY not set — emails will not be sent.");
+  }
+
+  if (!isStripeConfigured) {
+    console.warn("[STARTUP WARN] STRIPE_SECRET_KEY / STRIPE_WEBHOOK_SECRET not set — payments will be simulated.");
+  }
+}
