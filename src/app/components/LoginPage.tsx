@@ -156,37 +156,63 @@ export function LoginPage() {
           </form>
         </Card>
 
-        <Card className="p-8">
-          <h2 className="text-2xl font-semibold">Required onboarding sequence</h2>
-          <div className="mt-8 space-y-6">
-            <div className="rounded-2xl border p-5">
-              <div className="text-sm font-medium">Step 1</div>
-              <div className="mt-2 text-xl font-semibold">Create a general profile</div>
-              <p className="mt-2 text-muted-foreground">
-                Register once with your basic information and request the roles you need.
-              </p>
-              <Button asChild className="mt-5">
-                <Link to="/apply">Create profile</Link>
-              </Button>
+        {mode === "admin" ? (
+          <Card className="p-8 flex flex-col justify-center">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground mb-6">
+              <UserCog className="h-7 w-7" />
             </div>
+            <h2 className="text-2xl font-semibold">Admin Control Panel</h2>
+            <p className="mt-3 text-muted-foreground">
+              As admin you can review and approve submitted profiles, manage platform users, and monitor platform activity.
+            </p>
+            <div className="mt-8 space-y-4">
+              <div className="flex items-start gap-3">
+                <div className="mt-1 h-2 w-2 rounded-full bg-primary shrink-0" />
+                <p className="text-sm text-muted-foreground">Approve or reject user registrations</p>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="mt-1 h-2 w-2 rounded-full bg-primary shrink-0" />
+                <p className="text-sm text-muted-foreground">Assign roles to approved users</p>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="mt-1 h-2 w-2 rounded-full bg-primary shrink-0" />
+                <p className="text-sm text-muted-foreground">View platform stats and user activity</p>
+              </div>
+            </div>
+          </Card>
+        ) : (
+          <Card className="p-8">
+            <h2 className="text-2xl font-semibold">Required onboarding sequence</h2>
+            <div className="mt-8 space-y-6">
+              <div className="rounded-2xl border p-5">
+                <div className="text-sm font-medium">Step 1</div>
+                <div className="mt-2 text-xl font-semibold">Create a general profile</div>
+                <p className="mt-2 text-muted-foreground">
+                  Register once with your basic information and request the roles you need.
+                </p>
+                <Button asChild className="mt-5">
+                  <Link to="/apply">Create profile</Link>
+                </Button>
+              </div>
 
-            <div className="rounded-2xl border p-5">
-              <div className="text-sm font-medium">Step 2</div>
-              <div className="mt-2 text-xl font-semibold">Wait for admin approval</div>
-              <p className="mt-2 text-muted-foreground">
-                Until approval is complete, login stays blocked for normal users.
-              </p>
-            </div>
+              <div className="rounded-2xl border p-5">
+                <div className="text-sm font-medium">Step 2</div>
+                <div className="mt-2 text-xl font-semibold">Wait for admin approval</div>
+                <p className="mt-2 text-muted-foreground">
+                  Until approval is complete, login stays blocked for normal users.
+                </p>
+              </div>
 
-            <div className="rounded-2xl border p-5">
-              <div className="text-sm font-medium">Step 3</div>
-              <div className="mt-2 text-xl font-semibold">Choose from your approved roles</div>
-              <p className="mt-2 text-muted-foreground">
-                After sign in, you will see the role cards that admin granted to your account.
-              </p>
+              <div className="rounded-2xl border p-5">
+                <div className="text-sm font-medium">Step 3</div>
+                <div className="mt-2 text-xl font-semibold">Choose from your approved roles</div>
+                <p className="mt-2 text-muted-foreground">
+                  After sign in, you will see the role cards that admin granted to your account.
+                </p>
+              </div>
             </div>
-          </div>
-        </Card>
+          </Card>
+        )}
       </div>
       </div>
     </div>

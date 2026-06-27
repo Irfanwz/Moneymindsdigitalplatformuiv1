@@ -76,7 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!isActive) return;
 
         setSession((prev) => ({
-          token: prev?.token ?? "",
+          token: prev?.token ?? null,
           user: mergeCurrentRole(prev?.user ?? null, response.user),
         }));
       } catch {

@@ -1,8 +1,9 @@
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
-import { Building2, TrendingUp, Users, ShieldCheck } from "lucide-react";
+import { Building2, TrendingUp, Users, ShieldCheck, Sun, Moon } from "lucide-react";
 
 import { useAuth } from "@/app/contexts/AuthContext";
+import { useTheme } from "@/app/contexts/ThemeContext";
 import { Alert, AlertDescription, AlertTitle } from "@/app/components/ui/alert";
 import { Button } from "@/app/components/ui/button";
 import { Card } from "@/app/components/ui/card";
@@ -44,6 +45,7 @@ const roles: {
 
 export function ProfileApplicationPage() {
   const { submitProfile } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -101,13 +103,16 @@ export function ProfileApplicationPage() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Top bar */}
-      <div className="border-b px-6 py-4">
+      <div className="border-b px-6 py-4 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2 w-fit">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-r from-cyan-500 to-purple-500">
             <span className="font-bold text-white text-sm">MM</span>
           </div>
           <span className="font-semibold text-lg">MoneyMinds</span>
         </Link>
+        <Button variant="ghost" size="icon" onClick={toggleTheme}>
+          {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+        </Button>
       </div>
 
       <div className="flex-1 px-6 py-12">
@@ -286,16 +291,6 @@ export function ProfileApplicationPage() {
               </div>
             </Card>
 
-            <Card className="p-6">
-              <h2 className="text-xl font-semibold">Admin bootstrap login</h2>
-              <p className="mt-3 text-sm text-muted-foreground">
-                The backend seeds one admin account from environment variables so approvals are available immediately during development.
-              </p>
-              <div className="mt-4 rounded-xl bg-muted p-4 text-sm">
-                <div><span className="font-medium">Email:</span> <code>ADMIN_EMAIL</code></div>
-                <div className="mt-1"><span className="font-medium">Password:</span> <code>ADMIN_PASSWORD</code></div>
-              </div>
-            </Card>
           </div>
         </div>
       </div>

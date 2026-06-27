@@ -598,7 +598,7 @@ export function createMemoryStore() {
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
         .map((t) => {
           const user = users.find((u) => u.id === t.advisorId);
-          return { ...t, topics: [...t.topics], targetAudience: [...t.targetAudience], instructorName: user?.fullName ?? "" };
+          return { ...t, topics: [...(t.topics ?? [])], targetAudience: [...(t.targetAudience ?? [])], instructorName: user?.fullName ?? "" };
         });
     },
 
@@ -606,21 +606,21 @@ export function createMemoryStore() {
       return trainings
         .filter((t) => t.advisorId === advisorId)
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-        .map((t) => ({ ...t, topics: [...t.topics], targetAudience: [...t.targetAudience] }));
+        .map((t) => ({ ...t, topics: [...(t.topics ?? [])], targetAudience: [...(t.targetAudience ?? [])] }));
     },
 
     async findTrainingById(trainingId) {
       const t = trainings.find((t) => t.id === trainingId);
       if (!t) return null;
       const user = users.find((u) => u.id === t.advisorId);
-      return { ...t, topics: [...t.topics], targetAudience: [...t.targetAudience], instructorName: user?.fullName ?? "" };
+      return { ...t, topics: [...(t.topics ?? [])], targetAudience: [...(t.targetAudience ?? [])], instructorName: user?.fullName ?? "" };
     },
 
     async updateTraining(trainingId, input) {
       const t = trainings.find((t) => t.id === trainingId);
       if (!t) return null;
       Object.assign(t, { ...input, updatedAt: now() });
-      return { ...t, topics: [...t.topics], targetAudience: [...t.targetAudience] };
+      return { ...t, topics: [...(t.topics ?? [])], targetAudience: [...(t.targetAudience ?? [])] };
     },
 
     async deleteTraining(trainingId) {

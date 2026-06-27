@@ -3,6 +3,7 @@ import {
   CheckCircle2,
   Clock,
   RefreshCcw,
+  Search,
   ShieldCheck,
   Users,
   XCircle,
@@ -42,9 +43,21 @@ export function AdminDashboard() {
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
+  const [userSearch, setUserSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "approved" | "rejected">("all");
+
   const pendingProfiles = profiles.filter((profile) => profile.status === "pending");
   const approvedProfiles = profiles.filter((profile) => profile.status === "approved");
   const rejectedProfiles = profiles.filter((profile) => profile.status === "rejected");
+
+  const filteredUsers = profiles.filter((profile) => {
+    const matchesSearch =
+      userSearch === "" ||
+      profile.fullName.toLowerCase().includes(userSearch.toLowerCase()) ||
+      profile.email.toLowerCase().includes(userSearch.toLowerCase());
+    const matchesStatus = statusFilter === "all" || profile.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
   const loadProfiles = async () => {
     if (!session?.token) {
@@ -374,6 +387,101 @@ export function AdminDashboard() {
             </Card>
           </div>
         </div>
+
+        {/* All Users Table */}
+        <Card className="p-6 mt-8">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
+            <div>
+              <h2 className="text-xl font-semibold">All registered users</h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Complete list of every account in the system — {profiles.length} total
+              </p>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  className="pl-9 w-60"
+                  placeholder="Search name or email..."
+                  value={userSearch}
+                  onChange={(e) => setUserSearch(e.target.value)}
+                />
+              </div>
+              <div className="flex gap-1">
+                {(["all", "pending", "approved", "rejected"] as const).map((s) => (
+                  <Button
+                    key={s}
+                    size="sm"
+                    variant={statusFilter === s ? "default" : "outline"}
+                    onClick={() => setStatusFilter(s)}
+                    className="capitalize"
+                  >
+                    {s}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {isLoading ? (
+            <div className="text-sm text-muted-foreground">Loading users...</div>
+          ) : filteredUsers.length === 0 ? (
+            <div className="rounded-2xl border border-dashed p-8 text-center text-muted-foreground">
+              No users match your search.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-left text-muted-foreground">
+                    <th className="pb-3 pr-4 font-medium">Name</th>
+                    <th className="pb-3 pr-4 font-medium">Email</th>
+                    <th className="pb-3 pr-4 font-medium">Status</th>
+                    <th className="pb-3 pr-4 font-medium">Roles</th>
+                    <th className="pb-3 font-medium">Registered</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {filteredUsers.map((profile) => (
+                    <tr key={profile.id} className="hover:bg-muted/40 transition-colors">
+                      <td className="py-3 pr-4 font-medium">{profile.fullName}</td>
+                      <td className="py-3 pr-4 text-muted-foreground">{profile.email}</td>
+                      <td className="py-3 pr-4">
+                        {profile.status === "approved" ? (
+                          <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                            Approved
+                          </Badge>
+                        ) : profile.status === "rejected" ? (
+                          <Badge variant="secondary" className="bg-red-500/10 text-red-600 dark:text-red-400">
+                            Rejected
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary" className="bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                            Pending
+                          </Badge>
+                        )}
+                      </td>
+                      <td className="py-3 pr-4">
+                        <div className="flex flex-wrap gap-1">
+                          {(profile.status === "approved" ? profile.approvedRoles : profile.requestedRoles).map(
+                            (role) => (
+                              <Badge key={role} variant="outline" className="text-xs">
+                                {roleLabels[role]}
+                              </Badge>
+                            ),
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-3 text-muted-foreground whitespace-nowrap">
+                        {new Date(profile.createdAt).toLocaleDateString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
       </div>
     </div>
   );
