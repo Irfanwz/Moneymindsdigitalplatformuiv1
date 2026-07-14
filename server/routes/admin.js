@@ -4,6 +4,7 @@ import { validate, approvalSchema } from "../schemas.js";
 import { sendApprovalEmail, sendRejectionEmail } from "../email.js";
 import { createAuthenticate, requireAdmin } from "../middleware/auth.js";
 import { paginate, trimText } from "../utils.js";
+import { runForUser } from "../services/verificationAgent.js";
 
 export function createAdminRouter(store) {
   const router = Router();
@@ -64,6 +65,44 @@ export function createAdminRouter(store) {
       res.json({
         message: status === "approved" ? "User profile approved successfully." : "User profile rejected successfully.",
         user: sanitizeUser(updatedUser),
+      });
+    } catch (error) { next(error); }
+  });
+
+  // GET /api/admin/users/:userId/verification — full AI report for one user
+  router.get("/users/:userId/verification", authenticate, requireAdmin, async (req, res, next) => {
+    try {
+      const userId = trimText(req.params.userId);
+      const verification = await store.findVerification(userId);
+      if (!verification) {
+        return res.status(404).json({ message: "No verification report found for this user." });
+      }
+      res.json({ verification });
+    } catch (error) { next(error); }
+  });
+
+  // GET /api/admin/verifications/summary — counts by status/recommendation
+  router.get("/verifications/summary", authenticate, requireAdmin, async (req, res, next) => {
+    try {
+      const summary = await store.getVerificationSummary();
+      res.json({ summary });
+    } catch (error) { next(error); }
+  });
+
+  // POST /api/admin/users/:userId/verification/retry — re-run agent for a user
+  router.post("/users/:userId/verification/retry", authenticate, requireAdmin, async (req, res, next) => {
+    try {
+      const userId = trimText(req.params.userId);
+      const user = await store.findUserById(userId);
+      if (!user) return res.status(404).json({ message: "User not found." });
+
+      // Respond immediately, run in background
+      res.json({ message: "Verification re-queued. Refresh in 30-60 seconds." });
+
+      setImmediate(() => {
+        runForUser(userId, store).catch((err) =>
+          console.error("[AI Verification] Retry error:", err.message)
+        );
       });
     } catch (error) { next(error); }
   });

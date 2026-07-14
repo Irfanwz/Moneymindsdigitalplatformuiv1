@@ -15,6 +15,7 @@ const TRAINING_ENROLLMENTS_TABLE = "training_enrollments";
 const NOTIFICATIONS_TABLE = "notifications";
 const CONNECTIONS_TABLE = "connections";
 const PAYMENTS_TABLE = "payments";
+const AI_VERIFICATIONS_TABLE = "ai_verifications";
 
 function mapRow(row) {
   return {
@@ -329,6 +330,25 @@ function mapTrainingInsert(advisorId, input) {
     schedule: input.schedule, capacity: input.capacity, status: input.status,
     topics: input.topics, location: input.location, target_audience: input.targetAudience,
     level: input.level,
+  };
+}
+
+function mapVerificationRow(row) {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    status: row.status,
+    recommendation: row.recommendation ?? null,
+    confidence: row.confidence ?? null,
+    credibilityScore: row.credibility_score ?? null,
+    summary: row.summary ?? null,
+    findings: row.findings ?? null,
+    reportMarkdown: row.report_markdown ?? null,
+    sources: row.sources ?? [],
+    redFlags: row.red_flags ?? [],
+    searchQueriesRun: row.search_queries_run ?? 0,
+    createdAt: row.created_at,
+    completedAt: row.completed_at ?? null,
   };
 }
 
@@ -1207,6 +1227,67 @@ export function createSupabaseStore({ supabaseUrl, supabaseServiceRoleKey }) {
       const { data, error } = await client.from(PAYMENTS_TABLE).select("id").eq("user_id", userId).eq("item_type", itemType).eq("item_id", itemId).eq("status", "completed").limit(1);
       if (error) throw toStoreError(error);
       return (data?.length ?? 0) > 0;
+    },
+
+    // --- AI Verifications ---
+
+    async createVerification(userId) {
+      const { data, error } = await client
+        .from(AI_VERIFICATIONS_TABLE)
+        .upsert({ user_id: userId, status: "running", recommendation: null, confidence: null, credibility_score: null, summary: null, findings: null, report_markdown: null, sources: [], red_flags: [], search_queries_run: 0, completed_at: null, created_at: new Date().toISOString() }, { onConflict: "user_id" })
+        .select()
+        .single();
+      if (error) throw toStoreError(error);
+      return mapVerificationRow(data);
+    },
+
+    async updateVerification(userId, data) {
+      const update = {};
+      if (data.status !== undefined) update.status = data.status;
+      if (data.recommendation !== undefined) update.recommendation = data.recommendation;
+      if (data.confidence !== undefined) update.confidence = data.confidence;
+      if (data.credibilityScore !== undefined) update.credibility_score = data.credibilityScore;
+      if (data.summary !== undefined) update.summary = data.summary;
+      if (data.findings !== undefined) update.findings = data.findings;
+      if (data.reportMarkdown !== undefined) update.report_markdown = data.reportMarkdown;
+      if (data.sources !== undefined) update.sources = data.sources;
+      if (data.redFlags !== undefined) update.red_flags = data.redFlags;
+      if (data.searchQueriesRun !== undefined) update.search_queries_run = data.searchQueriesRun;
+      if (data.status === "complete") update.completed_at = new Date().toISOString();
+      const { data: row, error } = await client.from(AI_VERIFICATIONS_TABLE).update(update).eq("user_id", userId).select().single();
+      if (error) throw toStoreError(error);
+      return row ? mapVerificationRow(row) : null;
+    },
+
+    async findVerification(userId) {
+      const { data, error } = await client.from(AI_VERIFICATIONS_TABLE).select("*").eq("user_id", userId).single();
+      if (error && error.code !== "PGRST116") throw toStoreError(error);
+      return data ? mapVerificationRow(data) : null;
+    },
+
+    async listVerifications({ status, recommendation } = {}) {
+      let query = client.from(AI_VERIFICATIONS_TABLE).select("*").order("created_at", { ascending: false });
+      if (status) query = query.eq("status", status);
+      if (recommendation) query = query.eq("recommendation", recommendation);
+      const { data, error } = await query;
+      if (error) throw toStoreError(error);
+      return (data ?? []).map(mapVerificationRow);
+    },
+
+    async getVerificationSummary() {
+      const { data, error } = await client.from(AI_VERIFICATIONS_TABLE).select("status, recommendation");
+      if (error) throw toStoreError(error);
+      const rows = data ?? [];
+      return {
+        total: rows.length,
+        running: rows.filter((r) => r.status === "running").length,
+        complete: rows.filter((r) => r.status === "complete").length,
+        failed: rows.filter((r) => r.status === "failed").length,
+        skipped: rows.filter((r) => r.status === "skipped").length,
+        accept: rows.filter((r) => r.recommendation === "accept").length,
+        review: rows.filter((r) => r.recommendation === "review").length,
+        reject: rows.filter((r) => r.recommendation === "reject").length,
+      };
     },
   };
 }

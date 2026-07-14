@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 import {
+  AlertTriangle,
   CheckCircle2,
   Clock,
+  Eye,
+  Loader2,
   RefreshCcw,
   Search,
   ShieldCheck,
@@ -10,16 +13,30 @@ import {
 } from "lucide-react";
 
 import { useAuth } from "@/app/contexts/AuthContext";
-import { getAdminUsers, updateUserApproval } from "@/app/lib/api";
+import {
+  getAdminUsers,
+  getUserVerification,
+  getVerificationSummary,
+  updateUserApproval,
+} from "@/app/lib/api";
+import type { AIVerification, VerificationSummary } from "@/app/lib/api";
 import { Alert, AlertDescription, AlertTitle } from "@/app/components/ui/alert";
 import { Badge } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
 import { Card } from "@/app/components/ui/card";
 import { Checkbox } from "@/app/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/app/components/ui/dialog";
 import { Header } from "@/app/components/Header";
 import { Input } from "@/app/components/ui/input";
 import { Label } from "@/app/components/ui/label";
 import { Textarea } from "@/app/components/ui/textarea";
+import { AIVerificationReport } from "@/app/components/admin/AIVerificationReport";
 import type { AppRole, AuthUser } from "@/app/types/auth";
 
 interface ApprovalDraft {
@@ -42,6 +59,9 @@ export function AdminDashboard() {
   const [busyUserId, setBusyUserId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [verifications, setVerifications] = useState<Record<string, AIVerification>>({});
+  const [vSummary, setVSummary] = useState<VerificationSummary | null>(null);
+  const [reportDialogUserId, setReportDialogUserId] = useState<string | null>(null);
 
   const [userSearch, setUserSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "approved" | "rejected">("all");
@@ -70,12 +90,33 @@ export function AdminDashboard() {
     try {
       const response = await getAdminUsers(session.token);
       setProfiles(response.users);
+      loadVerifications(response.users);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Could not load profile submissions.";
       setErrorMessage(message);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const loadVerifications = async (userList: AuthUser[]) => {
+    if (!session?.token) return;
+    try {
+      const summaryRes = await getVerificationSummary(session.token);
+      setVSummary(summaryRes.summary);
+    } catch { /* ignore */ }
+
+    const pending = userList.filter((u) => u.status === "pending");
+    const results: Record<string, AIVerification> = {};
+    await Promise.allSettled(
+      pending.map(async (u) => {
+        try {
+          const res = await getUserVerification(session.token, u.id);
+          results[u.id] = res.verification;
+        } catch { /* no report yet */ }
+      }),
+    );
+    setVerifications((prev) => ({ ...prev, ...results }));
   };
 
   useEffect(() => {
@@ -192,6 +233,36 @@ export function AdminDashboard() {
           })}
         </div>
 
+        {/* AI Verification Summary Bar */}
+        {vSummary && vSummary.total > 0 && (
+          <Card className="p-4 mb-8">
+            <div className="flex flex-wrap items-center gap-4 text-sm">
+              <span className="font-semibold">AI Verifications:</span>
+              <span className="flex items-center gap-1">
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                {vSummary.accept} Accept
+              </span>
+              <span className="flex items-center gap-1">
+                <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+                {vSummary.review} Review
+              </span>
+              <span className="flex items-center gap-1">
+                <XCircle className="h-3.5 w-3.5 text-red-500" />
+                {vSummary.reject} Reject
+              </span>
+              {vSummary.running > 0 && (
+                <span className="flex items-center gap-1 text-muted-foreground">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  {vSummary.running} Running
+                </span>
+              )}
+              {vSummary.failed > 0 && (
+                <span className="text-muted-foreground">{vSummary.failed} Failed</span>
+              )}
+            </div>
+          </Card>
+        )}
+
         {errorMessage ? (
           <Alert variant="destructive" className="mb-6">
             <AlertTitle>Admin action failed</AlertTitle>
@@ -257,6 +328,61 @@ export function AdminDashboard() {
                             ))}
                           </div>
                         </div>
+
+                        {/* AI Verification Badge */}
+                        {(() => {
+                          const v = verifications[profile.id];
+                          if (!v) return null;
+                          if (v.status === "running") {
+                            return (
+                              <div className="mt-4 flex items-center gap-2 rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                AI verification running...
+                              </div>
+                            );
+                          }
+                          if (v.status === "failed" || v.status === "skipped") {
+                            return (
+                              <div className="mt-4 flex items-center gap-2 rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
+                                <AlertTriangle className="h-4 w-4" />
+                                AI: {v.status === "failed" ? "Failed" : "Skipped"} — manual review needed
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="ml-auto"
+                                  onClick={() => setReportDialogUserId(profile.id)}
+                                >
+                                  <Eye className="mr-1 h-3 w-3" /> Details
+                                </Button>
+                              </div>
+                            );
+                          }
+                          if (v.status === "complete" && v.recommendation) {
+                            const recMap = {
+                              accept: { label: "Accept", cls: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30", Icon: CheckCircle2 },
+                              review: { label: "Review", cls: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30", Icon: AlertTriangle },
+                              reject: { label: "Reject", cls: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30", Icon: XCircle },
+                            };
+                            const r = recMap[v.recommendation];
+                            return (
+                              <div className={`mt-4 flex items-center gap-2 rounded-lg border p-3 ${r.cls}`}>
+                                <r.Icon className="h-4 w-4 shrink-0" />
+                                <span className="text-sm font-medium">
+                                  AI: {r.label} &middot; {v.confidence}% confidence
+                                </span>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="ml-auto"
+                                  onClick={() => setReportDialogUserId(profile.id)}
+                                >
+                                  <Eye className="mr-1 h-3 w-3" /> View Report
+                                </Button>
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
 
                         <div className="mt-6 grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
                           <div>
@@ -387,6 +513,38 @@ export function AdminDashboard() {
             </Card>
           </div>
         </div>
+
+        {/* AI Report Dialog */}
+        <Dialog
+          open={reportDialogUserId !== null}
+          onOpenChange={(open) => { if (!open) setReportDialogUserId(null); }}
+        >
+          <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                AI Due Diligence Report
+                {reportDialogUserId && profiles.find((p) => p.id === reportDialogUserId) && (
+                  <span className="font-normal text-muted-foreground">
+                    {" "}— {profiles.find((p) => p.id === reportDialogUserId)?.fullName}
+                  </span>
+                )}
+              </DialogTitle>
+              <DialogDescription>
+                Automated background verification based on web search and AI analysis.
+              </DialogDescription>
+            </DialogHeader>
+            {reportDialogUserId && session?.token && (
+              <AIVerificationReport
+                verification={verifications[reportDialogUserId] ?? null}
+                token={session.token}
+                onRetryComplete={() => {
+                  setReportDialogUserId(null);
+                  loadProfiles();
+                }}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
 
         {/* All Users Table */}
         <Card className="p-6 mt-8">

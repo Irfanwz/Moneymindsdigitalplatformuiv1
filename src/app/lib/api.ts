@@ -125,6 +125,63 @@ export function updateUserApproval(
   });
 }
 
+// --- AI Verification ---
+
+export interface AIVerification {
+  id: string;
+  userId: string;
+  status: "running" | "complete" | "failed" | "skipped";
+  recommendation: "accept" | "review" | "reject" | null;
+  confidence: number | null;
+  credibilityScore: number | null;
+  summary: string | null;
+  findings: {
+    linkedin_found: boolean;
+    linkedin_url: string | null;
+    company_verified: boolean;
+    company_url: string | null;
+    news_mentions: number;
+    red_flags: string[];
+    positive_signals: string[];
+  } | null;
+  reportMarkdown: string | null;
+  sources: { url: string; title: string; relevance: number }[];
+  redFlags: string[];
+  searchQueriesRun: number;
+  createdAt: string;
+  completedAt: string | null;
+}
+
+export interface VerificationSummary {
+  total: number;
+  running: number;
+  complete: number;
+  failed: number;
+  skipped: number;
+  accept: number;
+  review: number;
+  reject: number;
+}
+
+export function getUserVerification(token: string, userId: string) {
+  return request<{ verification: AIVerification }>(`/api/admin/users/${userId}/verification`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export function getVerificationSummary(token: string) {
+  return request<{ summary: VerificationSummary }>("/api/admin/verifications/summary", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export function retryVerification(token: string, userId: string) {
+  return request<{ message: string }>(`/api/admin/users/${userId}/verification/retry`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
 export function getStartupProfile(token: string) {
   return request<{ profile: StartupProfile }>("/api/startup/profile", {
     headers: {

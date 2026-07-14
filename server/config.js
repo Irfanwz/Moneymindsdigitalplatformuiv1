@@ -23,6 +23,7 @@ export const config = {
   // AI Services
   anthropicApiKey: process.env.ANTHROPIC_API_KEY ?? "",
   openaiApiKey: process.env.OPENAI_API_KEY ?? "",
+  tavilyApiKey: process.env.TAVILY_API_KEY ?? "",
   // Market Data
   coingeckoApiKey: process.env.COINGECKO_API_KEY ?? "",
   alphaVantageKey: process.env.ALPHA_VANTAGE_KEY ?? "",
@@ -38,6 +39,7 @@ export const isStripeConfigured =
   config.stripeSecretKey.length > 0 && config.stripeWebhookSecret.length > 0;
 
 export const isAIConfigured = config.anthropicApiKey.length > 0;
+export const isTavilyConfigured = config.tavilyApiKey.length > 0;
 export const isMarketDataConfigured = config.alphaVantageKey.length > 0 || config.finnhubApiKey.length > 0;
 
 // In production, fail fast if critical env vars are missing

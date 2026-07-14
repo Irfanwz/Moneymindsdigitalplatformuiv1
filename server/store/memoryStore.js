@@ -53,6 +53,7 @@ export function createMemoryStore() {
   const connections = [];
   const payments = [];
   const twoFASecrets = [];
+  const verifications = [];
 
   return {
     mode: "memory",
@@ -813,6 +814,81 @@ export function createMemoryStore() {
     async removeTwoFASecret(userId) {
       const idx = twoFASecrets.findIndex((t) => t.userId === userId);
       if (idx >= 0) twoFASecrets.splice(idx, 1);
+    },
+
+    // --- AI Verifications ---
+
+    async createVerification(userId) {
+      const existing = verifications.find((v) => v.userId === userId);
+      if (existing) {
+        existing.status = "running";
+        existing.recommendation = null;
+        existing.confidence = null;
+        existing.credibilityScore = null;
+        existing.summary = null;
+        existing.findings = null;
+        existing.reportMarkdown = null;
+        existing.sources = [];
+        existing.redFlags = [];
+        existing.searchQueriesRun = 0;
+        existing.completedAt = null;
+        existing.createdAt = now();
+        return { ...existing };
+      }
+      const verification = {
+        id: randomUUID(),
+        userId,
+        status: "running",
+        recommendation: null,
+        confidence: null,
+        credibilityScore: null,
+        summary: null,
+        findings: null,
+        reportMarkdown: null,
+        sources: [],
+        redFlags: [],
+        searchQueriesRun: 0,
+        createdAt: now(),
+        completedAt: null,
+      };
+      verifications.push(verification);
+      return { ...verification };
+    },
+
+    async updateVerification(userId, data) {
+      const v = verifications.find((v) => v.userId === userId);
+      if (!v) return null;
+      Object.assign(v, {
+        ...data,
+        completedAt: data.status === "complete" ? now() : v.completedAt,
+      });
+      return { ...v };
+    },
+
+    async findVerification(userId) {
+      const v = verifications.find((v) => v.userId === userId);
+      return v ? { ...v } : null;
+    },
+
+    async listVerifications({ status, recommendation } = {}) {
+      return verifications
+        .filter((v) => !status || v.status === status)
+        .filter((v) => !recommendation || v.recommendation === recommendation)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+        .map((v) => ({ ...v }));
+    },
+
+    async getVerificationSummary() {
+      return {
+        total: verifications.length,
+        running: verifications.filter((v) => v.status === "running").length,
+        complete: verifications.filter((v) => v.status === "complete").length,
+        failed: verifications.filter((v) => v.status === "failed").length,
+        skipped: verifications.filter((v) => v.status === "skipped").length,
+        accept: verifications.filter((v) => v.recommendation === "accept").length,
+        review: verifications.filter((v) => v.recommendation === "review").length,
+        reject: verifications.filter((v) => v.recommendation === "reject").length,
+      };
     },
   };
 }
