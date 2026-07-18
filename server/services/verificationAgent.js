@@ -1,9 +1,20 @@
 import Anthropic from "@anthropic-ai/sdk";
+import Groq from "groq-sdk";
 import { config } from "../config.js";
 import { searchService } from "./searchService.js";
 import { buildQueriesForUser } from "./queryBuilder.js";
 
-const client = new Anthropic({ apiKey: config.anthropicApiKey });
+// --- AI Provider Clients (lazy — only created if key exists) ---
+
+const anthropicClient = config.anthropicApiKey
+  ? new Anthropic({ apiKey: config.anthropicApiKey })
+  : null;
+
+const groqClient = config.groqApiKey
+  ? new Groq({ apiKey: config.groqApiKey })
+  : null;
+
+// --- Prompt (shared across providers) ---
 
 function buildPrompt(user, searchResults) {
   const name = user.fullName;
@@ -60,10 +71,54 @@ Decision rules:
 - The report_markdown must include sections: ## Identity, ## Professional Credibility, ## Risk Assessment, ## Recommendation`;
 }
 
-function parseClaudeResponse(text) {
-  // Strip any accidental markdown fences
+// --- Response Parser ---
+
+function parseAIResponse(text) {
   const cleaned = text.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
   return JSON.parse(cleaned);
+}
+
+// --- Provider-specific callers ---
+
+async function callGroq(prompt) {
+  const completion = await groqClient.chat.completions.create({
+    model: "llama-3.3-70b-versatile",
+    messages: [{ role: "user", content: prompt }],
+    max_tokens: 2048,
+    temperature: 0.1,
+  });
+  return completion.choices[0]?.message?.content ?? null;
+}
+
+async function callAnthropic(prompt) {
+  const message = await anthropicClient.messages.create({
+    model: "claude-haiku-4-5-20251001",
+    max_tokens: 2048,
+    messages: [{ role: "user", content: prompt }],
+  });
+  return message.content[0]?.text ?? null;
+}
+
+/**
+ * Resolve which provider(s) to use based on config.aiProvider and available keys.
+ * Returns an ordered list of { name, call } to try.
+ */
+function getProviderChain() {
+  const providers = [];
+
+  const setting = config.aiProvider.toLowerCase();
+
+  if (setting === "groq" && groqClient) {
+    providers.push({ name: "groq", call: callGroq });
+  } else if (setting === "anthropic" && anthropicClient) {
+    providers.push({ name: "anthropic", call: callAnthropic });
+  } else {
+    // "auto" — try groq first (free + fast), fall back to anthropic
+    if (groqClient) providers.push({ name: "groq", call: callGroq });
+    if (anthropicClient) providers.push({ name: "anthropic", call: callAnthropic });
+  }
+
+  return providers;
 }
 
 /**
@@ -81,6 +136,9 @@ export async function runForUser(userId, store) {
       return;
     }
 
+    // Mark as running
+    await store.createVerification(userId);
+
     // Build search queries — skip if not enough data
     const queries = buildQueriesForUser(user);
     if (!queries) {
@@ -88,37 +146,55 @@ export async function runForUser(userId, store) {
       await store.updateVerification(userId, { status: "skipped" });
       return;
     }
-
-    // Mark as running
-    await store.createVerification(userId);
     console.log(`[VerificationAgent] Starting verification for ${user.fullName} (${queries.length} queries)`);
 
     // Run web searches
     const searchResults = await searchService.batchSearch(queries);
     console.log(`[VerificationAgent] Got ${searchResults.length} results for ${user.fullName}`);
 
-    // No Anthropic key → mark failed gracefully
-    if (!config.anthropicApiKey) {
-      console.warn("[VerificationAgent] ANTHROPIC_API_KEY not set — marking as failed.");
+    // Resolve AI provider chain
+    const providers = getProviderChain();
+    if (providers.length === 0) {
+      console.warn("[VerificationAgent] No AI provider configured (set GROQ_API_KEY or ANTHROPIC_API_KEY).");
       await store.updateVerification(userId, { status: "failed", searchQueriesRun: queries.length });
       return;
     }
 
-    // Send to Claude for analysis
+    // Build prompt
     const prompt = buildPrompt(user, searchResults);
-    const message = await client.messages.create({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 2048,
-      messages: [{ role: "user", content: prompt }],
-    });
 
-    const rawText = message.content[0]?.text ?? "";
+    // Try each provider in order
+    let rawText = null;
+    let usedProvider = null;
+
+    for (const provider of providers) {
+      try {
+        console.log(`[VerificationAgent] Trying ${provider.name}...`);
+        rawText = await provider.call(prompt);
+        if (rawText) {
+          usedProvider = provider.name;
+          break;
+        }
+      } catch (providerErr) {
+        console.warn(`[VerificationAgent] ${provider.name} failed: ${providerErr.message}`);
+        // continue to next provider
+      }
+    }
+
+    if (!rawText) {
+      console.error(`[VerificationAgent] All AI providers failed for ${user.fullName}`);
+      await store.updateVerification(userId, { status: "failed", searchQueriesRun: queries.length });
+      return;
+    }
+
+    console.log(`[VerificationAgent] Got response from ${usedProvider} for ${user.fullName}`);
+
+    // Parse the AI response
     let report;
-
     try {
-      report = parseClaudeResponse(rawText);
+      report = parseAIResponse(rawText);
     } catch (parseErr) {
-      console.error(`[VerificationAgent] Failed to parse Claude response for ${user.fullName}:`, parseErr.message);
+      console.error(`[VerificationAgent] Failed to parse ${usedProvider} response for ${user.fullName}:`, parseErr.message);
       await store.updateVerification(userId, { status: "failed", searchQueriesRun: queries.length });
       return;
     }
@@ -138,7 +214,7 @@ export async function runForUser(userId, store) {
     });
 
     console.log(
-      `[VerificationAgent] Done for ${user.fullName}: ${report.recommendation} (confidence: ${report.confidence}%)`
+      `[VerificationAgent] Done for ${user.fullName} via ${usedProvider}: ${report.recommendation} (confidence: ${report.confidence}%)`
     );
   } catch (err) {
     console.error(`[VerificationAgent] Error for userId ${userId}:`, err.message);

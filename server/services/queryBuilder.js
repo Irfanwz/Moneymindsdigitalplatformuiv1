@@ -1,9 +1,21 @@
 /**
+ * Sanitize user input for use in search queries.
+ * Strips characters that could break query syntax or be used for injection.
+ */
+function sanitize(input) {
+  return (input ?? "")
+    .replace(/[<>{}[\]\\;`$|&]/g, "") // strip shell/HTML/injection chars
+    .replace(/["']/g, "")             // strip quotes (we wrap in our own)
+    .replace(/\s+/g, " ")            // collapse whitespace
+    .trim();
+}
+
+/**
  * Builds role-specific Tavily search queries for a user.
  * Returns null if there is not enough data to search (no name).
  */
 export function buildQueriesForUser(user) {
-  const name = (user.fullName ?? "").trim();
+  const name = sanitize(user.fullName ?? "");
   if (name.length < 2) return null;
 
   const roles = user.requestedRoles ?? [];

@@ -1260,8 +1260,8 @@ export function createSupabaseStore({ supabaseUrl, supabaseServiceRoleKey }) {
     },
 
     async findVerification(userId) {
-      const { data, error } = await client.from(AI_VERIFICATIONS_TABLE).select("*").eq("user_id", userId).single();
-      if (error && error.code !== "PGRST116") throw toStoreError(error);
+      const { data, error } = await client.from(AI_VERIFICATIONS_TABLE).select("*").eq("user_id", userId).maybeSingle();
+      if (error) throw toStoreError(error);
       return data ? mapVerificationRow(data) : null;
     },
 

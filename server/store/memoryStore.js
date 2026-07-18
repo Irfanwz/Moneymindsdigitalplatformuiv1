@@ -832,7 +832,6 @@ export function createMemoryStore() {
         existing.redFlags = [];
         existing.searchQueriesRun = 0;
         existing.completedAt = null;
-        existing.createdAt = now();
         return { ...existing };
       }
       const verification = {

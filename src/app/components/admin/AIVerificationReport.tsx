@@ -4,6 +4,7 @@ import {
   CheckCircle2,
   ExternalLink,
   Globe,
+  Info,
   Linkedin,
   Loader2,
   RefreshCcw,
@@ -11,17 +12,31 @@ import {
   ShieldCheck,
   XCircle,
 } from "lucide-react";
+import { toast } from "sonner";
 
 import { Badge } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
 import { Card } from "@/app/components/ui/card";
 import { Progress } from "@/app/components/ui/progress";
 import { Separator } from "@/app/components/ui/separator";
+import { Skeleton } from "@/app/components/ui/skeleton";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/app/components/ui/tooltip";
 import type { AIVerification } from "@/app/lib/api";
 import { retryVerification } from "@/app/lib/api";
 
+function isSafeUrl(url: string | null | undefined): url is string {
+  if (!url) return false;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 interface AIVerificationReportProps {
   verification: AIVerification | null;
+  loading?: boolean;
   token: string;
   onRetryComplete?: () => void;
 }
@@ -50,6 +65,28 @@ const recommendationConfig = {
   },
 };
 
+function ReportSkeleton() {
+  return (
+    <div className="space-y-6">
+      <Skeleton className="h-20 w-full rounded-xl" />
+      <div className="space-y-2">
+        <Skeleton className="h-4 w-32" />
+        <Skeleton className="h-3 w-full" />
+      </div>
+      <Separator />
+      <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
+        <Skeleton className="h-16 rounded-xl" />
+        <Skeleton className="h-16 rounded-xl" />
+      </div>
+      <Skeleton className="h-4 w-48" />
+      <Skeleton className="h-20 w-full" />
+      <Separator />
+      <Skeleton className="h-10 w-full" />
+      <Skeleton className="h-10 w-full" />
+    </div>
+  );
+}
+
 function CredibilityGauge({ score }: { score: number }) {
   const color =
     score >= 70 ? "text-emerald-600" : score >= 40 ? "text-amber-600" : "text-red-600";
@@ -71,7 +108,7 @@ function CredibilityGauge({ score }: { score: number }) {
   );
 }
 
-export function AIVerificationReport({ verification, token, onRetryComplete }: AIVerificationReportProps) {
+export function AIVerificationReport({ verification, loading, token, onRetryComplete }: AIVerificationReportProps) {
   const [retrying, setRetrying] = useState(false);
 
   const handleRetry = async () => {
@@ -79,18 +116,28 @@ export function AIVerificationReport({ verification, token, onRetryComplete }: A
     setRetrying(true);
     try {
       await retryVerification(token, verification.userId);
+      toast.success("Verification re-queued", {
+        description: "The AI agent will re-run in the background. Refresh in 30-60 seconds.",
+      });
       onRetryComplete?.();
     } catch {
-      // ignore
+      toast.error("Retry failed", {
+        description: "Could not re-queue the verification. Try again later.",
+      });
     } finally {
       setRetrying(false);
     }
   };
 
+  // Loading skeleton
+  if (loading) {
+    return <ReportSkeleton />;
+  }
+
   // No verification data
   if (!verification) {
     return (
-      <div className="rounded-2xl border border-dashed p-8 text-center text-muted-foreground">
+      <div className="rounded-2xl border border-dashed p-6 sm:p-8 text-center text-muted-foreground">
         <ShieldAlert className="mx-auto h-8 w-8 mb-3 opacity-50" />
         <p>No AI verification data available.</p>
       </div>
@@ -100,10 +147,10 @@ export function AIVerificationReport({ verification, token, onRetryComplete }: A
   // Running state
   if (verification.status === "running") {
     return (
-      <div className="rounded-2xl border border-dashed p-8 text-center text-muted-foreground">
+      <div className="rounded-2xl border border-dashed p-6 sm:p-8 text-center text-muted-foreground">
         <Loader2 className="mx-auto h-8 w-8 mb-3 animate-spin opacity-50" />
         <p className="font-medium">AI verification in progress...</p>
-        <p className="text-sm mt-1">This usually takes 30–60 seconds.</p>
+        <p className="text-sm mt-1">This usually takes 30-60 seconds.</p>
       </div>
     );
   }
@@ -111,7 +158,7 @@ export function AIVerificationReport({ verification, token, onRetryComplete }: A
   // Failed / Skipped states
   if (verification.status === "failed" || verification.status === "skipped") {
     return (
-      <div className="rounded-2xl border border-dashed p-8 text-center text-muted-foreground">
+      <div className="rounded-2xl border border-dashed p-6 sm:p-8 text-center text-muted-foreground">
         <ShieldAlert className="mx-auto h-8 w-8 mb-3 opacity-50" />
         <p className="font-medium">
           {verification.status === "failed"
@@ -142,20 +189,28 @@ export function AIVerificationReport({ verification, token, onRetryComplete }: A
     <div className="space-y-6">
       {/* Recommendation Header */}
       {config && rec && (
-        <div className={`rounded-xl border p-4 ${config.bg} ${config.border}`}>
-          <div className="flex items-center justify-between">
+        <div className={`rounded-xl border p-3 sm:p-4 ${config.bg} ${config.border}`}>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div className="flex items-center gap-3">
-              <RecIcon className={`h-6 w-6 ${config.color}`} />
+              <RecIcon className={`h-6 w-6 ${config.color} shrink-0`} />
               <div>
-                <div className={`text-lg font-bold ${config.color}`}>
+                <div className={`text-base sm:text-lg font-bold ${config.color}`}>
                   AI Recommendation: {config.label}
                 </div>
-                <div className="text-sm text-muted-foreground">
+                <div className="text-sm text-muted-foreground flex items-center gap-1">
                   Confidence: {verification.confidence}%
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="h-3.5 w-3.5 cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      How confident the AI is in this recommendation based on the available search data.
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
               </div>
             </div>
-            <Badge variant="outline" className={config.color}>
+            <Badge variant="outline" className={`${config.color} w-fit`}>
               {verification.searchQueriesRun} searches run
             </Badge>
           </div>
@@ -181,7 +236,7 @@ export function AIVerificationReport({ verification, token, onRetryComplete }: A
       {verification.findings && (
         <div className="space-y-4">
           <h4 className="text-sm font-semibold">Key Findings</h4>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
             {/* LinkedIn */}
             <Card className="p-3 flex items-center gap-3">
               <Linkedin className="h-5 w-5 text-blue-600 shrink-0" />
@@ -189,7 +244,7 @@ export function AIVerificationReport({ verification, token, onRetryComplete }: A
                 <div className="text-sm font-medium">
                   LinkedIn {verification.findings.linkedin_found ? "Found" : "Not Found"}
                 </div>
-                {verification.findings.linkedin_url && (
+                {isSafeUrl(verification.findings.linkedin_url) && (
                   <a
                     href={verification.findings.linkedin_url}
                     target="_blank"
@@ -214,7 +269,7 @@ export function AIVerificationReport({ verification, token, onRetryComplete }: A
                 <div className="text-sm font-medium">
                   Company {verification.findings.company_verified ? "Verified" : "Not Verified"}
                 </div>
-                {verification.findings.company_url && (
+                {isSafeUrl(verification.findings.company_url) && (
                   <a
                     href={verification.findings.company_url}
                     target="_blank"
@@ -283,7 +338,7 @@ export function AIVerificationReport({ verification, token, onRetryComplete }: A
         <div>
           <h4 className="text-sm font-semibold mb-2">Sources ({verification.sources.length})</h4>
           <div className="space-y-2">
-            {verification.sources.map((source, i) => (
+            {verification.sources.filter((s) => isSafeUrl(s.url)).map((source, i) => (
               <a
                 key={i}
                 href={source.url}
@@ -302,12 +357,12 @@ export function AIVerificationReport({ verification, token, onRetryComplete }: A
         </div>
       )}
 
-      {/* Retry button */}
-      <div className="flex items-center justify-between pt-2">
+      {/* Footer: Disclaimer + Retry */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2">
         <p className="text-xs text-muted-foreground italic">
           AI-generated assessment for admin guidance only. Human review is required before final decision.
         </p>
-        <Button variant="outline" size="sm" onClick={handleRetry} disabled={retrying}>
+        <Button variant="outline" size="sm" onClick={handleRetry} disabled={retrying} className="shrink-0">
           {retrying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCcw className="mr-2 h-4 w-4" />}
           Re-run
         </Button>

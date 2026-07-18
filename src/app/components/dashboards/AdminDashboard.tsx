@@ -19,6 +19,7 @@ import {
   getVerificationSummary,
   updateUserApproval,
 } from "@/app/lib/api";
+import { toast } from "sonner";
 import type { AIVerification, VerificationSummary } from "@/app/lib/api";
 import { Alert, AlertDescription, AlertTitle } from "@/app/components/ui/alert";
 import { Badge } from "@/app/components/ui/badge";
@@ -62,6 +63,7 @@ export function AdminDashboard() {
   const [verifications, setVerifications] = useState<Record<string, AIVerification>>({});
   const [vSummary, setVSummary] = useState<VerificationSummary | null>(null);
   const [reportDialogUserId, setReportDialogUserId] = useState<string | null>(null);
+  const [loadingReport, setLoadingReport] = useState(false);
 
   const [userSearch, setUserSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "approved" | "rejected">("all");
@@ -97,6 +99,18 @@ export function AdminDashboard() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const openReport = async (userId: string) => {
+    setReportDialogUserId(userId);
+    if (verifications[userId]) return; // already loaded
+    if (!session?.token) return;
+    setLoadingReport(true);
+    try {
+      const res = await getUserVerification(session.token, userId);
+      setVerifications((prev) => ({ ...prev, [userId]: res.verification }));
+    } catch { /* no report yet */ }
+    setLoadingReport(false);
   };
 
   const loadVerifications = async (userList: AuthUser[]) => {
@@ -350,7 +364,7 @@ export function AdminDashboard() {
                                   variant="ghost"
                                   size="sm"
                                   className="ml-auto"
-                                  onClick={() => setReportDialogUserId(profile.id)}
+                                  onClick={() => openReport(profile.id)}
                                 >
                                   <Eye className="mr-1 h-3 w-3" /> Details
                                 </Button>
@@ -363,7 +377,8 @@ export function AdminDashboard() {
                               review: { label: "Review", cls: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30", Icon: AlertTriangle },
                               reject: { label: "Reject", cls: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30", Icon: XCircle },
                             };
-                            const r = recMap[v.recommendation];
+                            const r = recMap[v.recommendation as keyof typeof recMap];
+                            if (!r) return null;
                             return (
                               <div className={`mt-4 flex items-center gap-2 rounded-lg border p-3 ${r.cls}`}>
                                 <r.Icon className="h-4 w-4 shrink-0" />
@@ -374,7 +389,7 @@ export function AdminDashboard() {
                                   variant="ghost"
                                   size="sm"
                                   className="ml-auto"
-                                  onClick={() => setReportDialogUserId(profile.id)}
+                                  onClick={() => openReport(profile.id)}
                                 >
                                   <Eye className="mr-1 h-3 w-3" /> View Report
                                 </Button>
@@ -536,8 +551,10 @@ export function AdminDashboard() {
             {reportDialogUserId && session?.token && (
               <AIVerificationReport
                 verification={verifications[reportDialogUserId] ?? null}
+                loading={loadingReport}
                 token={session.token}
                 onRetryComplete={() => {
+                  toast.success("Verification re-queued. Refresh in 30-60 seconds.");
                   setReportDialogUserId(null);
                   loadProfiles();
                 }}

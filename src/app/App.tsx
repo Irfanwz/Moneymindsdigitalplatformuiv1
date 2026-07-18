@@ -33,11 +33,13 @@ import { BrowseGroupsPage } from "@/app/components/shared/BrowseGroupsPage";
 import { AuthProvider } from "@/app/contexts/AuthContext";
 import { ThemeProvider } from "@/app/contexts/ThemeContext";
 import { RequireAdmin, RequireRole, RequireSignedIn } from "@/app/components/auth/RouteGuards";
+import { Toaster } from "@/app/components/ui/sonner";
 
 export default function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
+        <Toaster position="top-right" richColors />
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<LandingPage />} />
