@@ -34,7 +34,7 @@ export function Header({ userRole, userName }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const resolvedUserName = userName ?? user?.fullName ?? "User";
-  const resolvedUserRole = user?.isAdmin ? "admin" : user?.currentRole ?? userRole;
+  const resolvedUserRole = user?.isAdmin ? "admin" : user?.currentRole ?? user?.approvedRoles?.[0] ?? userRole;
 
   useEffect(() => {
     if (!session?.token) return;
@@ -142,12 +142,12 @@ export function Header({ userRole, userName }: HeaderProps) {
           ) : null}
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
           <Button
             variant="ghost"
             size="icon"
             onClick={toggleTheme}
-            className="text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
+            className="hidden sm:inline-flex text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
           >
             {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
           </Button>
@@ -272,7 +272,7 @@ export function Header({ userRole, userName }: HeaderProps) {
               </DropdownMenu>
             </>
           ) : (
-            <div className="flex items-center gap-2">
+            <div className="hidden sm:flex items-center gap-2">
               <Link to="/login">
                 <Button variant="ghost" className="text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white">
                   Login
@@ -286,7 +286,7 @@ export function Header({ userRole, userName }: HeaderProps) {
             </div>
           )}
 
-          {/* Mobile Menu */}
+          {/* Mobile Menu Toggle */}
           <Button
             variant="ghost"
             size="icon"
@@ -299,7 +299,7 @@ export function Header({ userRole, userName }: HeaderProps) {
       </div>
 
       {/* Mobile Navigation */}
-      {mobileMenuOpen && resolvedUserRole && (
+      {mobileMenuOpen && (
         <div className="md:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-6 py-4">
           <nav className="flex flex-col gap-3">
             {navLinks.map((link) => (
@@ -312,6 +312,24 @@ export function Header({ userRole, userName }: HeaderProps) {
                 {link.label}
               </Link>
             ))}
+            {/* Show Login/Create Profile in mobile menu when not logged in */}
+            {!resolvedUserRole && (
+              <>
+                <Link to="/login" onClick={() => setMobileMenuOpen(false)} className="text-sm text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors py-2">
+                  Login
+                </Link>
+                <Link to="/apply" onClick={() => setMobileMenuOpen(false)} className="text-sm font-medium text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300 transition-colors py-2">
+                  Create Profile
+                </Link>
+              </>
+            )}
+            {/* Theme toggle in mobile menu */}
+            <button
+              onClick={() => { toggleTheme(); setMobileMenuOpen(false); }}
+              className="sm:hidden text-sm text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors py-2 text-left"
+            >
+              {theme === "dark" ? "Light Mode" : "Dark Mode"}
+            </button>
           </nav>
         </div>
       )}

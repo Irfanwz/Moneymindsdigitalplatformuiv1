@@ -18,6 +18,8 @@ import { createPublicRouter } from "./routes/public.js";
 import { createTwoFARouter } from "./routes/twofa.js";
 import { createExportRouter } from "./routes/export.js";
 import { createMarketDataRouter } from "./routes/marketData.js";
+import { createPredictionsRouter } from "./routes/predictions.js";
+import { startPredictionCron } from "./cron/predictionCron.js";
 
 export function createApp(store) {
   const app = express();
@@ -47,6 +49,10 @@ export function createApp(store) {
   app.use("/api/2fa", createTwoFARouter(store));
   app.use("/api/export", createExportRouter(store));
   app.use("/api/market", createMarketDataRouter());
+  app.use("/api", createPredictionsRouter(store));
+
+  // Start daily prediction accuracy checker (9 AM every day)
+  startPredictionCron(store);
 
   if (process.env.NODE_ENV === "production") {
     const distPath = path.resolve(import.meta.dirname, "..", "dist");

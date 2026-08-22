@@ -29,6 +29,7 @@ export function TrainingDetailPage({ userRole }: TrainingDetailPageProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isEnrolling, setIsEnrolling] = useState(false);
   const [isUpdatingProgress, setIsUpdatingProgress] = useState(false);
+  const [progressError, setProgressError] = useState<string | null>(null);
 
   const userName = user?.fullName ?? "";
 
@@ -83,11 +84,12 @@ export function TrainingDetailPage({ userRole }: TrainingDetailPageProps) {
   const handleProgressUpdate = async (newProgress: number) => {
     if (!session?.token || !training) return;
     setIsUpdatingProgress(true);
+    setProgressError(null);
     try {
       const res = await updateTrainingProgress(session.token, training.id, newProgress);
       setEnrollment(res.enrollment);
-    } catch {
-      // ignore
+    } catch (err) {
+      setProgressError(err instanceof Error ? err.message : "Could not update progress. Please try again.");
     } finally {
       setIsUpdatingProgress(false);
     }
@@ -263,18 +265,17 @@ export function TrainingDetailPage({ userRole }: TrainingDetailPageProps) {
                             key={milestone}
                             variant={progress >= milestone ? "default" : "outline"}
                             size="sm"
-                            disabled={isUpdatingProgress || milestone < progress}
+                            disabled={isUpdatingProgress || milestone <= progress}
                             className={progress >= milestone ? "bg-accent text-accent-foreground" : ""}
                             onClick={() => handleProgressUpdate(milestone)}
                           >
-                            {isUpdatingProgress ? (
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                            ) : (
-                              `${milestone}%`
-                            )}
+                            {`${milestone}%`}
                           </Button>
                         ))}
                       </div>
+                      {progressError && (
+                        <p className="text-sm text-destructive mt-2">{progressError}</p>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">

@@ -11,6 +11,7 @@ import { useAuth } from "@/app/contexts/AuthContext";
 import { getAdvisorProfile } from "@/app/lib/api";
 import { createEmptyAdvisorProfile } from "@/app/lib/advisor-profile";
 import type { AdvisorProfile as AdvisorProfileType } from "@/app/types/advisor-profile";
+import { AdvisorAccuracyCard } from "@/app/components/signals/AdvisorAccuracyCard";
 
 const SPECIALIZATION_LABELS: Record<string, string> = {
   "financial-planning": "Financial Planning",
@@ -249,6 +250,14 @@ export function AdvisorProfile() {
                 </Button>
               </CardContent>
             </Card>
+
+            {/* Prediction accuracy track record */}
+            {user?.id && (
+              <AdvisorAccuracyCard
+                advisorId={user.id}
+                className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+              />
+            )}
 
             {profile.specialization && (
               <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">

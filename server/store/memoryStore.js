@@ -477,6 +477,31 @@ export function createMemoryStore() {
         groupId,
         advisorId,
         ...signalInput,
+        // AI Sentiment fields (populated async after creation)
+        sentiment: null,
+        sentimentConfidence: null,
+        sentimentReasoning: null,
+        riskLevel: null,
+        riskReasoning: null,
+        actionability: null,
+        actionabilityReasoning: null,
+        entities: null,
+        sectors: null,
+        keyPoints: null,
+        analyzedAt: null,
+        // Prediction Accuracy fields (populated async after creation)
+        predictionDirection: null,
+        predictionTargetPrice: null,
+        predictionTimeframe: null,
+        predictionTimeframeDays: null,
+        predictionCheckDate: null,
+        baselinePrice: null,
+        baselineFetchedAt: null,
+        actualPrice: null,
+        predictionAccuracy: null,
+        predictionResult: null,
+        predictionCheckedAt: null,
+        predictionExplanation: null,
         createdAt: timestamp,
         updatedAt: timestamp,
       };
@@ -489,6 +514,13 @@ export function createMemoryStore() {
     async listSignalsByGroup(groupId) {
       return advisorSignals
         .filter((s) => s.groupId === groupId)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+        .map((s) => ({ ...s, tags: [...s.tags] }));
+    },
+
+    async listSignalsByAdvisor(advisorId) {
+      return advisorSignals
+        .filter((s) => s.advisorId === advisorId)
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
         .map((s) => ({ ...s, tags: [...s.tags] }));
     },
@@ -524,6 +556,53 @@ export function createMemoryStore() {
         updatedAt: now(),
       });
       return { ...signal, tags: [...signal.tags] };
+    },
+
+    async updateSignalSentiment(signalId, data) {
+      const signal = advisorSignals.find((s) => s.id === signalId);
+      if (!signal) return null;
+      if (data.sentiment !== undefined) signal.sentiment = data.sentiment;
+      if (data.sentimentConfidence !== undefined) signal.sentimentConfidence = data.sentimentConfidence;
+      if (data.sentimentReasoning !== undefined) signal.sentimentReasoning = data.sentimentReasoning;
+      if (data.riskLevel !== undefined) signal.riskLevel = data.riskLevel;
+      if (data.riskReasoning !== undefined) signal.riskReasoning = data.riskReasoning;
+      if (data.actionability !== undefined) signal.actionability = data.actionability;
+      if (data.actionabilityReasoning !== undefined) signal.actionabilityReasoning = data.actionabilityReasoning;
+      if (data.entities !== undefined) signal.entities = data.entities;
+      if (data.sectors !== undefined) signal.sectors = data.sectors;
+      if (data.keyPoints !== undefined) signal.keyPoints = data.keyPoints;
+      if (data.analyzedAt !== undefined) signal.analyzedAt = data.analyzedAt;
+      return { ...signal };
+    },
+
+    async updateSignalPrediction(signalId, data) {
+      const signal = advisorSignals.find((s) => s.id === signalId);
+      if (!signal) return null;
+      if (data.predictionDirection !== undefined) signal.predictionDirection = data.predictionDirection;
+      if (data.predictionTargetPrice !== undefined) signal.predictionTargetPrice = data.predictionTargetPrice;
+      if (data.predictionTimeframe !== undefined) signal.predictionTimeframe = data.predictionTimeframe;
+      if (data.predictionTimeframeDays !== undefined) signal.predictionTimeframeDays = data.predictionTimeframeDays;
+      if (data.predictionCheckDate !== undefined) signal.predictionCheckDate = data.predictionCheckDate;
+      if (data.baselinePrice !== undefined) signal.baselinePrice = data.baselinePrice;
+      if (data.baselineFetchedAt !== undefined) signal.baselineFetchedAt = data.baselineFetchedAt;
+      if (data.actualPrice !== undefined) signal.actualPrice = data.actualPrice;
+      if (data.predictionAccuracy !== undefined) signal.predictionAccuracy = data.predictionAccuracy;
+      if (data.predictionResult !== undefined) signal.predictionResult = data.predictionResult;
+      if (data.predictionCheckedAt !== undefined) signal.predictionCheckedAt = data.predictionCheckedAt;
+      if (data.predictionExplanation !== undefined) signal.predictionExplanation = data.predictionExplanation;
+      return { ...signal };
+    },
+
+    async listSignalsDueForCheck() {
+      const now_ts = new Date().toISOString();
+      return advisorSignals
+        .filter(
+          (s) =>
+            s.predictionCheckDate !== null &&
+            s.predictionCheckDate <= now_ts &&
+            s.predictionCheckedAt === null
+        )
+        .map((s) => ({ ...s, tags: [...s.tags] }));
     },
 
     // --- Signal Comments & Reactions ---

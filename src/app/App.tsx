@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
 import { LandingPage } from "@/app/components/LandingPage";
 import { LoginPage } from "@/app/components/LoginPage";
 import { ProfileApplicationPage } from "@/app/components/ProfileApplicationPage";
@@ -30,10 +30,24 @@ import { ResetPasswordPage } from "@/app/components/ResetPasswordPage";
 import { PublicAdvisorProfile } from "@/app/components/profiles/PublicAdvisorProfile";
 import { PublicStartupProfile } from "@/app/components/profiles/PublicStartupProfile";
 import { BrowseGroupsPage } from "@/app/components/shared/BrowseGroupsPage";
-import { AuthProvider } from "@/app/contexts/AuthContext";
+import { PredictionHistoryPage } from "@/app/components/signals/PredictionHistoryPage";
+import { DashboardLayout } from "@/app/components/DashboardLayout";
+import { AuthProvider, useAuth } from "@/app/contexts/AuthContext";
 import { ThemeProvider } from "@/app/contexts/ThemeContext";
 import { RequireAdmin, RequireRole, RequireSignedIn } from "@/app/components/auth/RouteGuards";
 import { Toaster } from "@/app/components/ui/sonner";
+
+function GroupPredictionsRoute() {
+  const { groupId } = useParams<{ groupId: string }>();
+  const { user } = useAuth();
+  return (
+    <DashboardLayout userRole="advisor" userName={user?.fullName ?? ""}>
+      <div className="p-6 max-w-3xl mx-auto">
+        <PredictionHistoryPage groupId={groupId!} />
+      </div>
+    </DashboardLayout>
+  );
+}
 
 export default function App() {
   return (
@@ -83,6 +97,7 @@ export default function App() {
               <Route path="/advisor/sessions" element={<AdvisorSessionsPage />} />
               <Route path="/advisor/groups" element={<AdvisorGroupsPage />} />
               <Route path="/advisor/groups/:groupId/create-signal" element={<CreatePostSignalPage />} />
+              <Route path="/advisor/groups/:groupId/predictions" element={<GroupPredictionsRoute />} />
               <Route path="/advisor/trainings" element={<AdvisorTrainingsPage />} />
               <Route path="/advisor/trainings/:id" element={<TrainingDetailPage userRole="advisor" />} />
             </Route>

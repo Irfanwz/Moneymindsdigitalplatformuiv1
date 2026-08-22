@@ -8,6 +8,7 @@ export interface StartupProfile {
   id: string | null;
   userId: string;
   companyName: string;
+  companyLogo: string;
   tagline: string;
   industry: string;
   foundedYear: string;

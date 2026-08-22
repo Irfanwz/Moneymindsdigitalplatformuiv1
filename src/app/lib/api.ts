@@ -1,4 +1,4 @@
-import type { AdvisorGroup, AdvisorSignal, CreateGroupPayload, CreateSignalPayload } from "@/app/types/advisor-groups";
+import type { AdvisorGroup, AdvisorSignal, AdvisorAccuracyStats, GroupPredictionSummary, SignalPrediction, CreateGroupPayload, CreateSignalPayload } from "@/app/types/advisor-groups";
 import type { AdvisorProfile } from "@/app/types/advisor-profile";
 import type { AppRole, AuthUser, ProfileApplicationPayload } from "@/app/types/auth";
 import type { InvestorProfile } from "@/app/types/investor-profile";
@@ -648,4 +648,39 @@ export function checkPayment(token: string, itemType: string, itemId: string) {
   return request<{ paid: boolean }>(`/api/payments/check?itemType=${itemType}&itemId=${itemId}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
+}
+
+// ─── Prediction Accuracy API ───────────────────────────────────────────────────
+
+export function getSignalPrediction(token: string, signalId: string) {
+  return request<SignalPrediction>(`/api/signals/${signalId}/prediction`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export function getAdvisorAccuracy(token: string, advisorId: string) {
+  return request<AdvisorAccuracyStats>(`/api/advisors/${advisorId}/accuracy`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export function getGroupPredictions(token: string, groupId: string) {
+  return request<{ groupId: string; predictions: GroupPredictionSummary[] }>(
+    `/api/groups/${groupId}/predictions`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+}
+
+export function adminTriggerPredictionCheck(token: string) {
+  return request<{ message: string; checked: number }>("/api/admin/predictions/check-now", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export function adminCheckSignalPrediction(token: string, signalId: string) {
+  return request<{ message: string; signal: AdvisorSignal }>(
+    `/api/admin/predictions/${signalId}/check`,
+    { method: "POST", headers: { Authorization: `Bearer ${token}` } }
+  );
 }

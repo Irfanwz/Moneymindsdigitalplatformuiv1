@@ -107,6 +107,7 @@ export function StartupEditProfile() {
 
         setProfile(response.profile);
         setCategoriesInput(stringifyCategories(response.profile.categories));
+        if (response.profile.companyLogo) setPhotoUrl(response.profile.companyLogo);
       } catch (error) {
         if (!isActive) {
           return;
@@ -175,6 +176,7 @@ export function StartupEditProfile() {
     try {
       const response = await updateStartupProfile(session.token, {
         ...profile,
+        companyLogo: photoUrl || profile.companyLogo || "",
         categories: parseCategories(categoriesInput),
       });
 
@@ -522,7 +524,7 @@ export function StartupEditProfile() {
 
             <div className="space-y-4">
               {profile.teamMembers.map((member, index) => (
-                <div key={`${member.name}-${index}`} className="p-4 border border-border rounded-lg space-y-4">
+                <div key={index} className="p-4 border border-border rounded-lg space-y-4">
                   <div className="flex items-center justify-between">
                     <h3 className="font-medium">Team Member {index + 1}</h3>
                     {profile.teamMembers.length > 1 ? (

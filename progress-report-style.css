@@ -1,0 +1,226 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+@page { margin: 20mm 18mm 20mm 18mm; size: A4; }
+
+body {
+  font-family: -apple-system, 'Segoe UI', Arial, sans-serif;
+  font-size: 10pt;
+  line-height: 1.65;
+  color: #1e293b;
+  background: #ffffff;
+}
+
+/* ── H1 Title ── */
+h1 {
+  font-size: 24pt;
+  font-weight: 800;
+  color: #0f172a;
+  margin-bottom: 4px;
+  letter-spacing: -0.5px;
+}
+
+/* ── H2 Subtitle (right under H1) ── */
+h1 + h2 {
+  font-size: 13pt;
+  font-weight: 400;
+  color: #2563eb;
+  border: none !important;
+  background: none !important;
+  color: #2563eb !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  margin-top: 2px;
+  margin-bottom: 12px;
+}
+
+/* ── Meta paragraph after subtitle ── */
+h1 + h2 + p {
+  font-size: 9pt;
+  color: #64748b;
+  line-height: 2;
+  border-bottom: 3px solid #2563eb;
+  padding-bottom: 12px;
+  margin-bottom: 22px;
+}
+
+/* ── All other H2 — Section headers ── */
+h2 {
+  font-size: 12pt;
+  font-weight: 700;
+  color: #ffffff !important;
+  background: #1e3a8a !important;
+  padding: 8px 14px !important;
+  border-radius: 6px !important;
+  margin-top: 26px;
+  margin-bottom: 12px;
+  page-break-after: avoid;
+}
+
+/* ── H3 — Sub-section ── */
+h3 {
+  font-size: 10.5pt;
+  font-weight: 700;
+  color: #1e40af;
+  margin-top: 18px;
+  margin-bottom: 8px;
+  padding-left: 10px;
+  border-left: 3px solid #2563eb;
+  page-break-after: avoid;
+}
+
+/* ── HR ── */
+hr {
+  border: none;
+  border-top: 1px solid #cbd5e1;
+  margin: 20px 0;
+}
+
+/* ── Paragraphs ── */
+p {
+  margin-bottom: 9px;
+  color: #334155;
+}
+
+/* ── Blockquote callout ── */
+blockquote {
+  background: #eff6ff;
+  border-left: 4px solid #3b82f6;
+  border-radius: 0 6px 6px 0;
+  padding: 10px 14px;
+  margin: 10px 0 14px 0;
+  page-break-inside: avoid;
+}
+
+blockquote p {
+  color: #1e40af;
+  margin: 0;
+  font-size: 9.5pt;
+}
+
+/* ── Tables ── */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 10px 0 16px 0;
+  font-size: 9pt;
+  page-break-inside: avoid;
+}
+
+thead tr {
+  background: #1e3a8a;
+}
+
+thead th {
+  padding: 8px 11px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 8.5pt;
+  color: #ffffff;
+  letter-spacing: 0.3px;
+}
+
+tbody tr:nth-child(even) {
+  background: #f1f5f9;
+}
+
+tbody tr:nth-child(odd) {
+  background: #ffffff;
+}
+
+tbody td {
+  padding: 7px 11px;
+  border-bottom: 1px solid #e2e8f0;
+  vertical-align: top;
+  color: #1e293b;
+  font-size: 9pt;
+}
+
+tbody tr:last-child td {
+  border-bottom: 2px solid #2563eb;
+}
+
+tbody td:first-child {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+/* ── Lists ── */
+ul {
+  list-style: none;
+  margin: 6px 0 12px 0;
+  padding: 0;
+}
+
+ul li {
+  padding: 4px 0 4px 22px;
+  position: relative;
+  font-size: 9.5pt;
+  color: #334155;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+ul li::before {
+  content: "✓";
+  position: absolute;
+  left: 2px;
+  color: #16a34a;
+  font-weight: 700;
+}
+
+/* items with [ ] checkbox — incomplete */
+ul li:has(> input[type="checkbox"]) {
+  padding-left: 22px;
+}
+
+/* ── Code / pre (progress bars) ── */
+pre {
+  background: #0f172a;
+  color: #e2e8f0;
+  border-radius: 8px;
+  padding: 16px 18px;
+  font-family: Consolas, 'Courier New', monospace;
+  font-size: 9pt;
+  line-height: 1.9;
+  margin: 12px 0;
+  page-break-inside: avoid;
+  border-left: 4px solid #3b82f6;
+}
+
+pre code {
+  background: transparent;
+  color: #e2e8f0;
+  padding: 0;
+  font-size: 9pt;
+}
+
+code {
+  font-family: Consolas, 'Courier New', monospace;
+  font-size: 8.5pt;
+  background: #eff6ff;
+  color: #1d4ed8;
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+/* ── Strong ── */
+strong {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+/* ── Links ── */
+a {
+  color: #2563eb;
+  text-decoration: none;
+}
+
+/* ── Footer line ── */
+body > p:last-child {
+  font-size: 8pt;
+  color: #94a3b8;
+  text-align: center;
+  margin-top: 28px;
+  font-style: italic;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 10px;
+}

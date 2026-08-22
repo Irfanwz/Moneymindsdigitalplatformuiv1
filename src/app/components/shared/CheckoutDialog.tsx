@@ -49,9 +49,10 @@ export function CheckoutDialog({ open, onClose, onSuccess, itemType, itemId, ite
     return digits;
   };
 
-  const isFormValid = paymentMethod === "card"
+  const isFree = amount === 0;
+  const isFormValid = isFree || (paymentMethod === "card"
     ? cardNumber.replace(/\s/g, "").length >= 13 && expiry.length >= 4 && cvc.length >= 3 && cardName.length >= 2
-    : true;
+    : true);
 
   const handleCheckout = async () => {
     if (!session?.token) return;
@@ -116,6 +117,14 @@ export function CheckoutDialog({ open, onClose, onSuccess, itemType, itemId, ite
                 <div className="p-3 bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-lg">{error}</div>
               )}
 
+              {isFree ? (
+                <div className="p-4 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg text-center">
+                  <CheckCircle2 className="h-8 w-8 text-green-500 mx-auto mb-2" />
+                  <p className="font-medium text-green-700 dark:text-green-400">No payment required</p>
+                  <p className="text-sm text-green-600 dark:text-green-500 mt-1">Click below to enroll for free</p>
+                </div>
+              ) : (
+              <>
               {/* Payment Method */}
               <div>
                 <Label>Payment Method</Label>
@@ -187,6 +196,8 @@ export function CheckoutDialog({ open, onClose, onSuccess, itemType, itemId, ite
                 <Shield className="h-4 w-4" />
                 <span>Payments are secure and encrypted</span>
               </div>
+              </>
+              )}
             </div>
 
             {/* Actions */}
@@ -198,7 +209,7 @@ export function CheckoutDialog({ open, onClose, onSuccess, itemType, itemId, ite
                 {processing ? (
                   <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Processing...</>
                 ) : (
-                  <>Pay ${amount.toFixed(2)}</>
+                  <>{isFree ? "Enroll Now" : `Pay $${amount.toFixed(2)}`}</>
                 )}
               </Button>
             </div>

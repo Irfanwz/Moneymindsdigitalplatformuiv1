@@ -45,6 +45,7 @@ export function BrowseGroupsPage({ userRole }: { userRole: "startup" | "investor
   const { session, user } = useAuth();
   const [groups, setGroups] = useState<BrowseGroup[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [paidFilter, setPaidFilter] = useState<"all" | "free" | "paid">("all");
@@ -62,8 +63,8 @@ export function BrowseGroupsPage({ userRole }: { userRole: "startup" | "investor
       try {
         const res = await browseGroups(session!.token);
         if (active) setGroups(res.groups);
-      } catch {
-        // empty
+      } catch (err) {
+        if (active) setLoadError(err instanceof Error ? err.message : "Could not load groups. Please try again.");
       } finally {
         if (active) setIsLoading(false);
       }
@@ -373,8 +374,20 @@ export function BrowseGroupsPage({ userRole }: { userRole: "startup" | "investor
           </div>
         )}
 
+        {/* Error State */}
+        {!isLoading && loadError && (
+          <Card className="p-12 text-center">
+            <Users className="h-12 w-12 mx-auto mb-4 text-destructive opacity-50" />
+            <h3 className="font-semibold mb-2">Could not load groups</h3>
+            <p className="text-sm text-muted-foreground mb-4">{loadError}</p>
+            <Button variant="outline" onClick={() => { setLoadError(null); setIsLoading(true); browseGroups(session!.token).then(res => setGroups(res.groups)).catch(() => setLoadError("Still unable to load groups.")).finally(() => setIsLoading(false)); }}>
+              Try Again
+            </Button>
+          </Card>
+        )}
+
         {/* Empty State */}
-        {!isLoading && filtered.length === 0 && (
+        {!isLoading && !loadError && filtered.length === 0 && (
           <Card className="p-12 text-center">
             <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
             <h3 className="font-semibold mb-2">No groups found</h3>

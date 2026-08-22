@@ -2,6 +2,7 @@ import { Router } from "express";
 import { normalizeGroupInput, normalizeSignalInput } from "../advisorGroups.js";
 import { createAuthenticate, requireApprovedRole } from "../middleware/auth.js";
 import { paginate, trimText } from "../utils.js";
+import { scheduleSignalPrediction } from "../services/predictionCheckerService.js";
 
 export function createGroupsRouter(store) {
   const router = Router();
@@ -129,6 +130,8 @@ export function createGroupsRouter(store) {
       const input = normalizeSignalInput(req.body);
       if (input.title.length < 2) return res.status(400).json({ message: "Title is required." });
       const signal = await store.createSignal(groupId, req.auth.userId, input);
+      // Fire-and-forget: parse prediction + fetch baseline price in background
+      setImmediate(() => scheduleSignalPrediction(signal.id, signal, store));
       res.status(201).json({ message: "Published successfully.", signal });
     } catch (error) { next(error); }
   });

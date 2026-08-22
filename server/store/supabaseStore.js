@@ -290,6 +290,29 @@ function mapSignalRow(row) {
     confidenceLevel: row.confidence_level ?? "medium",
     tags: row.tags ?? [],
     notifyMembers: row.notify_members ?? true,
+    sentiment: row.sentiment ?? null,
+    sentimentConfidence: row.sentiment_confidence ?? null,
+    sentimentReasoning: row.sentiment_reasoning ?? null,
+    riskLevel: row.risk_level ?? null,
+    riskReasoning: row.risk_reasoning ?? null,
+    actionability: row.actionability ?? null,
+    actionabilityReasoning: row.actionability_reasoning ?? null,
+    entities: row.entities ?? null,
+    sectors: row.sectors ?? null,
+    keyPoints: row.key_points ?? null,
+    analyzedAt: row.analyzed_at ?? null,
+    predictionDirection: row.prediction_direction ?? null,
+    predictionTargetPrice: row.prediction_target_price ?? null,
+    predictionTimeframe: row.prediction_timeframe ?? null,
+    predictionTimeframeDays: row.prediction_timeframe_days ?? null,
+    predictionCheckDate: row.prediction_check_date ?? null,
+    baselinePrice: row.baseline_price ?? null,
+    baselineFetchedAt: row.baseline_fetched_at ?? null,
+    actualPrice: row.actual_price ?? null,
+    predictionAccuracy: row.prediction_accuracy ?? null,
+    predictionResult: row.prediction_result ?? null,
+    predictionCheckedAt: row.prediction_checked_at ?? null,
+    predictionExplanation: row.prediction_explanation ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -898,6 +921,16 @@ export function createSupabaseStore({ supabaseUrl, supabaseServiceRoleKey }) {
       return (data ?? []).map(mapSignalRow);
     },
 
+    async listSignalsByAdvisor(advisorId) {
+      const { data, error } = await client
+        .from(ADVISOR_SIGNALS_TABLE)
+        .select("*")
+        .eq("advisor_id", advisorId)
+        .order("created_at", { ascending: false });
+      if (error) throw toStoreError(error);
+      return (data ?? []).map(mapSignalRow);
+    },
+
     async deleteSignal(signalId) {
       const signal = await this.findSignalById(signalId);
       const { error } = await client
@@ -1085,6 +1118,54 @@ export function createSupabaseStore({ supabaseUrl, supabaseServiceRoleKey }) {
       const { data, error } = await client.from(ADVISOR_SIGNALS_TABLE).update(payload).eq("id", signalId).select("*").maybeSingle();
       if (error) throw toStoreError(error);
       return data ? mapSignalRow(data) : null;
+    },
+
+    async updateSignalSentiment(signalId, data) {
+      const payload = {};
+      if (data.sentiment !== undefined) payload.sentiment = data.sentiment;
+      if (data.sentimentConfidence !== undefined) payload.sentiment_confidence = data.sentimentConfidence;
+      if (data.sentimentReasoning !== undefined) payload.sentiment_reasoning = data.sentimentReasoning;
+      if (data.riskLevel !== undefined) payload.risk_level = data.riskLevel;
+      if (data.riskReasoning !== undefined) payload.risk_reasoning = data.riskReasoning;
+      if (data.actionability !== undefined) payload.actionability = data.actionability;
+      if (data.actionabilityReasoning !== undefined) payload.actionability_reasoning = data.actionabilityReasoning;
+      if (data.entities !== undefined) payload.entities = data.entities;
+      if (data.sectors !== undefined) payload.sectors = data.sectors;
+      if (data.keyPoints !== undefined) payload.key_points = data.keyPoints;
+      if (data.analyzedAt !== undefined) payload.analyzed_at = data.analyzedAt;
+      const { data: row, error } = await client.from(ADVISOR_SIGNALS_TABLE).update(payload).eq("id", signalId).select("*").maybeSingle();
+      if (error) throw toStoreError(error);
+      return row ? mapSignalRow(row) : null;
+    },
+
+    async updateSignalPrediction(signalId, data) {
+      const payload = {};
+      if (data.predictionDirection !== undefined) payload.prediction_direction = data.predictionDirection;
+      if (data.predictionTargetPrice !== undefined) payload.prediction_target_price = data.predictionTargetPrice;
+      if (data.predictionTimeframe !== undefined) payload.prediction_timeframe = data.predictionTimeframe;
+      if (data.predictionTimeframeDays !== undefined) payload.prediction_timeframe_days = data.predictionTimeframeDays;
+      if (data.predictionCheckDate !== undefined) payload.prediction_check_date = data.predictionCheckDate;
+      if (data.baselinePrice !== undefined) payload.baseline_price = data.baselinePrice;
+      if (data.baselineFetchedAt !== undefined) payload.baseline_fetched_at = data.baselineFetchedAt;
+      if (data.actualPrice !== undefined) payload.actual_price = data.actualPrice;
+      if (data.predictionAccuracy !== undefined) payload.prediction_accuracy = data.predictionAccuracy;
+      if (data.predictionResult !== undefined) payload.prediction_result = data.predictionResult;
+      if (data.predictionCheckedAt !== undefined) payload.prediction_checked_at = data.predictionCheckedAt;
+      if (data.predictionExplanation !== undefined) payload.prediction_explanation = data.predictionExplanation;
+      const { data: row, error } = await client.from(ADVISOR_SIGNALS_TABLE).update(payload).eq("id", signalId).select("*").maybeSingle();
+      if (error) throw toStoreError(error);
+      return row ? mapSignalRow(row) : null;
+    },
+
+    async listSignalsDueForCheck() {
+      const { data, error } = await client
+        .from(ADVISOR_SIGNALS_TABLE)
+        .select("*")
+        .not("prediction_check_date", "is", null)
+        .lte("prediction_check_date", new Date().toISOString())
+        .is("prediction_checked_at", null);
+      if (error) throw toStoreError(error);
+      return (data ?? []).map(mapSignalRow);
     },
 
     // --- Notifications ---

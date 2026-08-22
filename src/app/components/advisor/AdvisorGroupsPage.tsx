@@ -46,6 +46,7 @@ import {
   Send,
   ChevronDown,
   ChevronUp,
+  BarChart2,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/app/contexts/AuthContext";
@@ -67,6 +68,7 @@ import {
 } from "@/app/lib/api";
 import type { GroupMember, SignalComment, SignalReaction } from "@/app/lib/api";
 import type { AdvisorGroup, AdvisorSignal } from "@/app/types/advisor-groups";
+import { PredictionBadge } from "@/app/components/signals/PredictionBadge";
 
 const REACTION_CONFIG = [
   { key: "like", icon: ThumbsUp, label: "Like" },
@@ -231,6 +233,10 @@ function SignalCardWithComments({
               ))}
             </div>
           )}
+          {/* Prediction accuracy badge */}
+          <div className="mt-2">
+            <PredictionBadge signal={signal} compact />
+          </div>
         </div>
         <div className="flex gap-1">
           <Button variant="ghost" size="icon" onClick={onEdit}>
@@ -633,6 +639,12 @@ export function AdvisorGroupsPage() {
                   <Button>
                     <Plus className="mr-2 h-4 w-4" />
                     New Post
+                  </Button>
+                </Link>
+                <Link to={`/advisor/groups/${viewingGroup.id}/predictions`}>
+                  <Button variant="outline">
+                    <BarChart2 className="mr-2 h-4 w-4" />
+                    Predictions
                   </Button>
                 </Link>
                 <Button variant={showMembers ? "default" : "outline"} onClick={toggleMembersView}>

@@ -6,6 +6,7 @@ export function createEmptyStartupProfile(user?: AuthUser | null): StartupProfil
     id: null,
     userId: user?.id ?? "",
     companyName: "",
+    companyLogo: "",
     tagline: "",
     industry: "",
     foundedYear: "",

@@ -188,7 +188,7 @@ export function LandingPage() {
             className="flex items-center justify-center gap-4"
           >
             {user ? (
-              <Link to="/choose-role">
+              <Link to={user.currentRole ? `/${user.currentRole}/dashboard` : "/choose-role"}>
                 <Button size="lg" className="h-12 px-8 bg-gradient-to-r from-cyan-500 to-purple-500 hover:from-cyan-600 hover:to-purple-600 border-0 shadow-lg shadow-cyan-500/50">
                   Go to Dashboard
                 </Button>
