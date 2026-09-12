@@ -31,6 +31,7 @@ import { PublicAdvisorProfile } from "@/app/components/profiles/PublicAdvisorPro
 import { PublicStartupProfile } from "@/app/components/profiles/PublicStartupProfile";
 import { BrowseGroupsPage } from "@/app/components/shared/BrowseGroupsPage";
 import { PredictionHistoryPage } from "@/app/components/signals/PredictionHistoryPage";
+import { VerificationUploadPage } from "@/app/components/verification/VerificationUploadPage";
 import { DashboardLayout } from "@/app/components/DashboardLayout";
 import { AuthProvider, useAuth } from "@/app/contexts/AuthContext";
 import { ThemeProvider } from "@/app/contexts/ThemeContext";
@@ -100,6 +101,11 @@ export default function App() {
               <Route path="/advisor/groups/:groupId/predictions" element={<GroupPredictionsRoute />} />
               <Route path="/advisor/trainings" element={<AdvisorTrainingsPage />} />
               <Route path="/advisor/trainings/:id" element={<TrainingDetailPage userRole="advisor" />} />
+            </Route>
+
+            {/* Verification — available to all signed-in users */}
+            <Route element={<RequireSignedIn />}>
+              <Route path="/verify" element={<VerificationUploadPage />} />
             </Route>
 
             {/* Public profile routes (any signed-in user) */}

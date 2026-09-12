@@ -6,6 +6,7 @@ import { Button } from "@/app/components/ui/button";
 import { Badge } from "@/app/components/ui/badge";
 import { Progress } from "@/app/components/ui/progress";
 import { CredibilityBadge } from "@/app/components/CredibilityBadge";
+import { VerifiedBadge } from "@/app/components/shared/VerifiedBadge";
 import {
   ArrowLeft,
   MapPin,
@@ -103,6 +104,7 @@ export function PublicAdvisorProfile() {
                   <div className="flex items-center gap-2 mb-1">
                     <h1 className="text-2xl font-semibold">{advisorName}</h1>
                     <CredibilityBadge type="verified" label="Verified" />
+                    {profile.isVerified && <VerifiedBadge verifiedAt={profile.verifiedAt} />}
                   </div>
                   <p className="text-muted-foreground mb-2">{profile.title}</p>
                   <div className="flex items-center gap-4 text-sm text-muted-foreground">

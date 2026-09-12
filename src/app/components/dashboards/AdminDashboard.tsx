@@ -18,6 +18,10 @@ import {
   getUserVerification,
   getVerificationSummary,
   updateUserApproval,
+  adminListVerifications,
+  adminApproveVerification,
+  adminRejectVerification,
+  type ProfileVerification,
 } from "@/app/lib/api";
 import { toast } from "sonner";
 import type { AIVerification, VerificationSummary } from "@/app/lib/api";
@@ -67,6 +71,10 @@ export function AdminDashboard() {
 
   const [userSearch, setUserSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "approved" | "rejected">("all");
+  const [docVerifications, setDocVerifications] = useState<ProfileVerification[]>([]);
+  const [docVerifLoading, setDocVerifLoading] = useState(false);
+  const [docVerifNote, setDocVerifNote] = useState("");
+  const [docVerifBusy, setDocVerifBusy] = useState<string | null>(null);
 
   const pendingProfiles = profiles.filter((profile) => profile.status === "pending");
   const approvedProfiles = profiles.filter((profile) => profile.status === "approved");
@@ -135,7 +143,44 @@ export function AdminDashboard() {
 
   useEffect(() => {
     loadProfiles();
+    loadDocVerifications();
   }, [session?.token]);
+
+  const loadDocVerifications = async () => {
+    if (!session?.token) return;
+    setDocVerifLoading(true);
+    try {
+      const res = await adminListVerifications(session.token);
+      setDocVerifications(res.verifications);
+    } catch { /* ignore */ }
+    finally { setDocVerifLoading(false); }
+  };
+
+  const handleDocApprove = async (id: string) => {
+    if (!session?.token) return;
+    setDocVerifBusy(id);
+    try {
+      await adminApproveVerification(session.token, id, docVerifNote || undefined);
+      toast.success("Verification approved — profile is now verified.");
+      setDocVerifNote("");
+      loadDocVerifications();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to approve.");
+    } finally { setDocVerifBusy(null); }
+  };
+
+  const handleDocReject = async (id: string) => {
+    if (!session?.token) return;
+    setDocVerifBusy(id);
+    try {
+      await adminRejectVerification(session.token, id, docVerifNote || undefined);
+      toast.success("Verification rejected.");
+      setDocVerifNote("");
+      loadDocVerifications();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to reject.");
+    } finally { setDocVerifBusy(null); }
+  };
 
   const getDraft = (profile: AuthUser): ApprovalDraft => {
     return drafts[profile.id] ?? {
@@ -562,6 +607,104 @@ export function AdminDashboard() {
             )}
           </DialogContent>
         </Dialog>
+
+        {/* Document Verification Queue */}
+        <Card className="p-6 mt-8">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-xl font-semibold flex items-center gap-2">
+                <ShieldCheck className="h-5 w-5 text-blue-500" />
+                Profile Verification Queue
+              </h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Documents needing manual review or admin approval
+              </p>
+            </div>
+            <Button variant="outline" size="sm" onClick={loadDocVerifications} disabled={docVerifLoading}>
+              <RefreshCcw className={`h-4 w-4 mr-1 ${docVerifLoading ? "animate-spin" : ""}`} />
+              Refresh
+            </Button>
+          </div>
+
+          {docVerifLoading ? (
+            <p className="text-sm text-muted-foreground">Loading…</p>
+          ) : docVerifications.filter((r) => r.status === "manual_review" || r.status === "pending").length === 0 ? (
+            <div className="rounded-xl border border-dashed p-8 text-center text-muted-foreground text-sm">
+              <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-green-500" />
+              No verifications pending review
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {docVerifications
+                .filter((r) => r.status === "manual_review" || r.status === "pending")
+                .map((r) => (
+                  <div key={r.id} className="border rounded-lg p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-2 flex-wrap">
+                      <div>
+                        <p className="font-medium text-sm capitalize">{r.docType.replace("_", " ")}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{r.claimToVerify}</p>
+                        <p className="text-xs text-muted-foreground">
+                          User ID: {r.userId} · Submitted {new Date(r.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <Badge variant="outline" className="text-orange-600 border-orange-300 bg-orange-50">
+                        {r.status === "manual_review" ? "Manual Review" : "Pending"}
+                      </Badge>
+                    </div>
+
+                    {r.aiReasoning && (
+                      <div className="bg-muted/50 rounded p-2 text-xs text-muted-foreground italic">
+                        AI: "{r.aiReasoning}" {r.aiConfidence !== null ? `(confidence: ${r.aiConfidence}%)` : ""}
+                      </div>
+                    )}
+
+                    {r.docUrl && !r.docUrl.startsWith("local://") && (
+                      <a
+                        href={r.docUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-blue-500 hover:underline flex items-center gap-1"
+                      >
+                        <Eye className="h-3 w-3" /> View Document
+                      </a>
+                    )}
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Admin note (optional)</Label>
+                      <input
+                        className="w-full text-xs border rounded px-2 py-1.5"
+                        placeholder="Add a note for the user…"
+                        value={docVerifBusy === r.id ? docVerifNote : ""}
+                        onChange={(e) => setDocVerifNote(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        className="bg-green-600 hover:bg-green-700 text-white"
+                        disabled={docVerifBusy === r.id}
+                        onClick={() => handleDocApprove(r.id)}
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+                        Approve
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-red-600 border-red-200"
+                        disabled={docVerifBusy === r.id}
+                        onClick={() => handleDocReject(r.id)}
+                      >
+                        <XCircle className="h-3.5 w-3.5 mr-1" />
+                        Reject
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          )}
+        </Card>
 
         {/* All Users Table */}
         <Card className="p-6 mt-8">

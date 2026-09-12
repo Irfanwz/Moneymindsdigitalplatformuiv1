@@ -28,6 +28,9 @@ export interface StartupProfile {
   isPublic: boolean;
   showContactInfo: boolean;
   allowAdvisorInvitations: boolean;
+  isVerified: boolean;
+  verifiedAt: string | null;
+  verificationId: string | null;
   createdAt: string | null;
   updatedAt: string | null;
 }

@@ -22,6 +22,9 @@ export interface InvestorProfile {
   showInvestmentPreferences: boolean;
   allowConnectionRequests: boolean;
   showContactInfo: boolean;
+  isVerified: boolean;
+  verifiedAt: string | null;
+  verificationId: string | null;
   createdAt: string | null;
   updatedAt: string | null;
 }

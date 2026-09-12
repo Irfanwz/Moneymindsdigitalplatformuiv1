@@ -54,6 +54,7 @@ export function createMemoryStore() {
   const payments = [];
   const twoFASecrets = [];
   const verifications = [];
+  const profileVerifications = [];
 
   return {
     mode: "memory",
@@ -967,6 +968,61 @@ export function createMemoryStore() {
         review: verifications.filter((v) => v.recommendation === "review").length,
         reject: verifications.filter((v) => v.recommendation === "reject").length,
       };
+    },
+
+    // --- Profile Verifications (AI-Verified Profiles) ---
+
+    async createProfileVerification({ userId, docType, docUrl, claimToVerify, status }) {
+      const record = {
+        id: randomUUID(),
+        userId,
+        docType,
+        docUrl,
+        claimToVerify,
+        status: status || "pending",
+        aiConfidence: null,
+        aiReasoning: null,
+        aiExtracted: null,
+        reviewedBy: null,
+        reviewedAt: null,
+        adminNote: null,
+        createdAt: now(),
+        updatedAt: now(),
+      };
+      profileVerifications.push(record);
+      return { ...record };
+    },
+
+    async getProfileVerification(id) {
+      const r = profileVerifications.find((r) => r.id === id);
+      return r ? { ...r } : null;
+    },
+
+    async updateProfileVerification(id, data) {
+      const r = profileVerifications.find((r) => r.id === id);
+      if (!r) return null;
+      Object.assign(r, { ...data, updatedAt: now() });
+      return { ...r };
+    },
+
+    async listProfileVerifications({ userId, status } = {}) {
+      return profileVerifications
+        .filter((r) => !userId || r.userId === userId)
+        .filter((r) => !status || r.status === status)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+        .map((r) => ({ ...r }));
+    },
+
+    async setProfileVerified(userId, verificationId) {
+      const ts = now();
+      for (const list of [advisorProfiles, startupProfiles, investorProfiles]) {
+        const p = list.find((p) => p.userId === userId);
+        if (p) {
+          p.isVerified = true;
+          p.verifiedAt = ts;
+          p.verificationId = verificationId;
+        }
+      }
     },
   };
 }

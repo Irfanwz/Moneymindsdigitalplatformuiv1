@@ -42,6 +42,9 @@ export interface AdvisorProfile {
   showContactInfo: boolean;
   allowConnectionRequests: boolean;
   showTestimonials: boolean;
+  isVerified: boolean;
+  verifiedAt: string | null;
+  verificationId: string | null;
   createdAt: string | null;
   updatedAt: string | null;
 }

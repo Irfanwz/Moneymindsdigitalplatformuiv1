@@ -19,6 +19,7 @@ import { createTwoFARouter } from "./routes/twofa.js";
 import { createExportRouter } from "./routes/export.js";
 import { createMarketDataRouter } from "./routes/marketData.js";
 import { createPredictionsRouter } from "./routes/predictions.js";
+import { createVerificationRouter, createAdminVerificationRouter } from "./routes/verification.js";
 import { startPredictionCron } from "./cron/predictionCron.js";
 
 export function createApp(store) {
@@ -50,6 +51,8 @@ export function createApp(store) {
   app.use("/api/export", createExportRouter(store));
   app.use("/api/market", createMarketDataRouter());
   app.use("/api", createPredictionsRouter(store));
+  app.use("/api/verify", createVerificationRouter(store));
+  app.use("/api/admin/verifications", createAdminVerificationRouter(store));
 
   // Start daily prediction accuracy checker (9 AM every day)
   startPredictionCron(store);

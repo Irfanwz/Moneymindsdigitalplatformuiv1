@@ -12,6 +12,8 @@ import { getAdvisorProfile } from "@/app/lib/api";
 import { createEmptyAdvisorProfile } from "@/app/lib/advisor-profile";
 import type { AdvisorProfile as AdvisorProfileType } from "@/app/types/advisor-profile";
 import { AdvisorAccuracyCard } from "@/app/components/signals/AdvisorAccuracyCard";
+import { VerifiedBadge } from "@/app/components/shared/VerifiedBadge";
+import { VerificationStatusSection } from "@/app/components/verification/VerificationStatusSection";
 
 const SPECIALIZATION_LABELS: Record<string, string> = {
   "financial-planning": "Financial Planning",
@@ -81,6 +83,7 @@ export function AdvisorProfile() {
                   <div className="flex items-center gap-3 mb-2">
                     <h1 className="text-3xl font-bold text-slate-900 dark:text-white">{userName}</h1>
                     <CredibilityBadge type="verified" label="Expert Verified" />
+                    {profile.isVerified && <VerifiedBadge verifiedAt={profile.verifiedAt} size="lg" />}
                   </div>
                   {profile.title && (
                     <p className="text-lg text-slate-600 dark:text-slate-300 mb-4">{profile.title}</p>
@@ -258,6 +261,12 @@ export function AdvisorProfile() {
                 className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
               />
             )}
+
+            {/* Verification status */}
+            <VerificationStatusSection
+              isVerified={profile.isVerified}
+              verifiedAt={profile.verifiedAt}
+            />
 
             {profile.specialization && (
               <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">

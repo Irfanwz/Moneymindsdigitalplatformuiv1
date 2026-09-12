@@ -10,7 +10,7 @@
     "dev:server": "node --watch server/index.js",
     "dev:full": "concurrently -k \"npm:dev:server\" \"npm:dev:client\"",
     "start:server": "node server/index.js",
-    "test": "vitest run",
+    "test": "vitest run --sequence.concurrent=false",
     "test:watch": "vitest"
   },
   "dependencies": {

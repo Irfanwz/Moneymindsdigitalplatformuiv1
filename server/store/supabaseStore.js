@@ -16,6 +16,7 @@ const NOTIFICATIONS_TABLE = "notifications";
 const CONNECTIONS_TABLE = "connections";
 const PAYMENTS_TABLE = "payments";
 const AI_VERIFICATIONS_TABLE = "ai_verifications";
+const PROFILE_VERIFICATIONS_TABLE = "profile_verifications";
 
 function mapRow(row) {
   return {
@@ -1370,5 +1371,82 @@ export function createSupabaseStore({ supabaseUrl, supabaseServiceRoleKey }) {
         reject: rows.filter((r) => r.recommendation === "reject").length,
       };
     },
+
+    // --- Profile Verifications (AI-Verified Profiles) ---
+
+    async createProfileVerification({ userId, docType, docUrl, claimToVerify, status }) {
+      const { data, error } = await client
+        .from(PROFILE_VERIFICATIONS_TABLE)
+        .insert({ user_id: userId, doc_type: docType, doc_url: docUrl, claim_to_verify: claimToVerify, status: status || "pending" })
+        .select()
+        .single();
+      if (error) throw toStoreError(error);
+      return mapProfileVerificationRow(data);
+    },
+
+    async getProfileVerification(id) {
+      const { data, error } = await client.from(PROFILE_VERIFICATIONS_TABLE).select("*").eq("id", id).maybeSingle();
+      if (error) throw toStoreError(error);
+      return data ? mapProfileVerificationRow(data) : null;
+    },
+
+    async updateProfileVerification(id, data) {
+      const update = {};
+      if (data.status !== undefined)       update.status         = data.status;
+      if (data.aiConfidence !== undefined) update.ai_confidence  = data.aiConfidence;
+      if (data.aiReasoning !== undefined)  update.ai_reasoning   = data.aiReasoning;
+      if (data.aiExtracted !== undefined)  update.ai_extracted   = data.aiExtracted;
+      if (data.reviewedBy !== undefined)   update.reviewed_by    = data.reviewedBy;
+      if (data.reviewedAt !== undefined)   update.reviewed_at    = data.reviewedAt;
+      if (data.adminNote !== undefined)    update.admin_note     = data.adminNote;
+      update.updated_at = new Date().toISOString();
+
+      const { data: row, error } = await client
+        .from(PROFILE_VERIFICATIONS_TABLE)
+        .update(update)
+        .eq("id", id)
+        .select()
+        .single();
+      if (error) throw toStoreError(error);
+      return mapProfileVerificationRow(row);
+    },
+
+    async listProfileVerifications({ userId, status } = {}) {
+      let query = client.from(PROFILE_VERIFICATIONS_TABLE).select("*").order("created_at", { ascending: false });
+      if (userId) query = query.eq("user_id", userId);
+      if (status) query = query.eq("status", status);
+      const { data, error } = await query;
+      if (error) throw toStoreError(error);
+      return (data ?? []).map(mapProfileVerificationRow);
+    },
+
+    async setProfileVerified(userId, verificationId) {
+      const ts = new Date().toISOString();
+      const update = { is_verified: true, verified_at: ts, verification_id: verificationId };
+      await Promise.allSettled([
+        client.from(ADVISOR_PROFILES_TABLE).update(update).eq("user_id", userId),
+        client.from(STARTUP_PROFILES_TABLE).update(update).eq("user_id", userId),
+        client.from(INVESTOR_PROFILES_TABLE).update(update).eq("user_id", userId),
+      ]);
+    },
+  };
+}
+
+function mapProfileVerificationRow(row) {
+  return {
+    id:            row.id,
+    userId:        row.user_id,
+    docType:       row.doc_type,
+    docUrl:        row.doc_url,
+    claimToVerify: row.claim_to_verify,
+    status:        row.status,
+    aiConfidence:  row.ai_confidence ?? null,
+    aiReasoning:   row.ai_reasoning ?? null,
+    aiExtracted:   row.ai_extracted ?? null,
+    reviewedBy:    row.reviewed_by ?? null,
+    reviewedAt:    row.reviewed_at ?? null,
+    adminNote:     row.admin_note ?? null,
+    createdAt:     row.created_at,
+    updatedAt:     row.updated_at,
   };
 }

@@ -684,3 +684,68 @@ export function adminCheckSignalPrediction(token: string, signalId: string) {
     { method: "POST", headers: { Authorization: `Bearer ${token}` } }
   );
 }
+
+// --- Profile Verification (AI-Verified Profiles) ---
+
+export interface ProfileVerification {
+  id: string;
+  userId: string;
+  docType: "certificate" | "degree" | "business_reg" | "linkedin" | "other";
+  docUrl: string;
+  claimToVerify: string;
+  status: "pending" | "analyzing" | "verified" | "rejected" | "manual_review";
+  aiConfidence: number | null;
+  aiReasoning: string | null;
+  aiExtracted: Record<string, unknown> | null;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  adminNote: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export function uploadVerificationDocument(
+  token: string,
+  file: File,
+  docType: string,
+  claimToVerify: string
+) {
+  const formData = new FormData();
+  formData.append("document", file);
+  formData.append("docType", docType);
+  formData.append("claimToVerify", claimToVerify);
+  return request<{ message: string; verificationId: string; status: string }>("/api/verify/upload", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
+  });
+}
+
+export function getMyVerifications(token: string) {
+  return request<{ verifications: ProfileVerification[] }>("/api/verify/my", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export function adminListVerifications(token: string, status?: string) {
+  const qs = status ? `?status=${encodeURIComponent(status)}` : "";
+  return request<{ verifications: ProfileVerification[] }>(`/api/admin/verifications${qs}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export function adminApproveVerification(token: string, id: string, adminNote?: string) {
+  return request<{ message: string }>(`/api/admin/verifications/${id}/approve`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ adminNote }),
+  });
+}
+
+export function adminRejectVerification(token: string, id: string, adminNote?: string) {
+  return request<{ message: string }>(`/api/admin/verifications/${id}/reject`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ adminNote }),
+  });
+}
