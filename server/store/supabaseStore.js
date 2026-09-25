@@ -17,6 +17,7 @@ const CONNECTIONS_TABLE = "connections";
 const PAYMENTS_TABLE = "payments";
 const AI_VERIFICATIONS_TABLE = "ai_verifications";
 const PROFILE_VERIFICATIONS_TABLE = "profile_verifications";
+const CREDIBILITY_HISTORY_TABLE = "credibility_scores_history";
 
 function mapRow(row) {
   return {
@@ -1428,6 +1429,62 @@ export function createSupabaseStore({ supabaseUrl, supabaseServiceRoleKey }) {
         client.from(STARTUP_PROFILES_TABLE).update(update).eq("user_id", userId),
         client.from(INVESTOR_PROFILES_TABLE).update(update).eq("user_id", userId),
       ]);
+    },
+  };
+}
+
+    // --- Credibility Score ---
+
+    async updateAdvisorCredibility(advisorId, { credibilityScore, credibilityTier, credibilityUpdatedAt }) {
+      const { error } = await client
+        .from(ADVISOR_PROFILES_TABLE)
+        .update({
+          credibility_score: credibilityScore,
+          credibility_tier: credibilityTier,
+          credibility_updated_at: credibilityUpdatedAt,
+        })
+        .eq("user_id", advisorId);
+      if (error) throw toStoreError(error);
+    },
+
+    async addCredibilityHistory(advisorId, { score, tier, totalPredictions, breakdown }) {
+      const { error } = await client
+        .from(CREDIBILITY_HISTORY_TABLE)
+        .insert({
+          advisor_id: advisorId,
+          score,
+          tier,
+          total_predictions: totalPredictions,
+          breakdown,
+        });
+      if (error) throw toStoreError(error);
+    },
+
+    async getCredibilityHistory(advisorId, limit = 90) {
+      const { data, error } = await client
+        .from(CREDIBILITY_HISTORY_TABLE)
+        .select("*")
+        .eq("advisor_id", advisorId)
+        .order("recorded_at", { ascending: false })
+        .limit(limit);
+      if (error) throw toStoreError(error);
+      return (data ?? []).map((row) => ({
+        id: row.id,
+        advisorId: row.advisor_id,
+        score: row.score,
+        tier: row.tier,
+        totalPredictions: row.total_predictions,
+        breakdown: row.breakdown,
+        recordedAt: row.recorded_at,
+      }));
+    },
+
+    async listAdvisorIds() {
+      const { data, error } = await client
+        .from(ADVISOR_PROFILES_TABLE)
+        .select("user_id");
+      if (error) throw toStoreError(error);
+      return (data ?? []).map((r) => r.user_id);
     },
   };
 }

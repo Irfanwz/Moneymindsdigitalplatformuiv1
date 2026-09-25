@@ -55,6 +55,7 @@ export function createMemoryStore() {
   const twoFASecrets = [];
   const verifications = [];
   const profileVerifications = [];
+  const credibilityHistory = [];
 
   return {
     mode: "memory",
@@ -1023,6 +1024,41 @@ export function createMemoryStore() {
           p.verificationId = verificationId;
         }
       }
+    },
+
+    // --- Credibility Score ---
+
+    async updateAdvisorCredibility(advisorId, { credibilityScore, credibilityTier, credibilityUpdatedAt }) {
+      const profile = advisorProfiles.find((p) => p.userId === advisorId);
+      if (!profile) return null;
+      profile.credibilityScore = credibilityScore;
+      profile.credibilityTier = credibilityTier;
+      profile.credibilityUpdatedAt = credibilityUpdatedAt;
+      return cloneAdvisorProfile(profile);
+    },
+
+    async addCredibilityHistory(advisorId, { score, tier, totalPredictions, breakdown }) {
+      credibilityHistory.push({
+        id: randomUUID(),
+        advisorId,
+        score,
+        tier,
+        totalPredictions,
+        breakdown: { ...breakdown },
+        recordedAt: now(),
+      });
+    },
+
+    async getCredibilityHistory(advisorId, limit = 90) {
+      return credibilityHistory
+        .filter((h) => h.advisorId === advisorId)
+        .sort((a, b) => b.recordedAt.localeCompare(a.recordedAt))
+        .slice(0, limit)
+        .map((h) => ({ ...h, breakdown: { ...h.breakdown } }));
+    },
+
+    async listAdvisorIds() {
+      return advisorProfiles.map((p) => p.userId);
     },
   };
 }

@@ -21,6 +21,7 @@ import { createMarketDataRouter } from "./routes/marketData.js";
 import { createPredictionsRouter } from "./routes/predictions.js";
 import { createVerificationRouter, createAdminVerificationRouter } from "./routes/verification.js";
 import { startPredictionCron } from "./cron/predictionCron.js";
+import { startCredibilityCron } from "./cron/credibilityCron.js";
 
 export function createApp(store) {
   const app = express();
@@ -56,6 +57,8 @@ export function createApp(store) {
 
   // Start daily prediction accuracy checker (9 AM every day)
   startPredictionCron(store);
+  // Start daily credibility score recalculation (9:30 AM — after predictions)
+  startCredibilityCron(store);
 
   if (process.env.NODE_ENV === "production") {
     const distPath = path.resolve(import.meta.dirname, "..", "dist");
