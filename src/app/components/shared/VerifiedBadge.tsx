@@ -1,6 +1,6 @@
 import { BadgeCheck } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip";
-import { cn } from "@/app/lib/utils";
+import { cn } from "@/app/components/ui/utils";
 
 interface VerifiedBadgeProps {
   verifiedAt?: string | null;

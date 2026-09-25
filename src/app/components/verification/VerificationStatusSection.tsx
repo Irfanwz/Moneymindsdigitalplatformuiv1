@@ -6,11 +6,11 @@ import { useState, useEffect } from "react";
 import { BadgeCheck, Clock, AlertCircle, XCircle, ExternalLink } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { Card, CardContent } from "@/app/components/ui/card";
-import { useAuth } from "@/app/hooks/useAuth";
+import { useAuth } from "@/app/contexts/AuthContext";
 import { getMyVerifications, type ProfileVerification } from "@/app/lib/api";
 import { VerifiedBadge } from "@/app/components/shared/VerifiedBadge";
 import { Link } from "react-router-dom";
-import { cn } from "@/app/lib/utils";
+import { cn } from "@/app/components/ui/utils";
 
 interface VerificationStatusSectionProps {
   isVerified?: boolean;

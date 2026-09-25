@@ -4,9 +4,9 @@ import { Button } from "@/app/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/app/components/ui/card";
 import { Label } from "@/app/components/ui/label";
 import { Textarea } from "@/app/components/ui/textarea";
-import { useAuth } from "@/app/hooks/useAuth";
+import { useAuth } from "@/app/contexts/AuthContext";
 import { uploadVerificationDocument, getMyVerifications, type ProfileVerification } from "@/app/lib/api";
-import { cn } from "@/app/lib/utils";
+import { cn } from "@/app/components/ui/utils";
 
 const DOC_TYPES = [
   { value: "certificate", label: "Professional Certificate", description: "CFA, CPA, CFP, or other professional cert" },
