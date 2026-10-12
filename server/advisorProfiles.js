@@ -88,6 +88,9 @@ export function buildAdvisorProfile(user, profile) {
     showContactInfo: profile?.showContactInfo ?? true,
     allowConnectionRequests: profile?.allowConnectionRequests ?? true,
     showTestimonials: profile?.showTestimonials ?? true,
+    credibilityScore: profile?.credibilityScore ?? null,
+    credibilityTier: profile?.credibilityTier ?? null,
+    credibilityUpdatedAt: profile?.credibilityUpdatedAt ?? null,
     createdAt: profile?.createdAt ?? null,
     updatedAt: profile?.updatedAt ?? null,
   };

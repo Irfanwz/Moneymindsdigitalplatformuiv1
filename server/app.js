@@ -20,6 +20,7 @@ import { createExportRouter } from "./routes/export.js";
 import { createMarketDataRouter } from "./routes/marketData.js";
 import { createPredictionsRouter } from "./routes/predictions.js";
 import { createVerificationRouter, createAdminVerificationRouter } from "./routes/verification.js";
+import { createCredibilityRouter } from "./routes/credibility.js";
 import { startPredictionCron } from "./cron/predictionCron.js";
 import { startCredibilityCron } from "./cron/credibilityCron.js";
 
@@ -55,6 +56,7 @@ export function createApp(store) {
   app.use("/api", createPredictionsRouter(store));
   app.use("/api/verify", createVerificationRouter(store));
   app.use("/api/admin/verifications", createAdminVerificationRouter(store));
+  app.use("/api/credibility", createCredibilityRouter(store));
 
   // Start daily prediction accuracy checker (9 AM every day)
   startPredictionCron(store);

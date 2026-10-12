@@ -45,6 +45,9 @@ export interface AdvisorProfile {
   isVerified: boolean;
   verifiedAt: string | null;
   verificationId: string | null;
+  credibilityScore: number | null;
+  credibilityTier: string | null;
+  credibilityUpdatedAt: string | null;
   createdAt: string | null;
   updatedAt: string | null;
 }

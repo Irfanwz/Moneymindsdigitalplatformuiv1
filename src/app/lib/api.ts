@@ -749,3 +749,75 @@ export function adminRejectVerification(token: string, id: string, adminNote?: s
     body: JSON.stringify({ adminNote }),
   });
 }
+
+// --- Credibility Score ---
+
+export interface CredibilityScore {
+  score: number | null;
+  tier: string | null;
+  label: string | null;
+  color: string | null;
+  maxJoinFee: number;
+  maxMonthlyFee: number;
+  updatedAt: string | null;
+}
+
+export interface CredibilityHistoryEntry {
+  id: string;
+  advisorId: string;
+  score: number;
+  tier: string;
+  totalPredictions: number;
+  breakdown: { perfect: number; late: number; dateOnly: number; incorrect: number };
+  recordedAt: string;
+}
+
+export interface CredibilityTier {
+  tier: string;
+  label: string;
+  color: string;
+  minScore: number;
+  maxJoinFee: string;
+  maxMonthlyFee: string;
+}
+
+export interface FeeCapCheck {
+  allowed: boolean;
+  reason: string | null;
+  maxJoinFee: number;
+  maxMonthlyFee: number;
+}
+
+export function getMyCredibility(token: string) {
+  return request<CredibilityScore>("/api/credibility/me", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export function getCredibilityHistory(token: string, limit?: number) {
+  const qs = limit ? `?limit=${limit}` : "";
+  return request<{ history: CredibilityHistoryEntry[] }>(`/api/credibility/history${qs}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export function getCredibilityTiers(token: string) {
+  return request<{ tiers: CredibilityTier[] }>("/api/credibility/tiers", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export function recalculateCredibility(token: string) {
+  return request<{ message: string; score: number | null; tier: string | null; label: string | null; breakdown: Record<string, number>; totalPredictions: number }>("/api/credibility/recalculate", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export function checkFeeCap(token: string, joiningFee: number, monthlyFee: number) {
+  return request<FeeCapCheck>("/api/credibility/check-fee", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ joiningFee, monthlyFee }),
+  });
+}

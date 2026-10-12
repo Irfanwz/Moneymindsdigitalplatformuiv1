@@ -206,6 +206,9 @@ function mapAdvisorProfileRow(row) {
     showContactInfo: row.show_contact_info ?? true,
     allowConnectionRequests: row.allow_connection_requests ?? true,
     showTestimonials: row.show_testimonials ?? true,
+    credibilityScore: row.credibility_score ?? null,
+    credibilityTier: row.credibility_tier ?? null,
+    credibilityUpdatedAt: row.credibility_updated_at ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

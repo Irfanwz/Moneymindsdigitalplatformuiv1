@@ -3,6 +3,7 @@ import { normalizeGroupInput, normalizeSignalInput } from "../advisorGroups.js";
 import { createAuthenticate, requireApprovedRole } from "../middleware/auth.js";
 import { paginate, trimText } from "../utils.js";
 import { scheduleSignalPrediction } from "../services/predictionCheckerService.js";
+import { validateFeeCap } from "../services/credibilityService.js";
 
 export function createGroupsRouter(store) {
   const router = Router();
@@ -29,6 +30,18 @@ export function createGroupsRouter(store) {
     try {
       const input = normalizeGroupInput(req.body);
       if (input.name.length < 2) return res.status(400).json({ message: "Group name is required." });
+
+      // Enforce credibility-based fee cap
+      const joiningFee = parseFloat(input.joiningFee) || 0;
+      const monthlyFee = parseFloat(input.monthlyFee) || 0;
+      if (joiningFee > 0 || monthlyFee > 0) {
+        const profile = await store.findAdvisorProfileByUserId(req.auth.userId);
+        const feeCheck = validateFeeCap(profile?.credibilityScore ?? null, joiningFee, monthlyFee);
+        if (!feeCheck.allowed) {
+          return res.status(403).json({ message: feeCheck.reason, maxJoinFee: feeCheck.maxJoinFee, maxMonthlyFee: feeCheck.maxMonthlyFee });
+        }
+      }
+
       const group = await store.createGroup(req.auth.userId, input);
       res.status(201).json({ message: "Group created successfully.", group });
     } catch (error) { next(error); }
@@ -56,6 +69,18 @@ export function createGroupsRouter(store) {
       if (!existing || existing.advisorId !== req.auth.userId) return res.status(404).json({ message: "Group not found." });
       const input = normalizeGroupInput(req.body);
       if (input.name.length < 2) return res.status(400).json({ message: "Group name is required." });
+
+      // Enforce credibility-based fee cap
+      const joiningFee = parseFloat(input.joiningFee) || 0;
+      const monthlyFee = parseFloat(input.monthlyFee) || 0;
+      if (joiningFee > 0 || monthlyFee > 0) {
+        const profile = await store.findAdvisorProfileByUserId(req.auth.userId);
+        const feeCheck = validateFeeCap(profile?.credibilityScore ?? null, joiningFee, monthlyFee);
+        if (!feeCheck.allowed) {
+          return res.status(403).json({ message: feeCheck.reason, maxJoinFee: feeCheck.maxJoinFee, maxMonthlyFee: feeCheck.maxMonthlyFee });
+        }
+      }
+
       const group = await store.updateGroup(groupId, input);
       res.json({ message: "Group updated successfully.", group });
     } catch (error) { next(error); }
