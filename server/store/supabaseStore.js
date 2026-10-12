@@ -1430,8 +1430,6 @@ export function createSupabaseStore({ supabaseUrl, supabaseServiceRoleKey }) {
         client.from(INVESTOR_PROFILES_TABLE).update(update).eq("user_id", userId),
       ]);
     },
-  };
-}
 
     // --- Credibility Score ---
 
