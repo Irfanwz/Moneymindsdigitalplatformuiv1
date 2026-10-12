@@ -25,6 +25,7 @@ import { startCredibilityCron } from "./cron/credibilityCron.js";
 
 export function createApp(store) {
   const app = express();
+  app.set('trust proxy', 1);
 
   app.use(helmet());
   app.use(cors({ origin: config.clientOrigin, credentials: true }));
