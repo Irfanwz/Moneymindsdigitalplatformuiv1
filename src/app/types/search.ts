@@ -25,4 +25,6 @@ export interface AdvisorSearchResult {
   availability: string;
   industries: string[];
   expertiseAreas: { area: string; level: number }[];
+  credibilityScore: number | null;
+  credibilityTier: string | null;
 }

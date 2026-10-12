@@ -714,7 +714,7 @@ export function createSupabaseStore({ supabaseUrl, supabaseServiceRoleKey }) {
     async searchAdvisors({ industry, specialization, query } = {}) {
       let q = client
         .from(ADVISOR_PROFILES_TABLE)
-        .select("id, user_id, title, bio, years_experience, clients_helped, specialization, typical_rate, availability, industries, expertise_areas")
+        .select("id, user_id, title, bio, years_experience, clients_helped, specialization, typical_rate, availability, industries, expertise_areas, credibility_score, credibility_tier")
         .eq("is_public", true);
 
       if (industry) {
@@ -753,6 +753,8 @@ export function createSupabaseStore({ supabaseUrl, supabaseServiceRoleKey }) {
           availability: row.availability ?? "",
           industries: row.industries ?? [],
           expertiseAreas: row.expertise_areas ?? [],
+          credibilityScore: row.credibility_score ?? null,
+          credibilityTier: row.credibility_tier ?? null,
         };
       });
     },

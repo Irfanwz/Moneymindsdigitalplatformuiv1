@@ -35,6 +35,12 @@ export function createEmptyAdvisorProfile(user?: AuthUser | null): AdvisorProfil
     showContactInfo: true,
     allowConnectionRequests: true,
     showTestimonials: true,
+    isVerified: false,
+    verifiedAt: null,
+    verificationId: null,
+    credibilityScore: null,
+    credibilityTier: null,
+    credibilityUpdatedAt: null,
     createdAt: null,
     updatedAt: null,
   };

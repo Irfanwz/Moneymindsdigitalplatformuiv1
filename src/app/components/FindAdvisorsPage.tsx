@@ -70,7 +70,11 @@ function AdvisorCard({ advisor, onViewProfile, onConnect }: { advisor: AdvisorSe
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1 flex-wrap">
                 <h3 className="font-semibold text-lg">{advisor.name}</h3>
-                <CredibilityBadge type="verified" label="Verified" />
+                {advisor.credibilityScore !== null ? (
+                  <CredibilityBadge score={advisor.credibilityScore} tier={advisor.credibilityTier} />
+                ) : (
+                  <CredibilityBadge type="verified" label="Verified" />
+                )}
               </div>
               <p className="text-sm text-muted-foreground mb-1">{advisor.title}</p>
               <div className="flex items-center gap-4 text-sm text-muted-foreground">
@@ -86,10 +90,12 @@ function AdvisorCard({ advisor, onViewProfile, onConnect }: { advisor: AdvisorSe
               <div className="flex items-center gap-2 mb-1">
                 <Award className="h-5 w-5 text-accent" />
                 <div className="text-2xl font-semibold text-accent">
-                  {Math.min(99, 75 + (advisor.yearsExperience ?? 0) + Math.floor((advisor.clientsHelped ?? 0) / 10))}
+                  {advisor.credibilityScore ?? "—"}
                 </div>
               </div>
-              <div className="text-xs text-muted-foreground">Credibility Score</div>
+              <div className="text-xs text-muted-foreground">
+                {advisor.credibilityTier ? `${advisor.credibilityTier.charAt(0).toUpperCase()}${advisor.credibilityTier.slice(1)}` : "Credibility Score"}
+              </div>
             </div>
           </div>
 
@@ -194,10 +200,8 @@ export function FindAdvisorsPage({ userRole }: FindAdvisorsPageProps) {
   const sortedAdvisors = [...advisors].sort((a, b) => {
     if (sortBy === "experience") return (b.yearsExperience ?? 0) - (a.yearsExperience ?? 0);
     if (sortBy === "clients") return (b.clientsHelped ?? 0) - (a.clientsHelped ?? 0);
-    // default: credibility (approximate)
-    const scoreA = 75 + (a.yearsExperience ?? 0) + Math.floor((a.clientsHelped ?? 0) / 10);
-    const scoreB = 75 + (b.yearsExperience ?? 0) + Math.floor((b.clientsHelped ?? 0) / 10);
-    return scoreB - scoreA;
+    // default: credibility score (real)
+    return (b.credibilityScore ?? 0) - (a.credibilityScore ?? 0);
   });
 
   return (

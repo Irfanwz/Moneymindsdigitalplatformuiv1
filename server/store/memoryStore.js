@@ -362,6 +362,8 @@ export function createMemoryStore() {
           availability: profile.availability ?? "",
           industries: [...(profile.industries || [])],
           expertiseAreas: (profile.expertiseAreas || []).map((e) => ({ ...e })),
+          credibilityScore: profile.credibilityScore ?? null,
+          credibilityTier: profile.credibilityTier ?? null,
         });
       }
       return results;

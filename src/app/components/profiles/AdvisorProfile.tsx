@@ -14,6 +14,7 @@ import type { AdvisorProfile as AdvisorProfileType } from "@/app/types/advisor-p
 import { AdvisorAccuracyCard } from "@/app/components/signals/AdvisorAccuracyCard";
 import { VerifiedBadge } from "@/app/components/shared/VerifiedBadge";
 import { VerificationStatusSection } from "@/app/components/verification/VerificationStatusSection";
+import { CredibilityScoreCard } from "@/app/components/credibility/CredibilityScoreCard";
 
 const SPECIALIZATION_LABELS: Record<string, string> = {
   "financial-planning": "Financial Planning",
@@ -82,7 +83,7 @@ export function AdvisorProfile() {
                 <div>
                   <div className="flex items-center gap-3 mb-2">
                     <h1 className="text-3xl font-bold text-slate-900 dark:text-white">{userName}</h1>
-                    <CredibilityBadge type="verified" label="Expert Verified" />
+                    <CredibilityBadge score={profile.credibilityScore} tier={profile.credibilityTier} />
                     {profile.isVerified && <VerifiedBadge verifiedAt={profile.verifiedAt} size="lg" />}
                   </div>
                   {profile.title && (
@@ -253,6 +254,12 @@ export function AdvisorProfile() {
                 </Button>
               </CardContent>
             </Card>
+
+            {/* Credibility Score */}
+            <CredibilityScoreCard
+              showActions
+              className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+            />
 
             {/* Prediction accuracy track record */}
             {user?.id && (

@@ -32,6 +32,7 @@ import { PublicStartupProfile } from "@/app/components/profiles/PublicStartupPro
 import { BrowseGroupsPage } from "@/app/components/shared/BrowseGroupsPage";
 import { PredictionHistoryPage } from "@/app/components/signals/PredictionHistoryPage";
 import { VerificationUploadPage } from "@/app/components/verification/VerificationUploadPage";
+import { CredibilityScorePage } from "@/app/components/credibility/CredibilityScorePage";
 import { DashboardLayout } from "@/app/components/DashboardLayout";
 import { AuthProvider, useAuth } from "@/app/contexts/AuthContext";
 import { ThemeProvider } from "@/app/contexts/ThemeContext";
@@ -101,6 +102,7 @@ export default function App() {
               <Route path="/advisor/groups/:groupId/predictions" element={<GroupPredictionsRoute />} />
               <Route path="/advisor/trainings" element={<AdvisorTrainingsPage />} />
               <Route path="/advisor/trainings/:id" element={<TrainingDetailPage userRole="advisor" />} />
+              <Route path="/advisor/credibility" element={<CredibilityScorePage />} />
             </Route>
 
             {/* Verification — available to all signed-in users */}

@@ -104,6 +104,7 @@ export function Header({ userRole, userName }: HeaderProps) {
           { to: "/advisor/dashboard", label: "Dashboard" },
           { to: "/advisor/profile", label: "Profile" },
           { to: "/advisor/groups", label: "Groups" },
+          { to: "/advisor/credibility", label: "Credibility" },
           { to: "/advisor/trainings", label: "Trainings" },
         ];
       case "admin":

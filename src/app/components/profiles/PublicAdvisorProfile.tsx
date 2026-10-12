@@ -7,6 +7,7 @@ import { Badge } from "@/app/components/ui/badge";
 import { Progress } from "@/app/components/ui/progress";
 import { CredibilityBadge } from "@/app/components/CredibilityBadge";
 import { VerifiedBadge } from "@/app/components/shared/VerifiedBadge";
+import { CredibilityScoreCard } from "@/app/components/credibility/CredibilityScoreCard";
 import {
   ArrowLeft,
   MapPin,
@@ -103,7 +104,7 @@ export function PublicAdvisorProfile() {
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     <h1 className="text-2xl font-semibold">{advisorName}</h1>
-                    <CredibilityBadge type="verified" label="Verified" />
+                    <CredibilityBadge score={profile.credibilityScore} tier={profile.credibilityTier} />
                     {profile.isVerified && <VerifiedBadge verifiedAt={profile.verifiedAt} />}
                   </div>
                   <p className="text-muted-foreground mb-2">{profile.title}</p>
@@ -190,6 +191,13 @@ export function PublicAdvisorProfile() {
 
           {/* Sidebar */}
           <div className="space-y-6">
+            {/* Credibility Score */}
+            <CredibilityScoreCard
+              score={profile.credibilityScore}
+              tier={profile.credibilityTier}
+              updatedAt={profile.credibilityUpdatedAt}
+            />
+
             {/* Quick Info */}
             <Card className="p-6">
               <h3 className="font-semibold mb-4">Details</h3>
