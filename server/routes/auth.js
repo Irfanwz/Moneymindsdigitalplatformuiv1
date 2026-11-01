@@ -103,10 +103,12 @@ export function createAuthRouter(store) {
         });
       }
 
-      const twofa = await store.getTwoFASecret(user.id);
-      if (twofa?.enabled) {
-        const code=trimText(req.body?.otp);
-        if (!/^\d{6}$/.test(code) || !(await verifyOtp({token:code,secret:twofa.secret})).valid) return res.status(401).json({code:'TWO_FACTOR_REQUIRED',message:'Enter the current six-digit code from your authenticator app.'});
+      if (config.twoFactorEnabled) {
+        const twofa = await store.getTwoFASecret(user.id);
+        if (twofa?.enabled) {
+          const code=trimText(req.body?.otp);
+          if (!/^\d{6}$/.test(code) || !(await verifyOtp({token:code,secret:twofa.secret})).valid) return res.status(401).json({code:'TWO_FACTOR_REQUIRED',message:'Enter the current six-digit code from your authenticator app.'});
+        }
       }
       const session = buildSessionResponse(user);
       res.cookie("mm_token", session.token, COOKIE_OPTIONS);

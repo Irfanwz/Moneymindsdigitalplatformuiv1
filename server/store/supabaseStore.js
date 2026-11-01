@@ -21,6 +21,11 @@ const PAYMENTS_TABLE = "payments";
 const AI_VERIFICATIONS_TABLE = "ai_verifications";
 const PROFILE_VERIFICATIONS_TABLE = "profile_verifications";
 const CREDIBILITY_HISTORY_TABLE = "credibility_scores_history";
+const TWO_FA_SECRETS_TABLE = "two_fa_secrets";
+
+function mapTwoFASecret(row) {
+  return row ? { userId: row.user_id, secret: row.secret, enabled: row.enabled } : null;
+}
 
 function mapRow(row) {
   return {
@@ -1330,6 +1335,28 @@ export function createSupabaseStore({ supabaseUrl, supabaseServiceRoleKey }) {
       const { data, error } = await client.from(PAYMENTS_TABLE).select("id").eq("user_id", userId).eq("item_type", itemType).eq("item_id", itemId).eq("status", "completed").limit(1);
       if (error) throw toStoreError(error);
       return (data?.length ?? 0) > 0;
+    },
+
+    // --- 2FA ---
+    async setTwoFASecret(userId, secret, enabled) {
+      const { data, error } = await client.from(TWO_FA_SECRETS_TABLE)
+        .upsert({ user_id: userId, secret, enabled }, { onConflict: "user_id" })
+        .select("user_id,secret,enabled").single();
+      if (error) throw toStoreError(error);
+      return mapTwoFASecret(data);
+    },
+
+    async getTwoFASecret(userId) {
+      const { data, error } = await client.from(TWO_FA_SECRETS_TABLE)
+        .select("user_id,secret,enabled").eq("user_id", userId).maybeSingle();
+      if (error) throw toStoreError(error);
+      return mapTwoFASecret(data);
+    },
+
+    async removeTwoFASecret(userId) {
+      const { error } = await client.from(TWO_FA_SECRETS_TABLE)
+        .delete().eq("user_id", userId);
+      if (error) throw toStoreError(error);
     },
 
     // --- AI Verifications ---

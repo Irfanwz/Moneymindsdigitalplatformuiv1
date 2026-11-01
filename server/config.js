@@ -14,6 +14,8 @@ export const config = {
   adminEmail: process.env.ADMIN_EMAIL ?? "admin@moneyminds.local",
   adminPassword: process.env.ADMIN_PASSWORD ?? "Admin123!",
   adminName: process.env.ADMIN_NAME ?? "Platform Admin",
+  // Only an explicit false disables the factor; unset/invalid values keep it on.
+  twoFactorEnabled: process.env.TWO_FACTOR_ENABLED?.trim().toLowerCase() !== "false",
   supabaseUrl: process.env.SUPABASE_URL ?? "",
   supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
   sendgridApiKey: process.env.SENDGRID_API_KEY ?? "",

@@ -7,6 +7,7 @@ import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 
 export function AdminSecurity() {
+  const [available, setAvailable] = useState<boolean | null>(null);
   const [enabled, setEnabled] = useState<boolean | null>(null),
     [setup, setSetup] = useState<{ qrCode: string; secret: string } | null>(
       null,
@@ -16,9 +17,12 @@ export function AdminSecurity() {
     [error, setError] = useState("");
   useEffect(() => {
     let active = true;
-    request<{ enabled: boolean }>("/api/2fa/status")
+    request<{ available: boolean; enabled: boolean }>("/api/2fa/status")
       .then((r) => {
-        if (active) setEnabled(r.enabled);
+        if (active) {
+          setAvailable(r.available);
+          setEnabled(r.enabled);
+        }
       })
       .catch((e) => {
         if (active) setError(e.message);
@@ -54,6 +58,14 @@ export function AdminSecurity() {
       setBusy(false);
     }
   }
+  if (available === false) return (
+    <Card className="p-6 max-w-2xl mt-6 gap-4 shadow-none">
+      <h2 className="text-lg font-semibold">Two-factor authentication</h2>
+      <p className="text-sm text-muted-foreground">
+        Two-factor authentication is temporarily turned off. Sign in using your email and password.
+      </p>
+    </Card>
+  );
   return (
     <Card className="p-6 max-w-2xl mt-6 gap-4 shadow-none">
       <h2 className="text-lg font-semibold">Two-factor authentication</h2>

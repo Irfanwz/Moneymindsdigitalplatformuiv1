@@ -23,6 +23,7 @@ const [{ createApp }, { createMemoryStore }, { createToken }, express] =
     import("../server/auth.js"),
     import("express"),
   ]);
+const { config } = await import("../server/config.js");
 globalThis.fetch = async () => {
   throw new Error("Unexpected outbound request in browser fixture test");
 };
@@ -384,6 +385,18 @@ try {
     }
     checked.push(`${role} dashboard, analytics and profile pages load actual API data after refresh`);
   }
+  const originalTwoFactorEnabled = config.twoFactorEnabled;
+  try {
+    config.twoFactorEnabled = false;
+    await go(page, "/admin/profile", "Administrator profile");
+    await page.waitForFunction(() => document.body.textContent.includes("Two-factor authentication is temporarily turned off."));
+    assert.equal(await page.$("#security-code"), null);
+    assert.equal(await page.evaluate(() => [...document.querySelectorAll("button")].some(el => el.textContent.includes("Set up authenticator"))), false);
+    config.twoFactorEnabled = true;
+    await page.reload({ waitUntil: "networkidle0" });
+    await page.waitForFunction(() => [...document.querySelectorAll("button")].some(el => el.textContent.includes("Set up authenticator")));
+    checked.push("two-factor pause hides enrollment and restoring it makes setup available");
+  } finally { config.twoFactorEnabled = originalTwoFactorEnabled; }
   assert.deepEqual(failures, []);
   console.log(
     JSON.stringify(

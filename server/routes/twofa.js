@@ -4,15 +4,35 @@ import QRCode from "qrcode";
 
 import { createAuthenticate } from "../middleware/auth.js";
 import { trimText } from "../utils.js";
+import { config } from "../config.js";
 
 const APP_NAME = "MoneyMinds";
 
 export function createTwoFARouter(store) {
   const router = Router();
   const authenticate = createAuthenticate(store);
+  router.use(authenticate);
+
+  router.get("/status", async (req, res, next) => {
+    try {
+      if (!config.twoFactorEnabled) return res.json({ available: false, enabled: false });
+      const twofa = await store.getTwoFASecret(req.auth.userId);
+      res.json({ available: true, enabled: Boolean(twofa?.enabled) });
+    } catch (error) { next(error); }
+  });
+
+  // Pause enrollment and changes as well as login enforcement. Existing factors
+  // remain saved and become effective again when the server flag is enabled.
+  router.use((_req, res, next) => {
+    if (!config.twoFactorEnabled) return res.status(503).json({
+      code: "TWO_FACTOR_DISABLED",
+      message: "Two-factor authentication is temporarily turned off.",
+    });
+    next();
+  });
 
   // Generate a new 2FA secret and return QR code + backup codes
-  router.post("/setup", authenticate, async (req, res, next) => {
+  router.post("/setup", async (req, res, next) => {
     try {
       const user = await store.findUserById(req.auth.userId);
       if (!user) return res.status(401).json({ message: "User not found." });
@@ -35,7 +55,7 @@ export function createTwoFARouter(store) {
   });
 
   // Verify TOTP code and activate 2FA for the account
-  router.post("/verify", authenticate, async (req, res, next) => {
+  router.post("/verify", async (req, res, next) => {
     try {
       const code = trimText(req.body?.code);
       if (!code) return res.status(400).json({ message: "TOTP code is required." });
@@ -55,7 +75,7 @@ export function createTwoFARouter(store) {
   });
 
   // Validate TOTP at login time (called after password check)
-  router.post("/validate", authenticate, async (req, res, next) => {
+  router.post("/validate", async (req, res, next) => {
     try {
       const code = trimText(req.body?.code);
       if (!code) return res.status(400).json({ message: "TOTP code is required." });
@@ -74,7 +94,7 @@ export function createTwoFARouter(store) {
   });
 
   // Disable 2FA (requires current TOTP code as confirmation)
-  router.delete("/disable", authenticate, async (req, res, next) => {
+  router.delete("/disable", async (req, res, next) => {
     try {
       const code = trimText(req.body?.code);
       if (!code) return res.status(400).json({ message: "TOTP code is required to disable 2FA." });
@@ -90,14 +110,6 @@ export function createTwoFARouter(store) {
 
       await store.removeTwoFASecret(user.id);
       res.json({ message: "Two-factor authentication has been disabled." });
-    } catch (error) { next(error); }
-  });
-
-  // Check 2FA status for current user
-  router.get("/status", authenticate, async (req, res, next) => {
-    try {
-      const twofa = await store.getTwoFASecret(req.auth.userId);
-      res.json({ enabled: Boolean(twofa?.enabled) });
     } catch (error) { next(error); }
   });
 

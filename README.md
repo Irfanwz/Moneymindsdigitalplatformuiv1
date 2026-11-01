@@ -80,6 +80,19 @@ For real payments configure `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and th
 
 Cookie-only session reloads now load dashboards, profiles, advisor management and training pages correctly. Training detail pages use the same checkout as the marketplace. Paid joins/enrollments cannot bypass payment through their direct APIs. Authenticator setup uses the installed library API, and enabled factors are required at login. Rejecting a previously verified document removes the badge backed by that document.
 
+### Two-factor on/off switch
+
+Set `TWO_FACTOR_ENABLED=false` in the server's `/opt/moneyminds/.env.production` to temporarily turn off authenticator prompts and setup for all accounts. Email/password, account approval and suspension checks still apply. Existing authenticator secrets stay saved. Set `TWO_FACTOR_ENABLED=true` and recreate the container to restore them; accounts already enrolled will need their authenticator codes again. Unset values default to enabled.
+
+After deploying the code that supports this flag, an env-only change needs:
+
+```bash
+cd /opt/moneyminds
+docker compose up -d --force-recreate moneyminds
+```
+
+The administrator profile displays when two-factor is turned off. The Supabase store now implements reading, saving and deleting authenticator factors, fixing `store.getTwoFASecret is not a function` at login. It uses the existing `two_fa_secrets` table from the agent repair; no new migration is required.
+
 ### Local validation
 
 `npm test` covers admin permissions, settings persistence/enforcement, stale-session rejection, review prerequisites, moderation, document badge reversal, authenticator setup/login, provider ownership/amount checks, signed webhooks, and duplicate fulfillment. SQL tests execute the migration twice in isolated PGlite, exercise the service role, verify audit atomicity, and preserve existing records.
