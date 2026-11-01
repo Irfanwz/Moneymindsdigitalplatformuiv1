@@ -24,6 +24,7 @@ import { createCredibilityRouter } from "./routes/credibility.js";
 import { startPredictionCron } from "./cron/predictionCron.js";
 import { startCredibilityCron } from "./cron/credibilityCron.js";
 import { createAgentsRouter } from "./routes/agents.js";
+import { startVerificationWorker } from "./services/agentService.js";
 
 export function createApp(store, { backgroundJobs = process.env.NODE_ENV !== "test" && !process.env.VERCEL } = {}) {
   const app = express();
@@ -64,6 +65,7 @@ export function createApp(store, { backgroundJobs = process.env.NODE_ENV !== "te
   if (backgroundJobs) startPredictionCron(store);
   // Start daily credibility score recalculation (9:30 AM — after predictions)
   if (backgroundJobs) startCredibilityCron(store);
+  if (backgroundJobs) startVerificationWorker(store);
 
   if (process.env.NODE_ENV === "production") {
     const distPath = path.resolve(import.meta.dirname, "..", "dist");

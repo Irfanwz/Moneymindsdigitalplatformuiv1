@@ -17,6 +17,14 @@ export const resumeAgent=(id:string)=>request<{run:AgentRun}>(`/api/agents/runs/
 export const followAgent=(id:string,enabled:boolean)=>request<{follows:string[]}>(`/api/agents/follows/${id}`,{method:"PUT",body:JSON.stringify({enabled})});
 export const getAgentReadiness=()=>request<AgentReadiness>("/api/agents/readiness");
 export const getAgentBacklog=()=>request<{tasks:{agentKey:string;targetId:string;label:string}[]}>("/api/agents/backlog");
+export type VerificationOverview = {
+  mode:"missing"|"all";workerMode:"persistent"|"request";
+  counts:{total:number;eligible:number;queued:number;running:number;complete:number;failed:number;skipped:number;not_started:number};
+  users:{userId:string;name:string;accountStatus:string;status:string;recommendation:string|null;completedAt:string|null;eligible:boolean}[];
+};
+export const getVerificationOverview=(mode:"missing"|"all",signal?:AbortSignal)=>request<VerificationOverview>(`/api/agents/verification-batch?mode=${mode}`,{signal});
+export const queueAllBackgroundChecks=(mode:"missing"|"all")=>request<{queued:number;total:number;message:string}>("/api/agents/verification-batch",{method:"POST",body:JSON.stringify({mode})});
+export const processBackgroundQueue=()=>request<{message:string}>("/api/agents/verification-batch/process",{method:"POST"});
 export function useAgentRuns(agentKey?:string,targetId?:string) {
   const [runs,setRuns]=useState<AgentRun[]>([]);
   const [error,setError]=useState("");

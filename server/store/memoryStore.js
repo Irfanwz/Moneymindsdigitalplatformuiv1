@@ -957,6 +957,10 @@ export function createMemoryStore() {
       return v ? { ...v } : null;
     },
 
+    async listVerificationStatuses() {
+      return verifications.map(({userId,status,recommendation,completedAt})=>({userId,status,recommendation,completedAt}));
+    },
+
     async listVerifications({ status, recommendation } = {}) {
       return verifications
         .filter((v) => !status || v.status === status)

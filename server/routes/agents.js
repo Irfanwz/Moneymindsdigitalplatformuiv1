@@ -2,14 +2,16 @@ import { Router } from "express";
 import { rateLimit } from "express-rate-limit";
 import { createAuthenticate, requireAdmin } from "../middleware/auth.js";
 import { config } from "../config.js";
-import { investorAgents, operationalAgents, queueAgent, performAgentWork } from "../services/agentService.js";
+import { investorAgents, operationalAgents, queueAgent, performAgentWork, processVerificationQueue } from "../services/agentService.js";
 import { configuredProviders } from "../services/aiProvider.js";
-import { executeTrackedRun, expireStaleRuns } from "../services/agentRuntime.js";
+import { executeTrackedRun, expireStaleRuns, keepAlive } from "../services/agentRuntime.js";
+import { verificationOverview, queueVerificationBatch, requireVerificationSetup } from "../services/verificationBatch.js";
 
 export function createAgentsRouter(store) {
   const router=Router();
   router.use(createAuthenticate(store));
   const limiter=rateLimit({windowMs:60000,limit:12,keyGenerator:req=>req.auth.userId,standardHeaders:true,legacyHeaders:false});
+  const processingLimiter=rateLimit({windowMs:60000,limit:20,keyGenerator:req=>req.auth.userId,standardHeaders:true,legacyHeaders:false});
   const approved=(req,res,next)=> req.currentUser.isAdmin || req.currentUser.status==="approved" ? next() : res.status(403).json({message:"An approved account is required."});
   router.get("/catalog",approved,async(req,res,next)=>{
     try {res.json({agents:investorAgents,follows:await store.listAgentFollows(req.auth.userId),operationalAgents});}catch(e){next(e);}
@@ -33,6 +35,28 @@ export function createAgentsRouter(store) {
     try {
       const schema=await store.checkAgentSchema();
       res.json({storage:store.mode,schema,ready:schema.every(s=>s.ok),providers:configuredProviders(),searchConfigured:!!config.tavilyApiKey,stockPricesConfigured:!!config.alphaVantageKey || !!config.finnhubApiKey,documentImagesConfigured:!!config.anthropicApiKey || !!config.groqApiKey});
+    }catch(e){next(e);}
+  });
+  router.get("/verification-batch",requireAdmin,async(req,res,next)=>{
+    try {
+      const mode=req.query.mode ?? "missing";
+      if(!["missing","all"].includes(mode)) return res.status(400).json({message:"Choose missing or all checks."});
+      res.json(await verificationOverview(store,mode));
+    }catch(e){next(e);}
+  });
+  router.post("/verification-batch",requireAdmin,limiter,async(req,res,next)=>{
+    try {
+      const mode=req.body?.mode ?? "missing";
+      if(!["missing","all"].includes(mode)) return res.status(400).json({message:"Choose missing or all checks."});
+      const result=await queueVerificationBatch(store,mode);
+      res.status(result.partial ? 503 : 202).json(result);
+    }catch(e){next(e);}
+  });
+  router.post("/verification-batch/process",requireAdmin,processingLimiter,async(_req,res,next)=>{
+    try {
+      await requireVerificationSetup(store);
+      keepAlive(processVerificationQueue(store));
+      res.status(202).json({message:"Saved background checks are being processed."});
     }catch(e){next(e);}
   });
   router.post("/runs",approved,limiter,async(req,res,next)=>{
@@ -73,6 +97,11 @@ export function createAgentsRouter(store) {
       if(!run || (!req.currentUser.isAdmin && run.userId!==req.auth.userId)) return res.status(404).json({message:"Run not found."});
       if(["verification","prediction-check","credibility","document"].includes(run.agentKey) && !req.currentUser.isAdmin) return res.status(403).json({message:"Admin access is required."});
       if(run.agentKey==="document") return res.status(400).json({message:"Please upload the document again to retry verification."});
+      if(run.agentKey==="verification") {
+        await requireVerificationSetup(store);
+        keepAlive(processVerificationQueue(store));
+        return res.status(202).json({run:await store.getAgentRun(run.id)});
+      }
       const result=await executeTrackedRun(store,run,p=>performAgentWork(store,run,p));
       res.json({run:result});
     }catch(e){next(e);}

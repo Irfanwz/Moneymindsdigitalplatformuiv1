@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { configuredProviders, generateJSON } from "./aiProvider.js";
-import { AgentSkipped, executeTrackedRun, keepAlive } from "./agentRuntime.js";
+import { AgentSkipped, executeTrackedRun, keepAlive, expireStaleRuns } from "./agentRuntime.js";
+import { config } from "../config.js";
 import { runForUser } from "./verificationAgent.js";
 import { analyzeSignal } from "./sentimentService.js";
 import { scheduleSignalPrediction, checkOnePrediction } from "./predictionCheckerService.js";
@@ -115,8 +116,42 @@ export async function performAgentWork(store,run,progress) {
 
 export async function queueAgent(store,options,{dispatch=true}={}) {
   const run=await store.createAgentRun(options);
-  if(dispatch && run.status==="queued") keepAlive(executeTrackedRun(store,run,progress=>performAgentWork(store,run,progress)));
+  if(dispatch && run.status==="queued") {
+    if(run.agentKey==="verification") keepAlive(processVerificationQueue(store));
+    else keepAlive(executeTrackedRun(store,run,progress=>performAgentWork(store,run,progress)));
+  }
   return run;
+}
+
+// Use the persisted per-user queue for both registration and admin checks.
+// One worker runs per server/store; conditional claims prevent the same saved
+// job from executing twice when requests or server instances overlap.
+const verificationWorkers=new WeakMap();
+export function processVerificationQueue(store) {
+  if(verificationWorkers.has(store)) return verificationWorkers.get(store);
+  const worker=(async()=>{
+    if(!configuredProviders().length || !config.tavilyApiKey) return;
+    await expireStaleRuns(store);
+    do {
+      const [run]=await store.listAgentRuns({agentKey:"verification",status:"queued",limit:1,oldestFirst:true});
+      if(!run) return;
+      if((await store.listAgentRuns({agentKey:"verification",status:"running",limit:1})).length) return;
+      const result=await executeTrackedRun(store,run,progress=>performAgentWork(store,run,progress));
+      if(!result || result.status==="running") return;
+      // On serverless hosting, each request processes one saved job. The admin
+      // page sends subsequent requests while open, within host duration limits.
+    } while(!process.env.VERCEL);
+  })().finally(()=>verificationWorkers.delete(store));
+  verificationWorkers.set(store,worker);
+  return worker;
+}
+
+export function startVerificationWorker(store) {
+  const wake=()=>keepAlive(processVerificationQueue(store));
+  void wake();
+  const timer=setInterval(wake,10000);
+  timer.unref?.();
+  return ()=>clearInterval(timer);
 }
 
 export async function queueSignalAgents(store,signal) {

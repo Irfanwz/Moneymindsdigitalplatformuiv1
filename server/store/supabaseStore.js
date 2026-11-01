@@ -516,23 +516,16 @@ export function createSupabaseStore({ supabaseUrl, supabaseServiceRoleKey }) {
     },
 
     async listUsers({ status, includeAdmins = false } = {}) {
-      let query = client.from(USERS_TABLE).select("*").order("created_at", { ascending: false });
-
-      if (!includeAdmins) {
-        query = query.eq("is_admin", false);
+      const rows=[];
+      for(let offset=0;;offset+=500) {
+        let query=client.from(USERS_TABLE).select("*").order("created_at",{ascending:false}).order("id").range(offset,offset+499);
+        if(!includeAdmins) query=query.eq("is_admin",false);
+        if(status) query=query.eq("status",status);
+        const {data,error}=await query;
+        if(error) throw toStoreError(error);
+        rows.push(...(data ?? []).map(mapRow));
+        if((data?.length ?? 0)<500) return rows;
       }
-
-      if (status) {
-        query = query.eq("status", status);
-      }
-
-      const { data, error } = await query;
-
-      if (error) {
-        throw toStoreError(error);
-      }
-
-      return (data ?? []).map(mapRow);
     },
 
     async updateApproval(userId, approval) {
@@ -1365,6 +1358,16 @@ export function createSupabaseStore({ supabaseUrl, supabaseServiceRoleKey }) {
       const { data, error } = await client.from(AI_VERIFICATIONS_TABLE).select("*").eq("user_id", userId).maybeSingle();
       if (error) throw toStoreError(error);
       return data ? mapVerificationRow(data) : null;
+    },
+
+    async listVerificationStatuses() {
+      const rows=[];
+      for(let offset=0;;offset+=500) {
+        const {data,error}=await client.from(AI_VERIFICATIONS_TABLE).select("user_id,status,recommendation,completed_at").order("user_id").range(offset,offset+499);
+        if(error) throw toStoreError(error);
+        rows.push(...(data ?? []).map(r=>({userId:r.user_id,status:r.status,recommendation:r.recommendation,completedAt:r.completed_at})));
+        if((data?.length ?? 0)<500) return rows;
+      }
     },
 
     async listVerifications({ status, recommendation } = {}) {
