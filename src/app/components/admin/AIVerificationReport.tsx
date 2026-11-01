@@ -100,10 +100,11 @@ function CredibilityGauge({ score }: { score: number }) {
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <span className="text-sm text-muted-foreground">Credibility Score</span>
+        <span className="text-sm text-muted-foreground">Background evidence score</span>
         <span className={`text-2xl font-bold ${color}`}>{score}/100</span>
       </div>
       <Progress value={score} className={`h-3 ${progressColor}`} />
+      <p className="text-xs text-muted-foreground">AI estimate from retrieved web evidence; no fixed weighted formula. This is separate from an advisor's prediction-based credibility score.</p>
     </div>
   );
 }
@@ -267,7 +268,7 @@ export function AIVerificationReport({ verification, loading, token, onRetryComp
               <Globe className="h-5 w-5 text-muted-foreground shrink-0" />
               <div className="min-w-0">
                 <div className="text-sm font-medium">
-                  Company {verification.findings.company_verified ? "Verified" : "Not Verified"}
+                  Company evidence {verification.findings.company_verified ? "found" : "not confirmed"}
                 </div>
                 {isSafeUrl(verification.findings.company_url) && (
                   <a

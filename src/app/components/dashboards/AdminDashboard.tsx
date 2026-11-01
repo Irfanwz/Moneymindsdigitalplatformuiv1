@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import {
   AlertTriangle,
@@ -43,6 +43,7 @@ import { Input } from "@/app/components/ui/input";
 import { Label } from "@/app/components/ui/label";
 import { Textarea } from "@/app/components/ui/textarea";
 import { AIVerificationReport } from "@/app/components/admin/AIVerificationReport";
+import { getAgentReadiness, startAgent } from "@/app/lib/agents";
 import type { AppRole, AuthUser } from "@/app/types/auth";
 
 interface ApprovalDraft {
@@ -59,6 +60,8 @@ const roleLabels: Record<AppRole, string> = {
 
 export function AdminDashboard() {
   const { session, user } = useAuth();
+  const navigate = useNavigate();
+  const [checkingUserId, setCheckingUserId] = useState<string | null>(null);
   const [profiles, setProfiles] = useState<AuthUser[]>([]);
   const [drafts, setDrafts] = useState<Record<string, ApprovalDraft>>({});
   const [isLoading, setIsLoading] = useState(true);
@@ -110,6 +113,24 @@ export function AdminDashboard() {
     }
   };
 
+  const runBackgroundCheck = async (userId: string) => {
+    setCheckingUserId(userId);
+    try {
+      const readiness = await getAgentReadiness();
+      if (!readiness.ready) throw new Error("Required agent tables or columns are missing. Open Agent Activity to inspect database readiness.");
+      if (!readiness.providers.length || !readiness.searchConfigured) {
+        throw new Error("Background checks need an AI provider and web search. Configure GROQ_API_KEY or ANTHROPIC_API_KEY, plus TAVILY_API_KEY, on the production server and restart it.");
+      }
+      await startAgent("verification", userId);
+      toast.success("Background check queued. Follow its progress in Agent Activity.");
+      navigate(`/admin/agents?user=${encodeURIComponent(userId)}`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not start the background check.");
+    } finally {
+      setCheckingUserId(null);
+    }
+  };
+
   const openReport = async (userId: string) => {
     setReportDialogUserId(userId);
     if (verifications[userId]) return; // already loaded
@@ -118,7 +139,9 @@ export function AdminDashboard() {
     try {
       const res = await getUserVerification(session?.token ?? "", userId);
       setVerifications((prev) => ({ ...prev, [userId]: res.verification }));
-    } catch { /* no report yet */ }
+    } catch (error) {
+      if (error instanceof Error && error.message !== "No verification report found for this user.") setErrorMessage(error.message);
+    }
     setLoadingReport(false);
   };
 
@@ -150,7 +173,9 @@ export function AdminDashboard() {
   useEffect(() => {
     if (!user || !reportDialogUserId) return;
     const poll = setInterval(() => {
-      getUserVerification(session?.token ?? "", reportDialogUserId).then(res => setVerifications(prev => ({...prev, [reportDialogUserId]: res.verification}))).catch(e => setErrorMessage(e.message));
+      getUserVerification(session?.token ?? "", reportDialogUserId).then(res => setVerifications(prev => ({...prev, [reportDialogUserId]: res.verification}))).catch(e => {
+        if (e.message !== "No verification report found for this user.") setErrorMessage(e.message);
+      });
     }, 3000);
     return () => clearInterval(poll);
   }, [user?.id, session?.token, reportDialogUserId]);
@@ -600,9 +625,16 @@ export function AdminDashboard() {
                 )}
               </DialogTitle>
               <DialogDescription>
-                Automated background verification based on web search and AI analysis.
+                Public web evidence and AI analysis for an admin decision. This check does not approve or reject the account automatically.
               </DialogDescription>
             </DialogHeader>
+            {reportDialogUserId && <div className="flex flex-wrap gap-2">
+              <Button size="sm" disabled={checkingUserId !== null} onClick={() => void runBackgroundCheck(reportDialogUserId)}>
+                {checkingUserId === reportDialogUserId && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Run background check
+              </Button>
+              <Button size="sm" variant="outline" asChild><Link to={`/admin/agents?user=${encodeURIComponent(reportDialogUserId)}`}>View activity and criteria</Link></Button>
+            </div>}
             {reportDialogUserId && user && (
               <AIVerificationReport
                 verification={verifications[reportDialogUserId] ?? null}
@@ -724,6 +756,7 @@ export function AdminDashboard() {
               <p className="text-sm text-muted-foreground mt-1">
                 Complete list of every account in the system — {profiles.length} total
               </p>
+              <p className="text-xs text-muted-foreground mt-2">Run a web background check for an existing account, or view its latest report. Approval status is separate from the AI recommendation.</p>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <div className="relative">
@@ -767,6 +800,7 @@ export function AdminDashboard() {
                     <th className="pb-3 pr-4 font-medium">Status</th>
                     <th className="pb-3 pr-4 font-medium">Roles</th>
                     <th className="pb-3 font-medium">Registered</th>
+                    <th className="pb-3 pl-4 font-medium">Background check</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
@@ -802,6 +836,15 @@ export function AdminDashboard() {
                       </td>
                       <td className="py-3 text-muted-foreground whitespace-nowrap">
                         {new Date(profile.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="py-3 pl-4">
+                        <div className="flex gap-2 whitespace-nowrap">
+                          <Button size="sm" variant="outline" disabled={checkingUserId !== null} onClick={() => void runBackgroundCheck(profile.id)}>
+                            {checkingUserId === profile.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
+                            Run background check
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => void openReport(profile.id)}><Eye className="mr-2 h-4 w-4" />View report</Button>
+                        </div>
                       </td>
                     </tr>
                   ))}
