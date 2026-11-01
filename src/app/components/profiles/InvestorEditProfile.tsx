@@ -58,10 +58,10 @@ export function InvestorEditProfile() {
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !session?.token) return;
+    if (!file || !session?.user) return;
     setPhotoUploading(true);
     try {
-      const result = await uploadFile(session.token, file);
+      const result = await uploadFile((session?.token ?? ""), file);
       setPhotoUrl(result.url);
     } catch {
       setError("Failed to upload photo.");
@@ -71,13 +71,13 @@ export function InvestorEditProfile() {
   };
 
   useEffect(() => {
-    if (!session?.token) return;
+    if (!session?.user) return;
 
     let active = true;
 
     async function load() {
       try {
-        const response = await getInvestorProfile(session!.token);
+        const response = await getInvestorProfile((session?.token ?? ""));
         if (active) setProfile(response.profile);
       } catch {
         // Use empty profile defaults
@@ -88,7 +88,7 @@ export function InvestorEditProfile() {
 
     load();
     return () => { active = false; };
-  }, [session?.token]);
+  }, [session?.user?.id, session?.token]);
 
   const updateField = <K extends keyof InvestorProfile>(field: K, value: InvestorProfile[K]) => {
     setProfile((prev) => ({ ...prev, [field]: value }));
@@ -104,13 +104,13 @@ export function InvestorEditProfile() {
   };
 
   const handleSave = async () => {
-    if (!session?.token) return;
+    if (!session?.user) return;
 
     setIsSaving(true);
     setError(null);
 
     try {
-      const response = await updateInvestorProfile(session.token, profile);
+      const response = await updateInvestorProfile((session?.token ?? ""), profile);
       setProfile(response.profile);
       navigate("/investor/dashboard");
     } catch (err: any) {

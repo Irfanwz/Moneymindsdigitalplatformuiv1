@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { Router } from "express";
 import { rateLimit } from "express-rate-limit";
+import { verify as verifyOtp } from 'otplib';
 
 import {
   createToken,
@@ -41,6 +42,8 @@ export function createAuthRouter(store) {
 
   router.post("/register-profile", authLimiter, validate(registerSchema), async (req, res, next) => {
     try {
+      const settings = await store.getAdminSettings();
+      if (!settings.registrationOpen || settings.maintenanceMode) return res.status(503).json({message:'New registrations are temporarily closed. Please try again later.'});
       const fullName = trimText(req.body?.fullName);
       const email = trimText(req.body?.email).toLowerCase();
       const password = trimText(req.body?.password);
@@ -87,6 +90,9 @@ export function createAuthRouter(store) {
       const passwordMatches = await verifyPassword(password, user.passwordHash);
       if (!passwordMatches) return res.status(401).json({ message: "Invalid email or password." });
 
+      if (user.isSuspended) return res.status(403).json({message:'Your account is suspended. Please contact the administrator.'});
+      if (!user.isAdmin && (await store.getAdminSettings()).maintenanceMode) return res.status(503).json({message:'MoneyMinds is undergoing maintenance. Please try again later.'});
+
       if (!user.isAdmin && user.status !== "approved") {
         return res.status(403).json({
           code: user.status === "pending" ? "PENDING_APPROVAL" : "PROFILE_REJECTED",
@@ -97,6 +103,11 @@ export function createAuthRouter(store) {
         });
       }
 
+      const twofa = await store.getTwoFASecret(user.id);
+      if (twofa?.enabled) {
+        const code=trimText(req.body?.otp);
+        if (!/^\d{6}$/.test(code) || !(await verifyOtp({token:code,secret:twofa.secret})).valid) return res.status(401).json({code:'TWO_FACTOR_REQUIRED',message:'Enter the current six-digit code from your authenticator app.'});
+      }
       const session = buildSessionResponse(user);
       res.cookie("mm_token", session.token, COOKIE_OPTIONS);
       res.json(session);

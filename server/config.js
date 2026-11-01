@@ -74,6 +74,6 @@ if (config.nodeEnv === "production") {
   }
 
   if (!isStripeConfigured) {
-    console.warn("[STARTUP WARN] STRIPE_SECRET_KEY / STRIPE_WEBHOOK_SECRET not set — payments will be simulated.");
+    console.warn("[STARTUP WARN] STRIPE_SECRET_KEY / STRIPE_WEBHOOK_SECRET not set — paid checkout is disabled.");
   }
 }

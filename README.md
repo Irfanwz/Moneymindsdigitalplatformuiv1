@@ -9,12 +9,50 @@
 
   Run `npm run dev` to start the development server.
 
+## Admin console deployment (2026-11-01)
+
+The admin area now has Overview, Users, Due Diligence, AI Operations, Content, Payments, Reports & Audit, and Settings. The account page includes authenticator setup. Existing administrators receive `super_admin` access; new admin permissions can be assigned to approved, active users from **Users > View details**.
+
+1. After the two earlier agent repairs, run the **entire** [admin_console.sql](supabase/migrations/20261101101357_admin_console.sql) in the live Supabase SQL Editor. This additive migration adds three admin tables, account access columns, and server-only transaction functions. It preserves existing records and does not run agents, send messages or charge payments.
+2. Run [agent_database_audit.sql](supabase/agent_database_audit.sql) (now 25 tables) and [admin_console_audit.sql](supabase/admin_console_audit.sql). All rows should say `READY`. The second audit also checks RLS and access to both transaction functions.
+3. Deploy the server and frontend together, after the migration. Run `npm test` and `npm run build`. No production deployment or production database mutation was performed by this implementation.
+4. Visit `/admin/dashboard`. Test one review, refresh Settings after saving a change, and inspect Reports & Audit. AI Operations still requires production AI/search keys; database readiness and provider configuration are separate checks.
+
+| Workspace | Implemented controls |
+| --- | --- |
+| Overview | Account counts, pending applications, report coverage, recent agent failures, real average registration-to-approval duration |
+| Users | Name/email search, status/role filters, pagination, CSV export, submitted profiles, approval/rejection, suspension/reactivation, administrator roles |
+| Due Diligence | Background checks for all registered users, individual evidence reports, document decisions, reviewer assignment, internal notes and review state |
+| AI Operations | Readiness checks, user/agent/date/status filters within the latest 100 runs, execution steps, retry/resume and backlog controls |
+| Content | Review and hide/restore groups, signals, comments and trainings; hidden content is also blocked in normal reads, enrollment and checkout |
+| Payments | All recorded payments, user/transaction search, date/status filters, separate currency totals and CSV export; simulated records excluded from collected-value totals |
+| Reports & Audit | Payment report and latest 500 saved administrative changes, with actor, target, time and decision details |
+| Settings | Persisted registration and maintenance controls; optional completed-background-report requirement before manual approval |
+
+Permissions are enforced in the API using the current account record, so existing sessions reflect role changes and suspension. Reviewers handle applications/evidence/agents; support handles user visibility, suspension and content; finance sees payments/reports; super admins have all controls. An administrator cannot suspend or demote their own account. Review decisions and their audit entries commit together. The database's service role can insert/read audit events, but cannot update/delete them through normal table grants. Tracking starts with this release; earlier decisions are not invented as history.
+
+### Payment and session fixes
+
+The old card form did not obtain provider confirmation. Paid checkout now redirects to **Stripe Checkout**, with prices and account/item metadata set by the server. The browser return and signed webhook both reconcile the confirmed payment. A database transaction saves the payment and enrollment/group membership together; replaying the same provider reference does not duplicate payment records or membership counts. Customer card fields are no longer collected by the app. Production cannot simulate successful payment; local development offers an explicitly labelled demo flow.
+
+For real payments configure `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and the correct `CLIENT_ORIGIN` on the server. Register `https://moneymindsdigital.site/api/payments/webhook` in Stripe for `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `payment_intent.succeeded`, and `payment_intent.payment_failed`. Verify a test-mode purchase and webhook delivery before using live charges. Hosted confirmation follows [Stripe's Checkout fulfillment guidance](https://docs.stripe.com/checkout/fulfillment). Refund execution, provider balance reconciliation, recurring subscription renewals and chargeback management are not provided by this console; handle them in the provider dashboard. Payment totals represent application records, not settlement balances.
+
+Cookie-only session reloads now load dashboards, profiles, advisor management and training pages correctly. Training detail pages use the same checkout as the marketplace. Paid joins/enrollments cannot bypass payment through their direct APIs. Authenticator setup uses the installed library API, and enabled factors are required at login. Rejecting a previously verified document removes the badge backed by that document.
+
+### Local validation
+
+`npm test` covers admin permissions, settings persistence/enforcement, stale-session rejection, review prerequisites, moderation, document badge reversal, authenticator setup/login, provider ownership/amount checks, signed webhooks, and duplicate fulfillment. SQL tests execute the migration twice in isolated PGlite, exercise the service role, verify audit atomicity, and preserve existing records.
+
+After `npm run build`, run `node scripts/check-admin-browser.mjs` with Chrome installed (`CHROME_PATH` can override the executable). This uses isolated generated fixtures, blocks server provider requests, checks all admin routes at desktop/mobile widths, saved settings and reviews, CSV download, role restrictions, customer browsing and development checkout. Screenshots go to ignored `docs/admin-validation/`. It does not connect to the live database, send email or charge money. Real production AI, email and Stripe delivery still need verification after deployment with the production configuration.
+
+Validation on 2026-11-01: **246 tests passed**, with two live Tavily tests skipped because the isolated test environment has no search key. The production build passed with the existing environment/chunk-size warnings. Chrome checks passed without browser errors, including all nine admin screens at mobile width and actual profile API loading after cookie-only refresh for investor, startup and advisor accounts. A simulated development purchase persisted its enrollment after reload; real Stripe requests were mocked in automated tests, while webhook signatures were generated and validated with the installed Stripe SDK.
+
 ## Deploying the agent repair
 
-The live database reported `ai_verifications` missing, four signals without saved AI analysis, three advisor profiles, and no document-verification or credibility-history rows. Empty tables are different from missing tables. The audit below checks all 22 expected application tables and their columns.
+The initial live database reported `ai_verifications` missing, four signals without saved AI analysis, three advisor profiles, and no document-verification or credibility-history rows. Empty tables are different from missing tables. The original agent repair covered 22 application tables; the current audit includes the three new admin tables described above.
 
 1. In Supabase project `ievzkvvidsdrlytvitup`, run the entire file [repair_agent_runtime.sql](supabase/migrations/20261101084337_repair_agent_runtime.sql) in the SQL Editor. It preserves existing rows, creates missing tables, adds agent columns, and creates `agent_runs` and `agent_follows`. It requires the existing `platform_users` table. Apply this specific repair; do not blindly replay the old `001_initial_schema.sql`, which targets a different `users` schema.
-2. Run [repair_profile_photo_columns.sql](supabase/migrations/20261101090525_repair_profile_photo_columns.sql), then [agent_database_audit.sql](supabase/agent_database_audit.sql). The live audit after the first repair found all 22 tables present, with only `photo_url` missing from the existing advisor, investor and startup profile tables. This follow-up adds those three columns without replacing profiles or existing photos. Check that every table reports `READY` with no `missing_columns`; row counts can legitimately be zero before agents run.
+2. Run [repair_profile_photo_columns.sql](supabase/migrations/20261101090525_repair_profile_photo_columns.sql), then the admin console migration above, followed by [agent_database_audit.sql](supabase/agent_database_audit.sql). The live audit after the first repair found all 22 original tables present, with only `photo_url` missing from the existing advisor, investor and startup profile tables. The photo follow-up adds those three columns without replacing profiles or existing photos. Check that every table reports `READY` with no `missing_columns`; row counts can legitimately be zero before agents run.
 3. Configure the **server's** production environment using `.env.production.example`. Use `SUPABASE_URL=https://ievzkvvidsdrlytvitup.supabase.co` and the service-role key for that same project. Set `GROQ_API_KEY` or `ANTHROPIC_API_KEY`, plus `TAVILY_API_KEY` for research/background verification. Keep keys on the server. Local `.env` keys do not automatically configure the deployed server.
 4. Keep `VITE_API_BASE_URL` empty for this repository's same-origin deployment. For a separately hosted API, set its public HTTPS origin at build time. The production client ignores inherited localhost development URLs.
 5. Deploy the updated server and frontend together. For the included Docker Compose deployment, run `docker compose up -d --build moneyminds`, then inspect `docker compose logs --tail=100 moneyminds`. This change has not been deployed automatically.
@@ -29,6 +67,10 @@ Text agents use configurable model names. The Groq defaults were checked against
 ### Background checks for registered users
 
 Use **Admin Dashboard > All registered users > Run background check** for any existing applicant, or select a user under **Admin > Agent Activity** and click **Background check**. The dashboard action opens Agent Activity to follow the run. **View report** opens that user's latest verification report. The backlog lists pending/approved users with missing, failed or skipped reports; rejected users can be selected explicitly. These checks do not change account approval.
+
+For everyone, use **Agent Activity > Background checks for all users > Start N background checks**. Pending, approved and rejected registered accounts are included; admins are excluded. The default queues only users without a completed report. Select **Include users with completed reports** for fresh checks on everyone. The page shows the exact users, account status, check status, recommendations and individual reports. A new batch waits for active checks to finish, and duplicate active jobs are prevented. Failures remain visible and can be retried with the default mode. This uses the existing `agent_runs` table and requires no additional SQL migration.
+
+Background checks now share a persisted queue, including new signups and manual retries. A persistent Node/Docker server processes checks sequentially per server, continues after individual failures, and checks saved work every ten seconds after restart. If providers are not configured, new signup checks stay queued until setup is completed. Interrupted running jobs are marked failed after ten minutes and can be retried. On Vercel/serverless, one check is processed per invocation; keep Agent Activity open so it sends the next processing request, or reopen it to resume the saved queue. Hosting execution-duration limits still apply. Closing the page does not delete queued work. Each check uses AI and web-search credits.
 
 A new registration queues the same background check automatically after the general profile is saved. It uses the registration name and requested roles to build web queries; the AI receives the name, roles, bio, location and retrieved snippets. Detailed startup/investor/advisor profile fields are not merged into this check, and editing those profiles does not automatically rerun it. Search uses Tavily (up to five results per query, deduplicated by URL, with snippets capped at 500 characters), then the configured Groq/Anthropic provider generates the report. Sources are public search results rather than direct LinkedIn, company-register or credential-issuer integrations.
 

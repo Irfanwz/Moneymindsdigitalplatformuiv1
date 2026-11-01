@@ -51,14 +51,14 @@ export function InvestorAnalytics() {
   const savedStartups = new Set<string>(JSON.parse(localStorage.getItem("savedStartups") || "[]"));
 
   useEffect(() => {
-    if (!session?.token) return;
+    if (!session?.user) return;
     let active = true;
     async function load() {
       try {
         const [profileRes, startupsRes, enrollRes] = await Promise.all([
-          getInvestorProfile(session!.token),
-          searchStartups(session!.token),
-          getMyEnrollments(session!.token),
+          getInvestorProfile((session?.token ?? "")),
+          searchStartups((session?.token ?? "")),
+          getMyEnrollments((session?.token ?? "")),
         ]);
         if (active) {
           setProfile(profileRes.profile);
@@ -73,7 +73,7 @@ export function InvestorAnalytics() {
     }
     load();
     return () => { active = false; };
-  }, [session?.token]);
+  }, [session?.user?.id, session?.token]);
 
   // Startup industry distribution
   const industryMap = new Map<string, number>();

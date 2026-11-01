@@ -29,6 +29,7 @@ import { useAuth } from "@/app/contexts/AuthContext";
 import { browseGroups, joinAdvisorGroup, leaveAdvisorGroup } from "@/app/lib/api";
 import { CheckoutDialog } from "@/app/components/shared/CheckoutDialog";
 import type { BrowseGroup } from "@/app/lib/api";
+import { toast } from 'sonner';
 
 const CATEGORIES = [
   { value: "all", label: "All Categories" },
@@ -76,7 +77,7 @@ export function BrowseGroupsPage({ userRole }: { userRole: "startup" | "investor
   const handleJoin = async (groupId: string) => {
     if (!user) return;
     const group = groups.find((g) => g.id === groupId);
-    if (group?.isPaid && parseFloat(group.joiningFee || "0") > 0) {
+    if (group?.isPaid && (parseFloat(group.joiningFee || "0") > 0 || parseFloat(group.monthlyFee || '0') > 0)) {
       setCheckoutGroup(group);
       return;
     }
@@ -88,8 +89,8 @@ export function BrowseGroupsPage({ userRole }: { userRole: "startup" | "investor
           g.id === groupId ? { ...g, isJoined: true, memberCount: g.memberCount + 1 } : g
         )
       );
-    } catch {
-      // ignore
+    } catch (error) {
+      toast.error(error instanceof Error?error.message:'Could not join the group.');
     } finally {
       setJoiningGroupId(null);
     }
@@ -405,10 +406,10 @@ export function BrowseGroupsPage({ userRole }: { userRole: "startup" | "investor
           open={!!checkoutGroup}
           onClose={() => setCheckoutGroup(null)}
           onSuccess={handleGroupPaymentSuccess}
-          itemType="group_join"
+          itemType={parseFloat(checkoutGroup.joiningFee || '0')>0?'group_join':'group_monthly'}
           itemId={checkoutGroup.id}
           itemName={checkoutGroup.name}
-          amount={parseFloat(checkoutGroup.joiningFee || "0")}
+          amount={parseFloat(checkoutGroup.joiningFee || "0") || parseFloat(checkoutGroup.monthlyFee || '0')}
         />
       )}
     </div>

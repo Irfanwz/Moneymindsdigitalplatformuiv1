@@ -15,6 +15,7 @@ import { useAuth } from "@/app/contexts/AuthContext";
 import { listTrainings, getMyEnrollments, enrollInTraining, unenrollFromTraining } from "@/app/lib/api";
 import { CheckoutDialog } from "@/app/components/shared/CheckoutDialog";
 import type { Training, TrainingEnrollment } from "@/app/types/training";
+import { toast } from 'sonner';
 
 interface TrainingMarketplaceProps {
   userRole: "investor" | "startup";
@@ -34,13 +35,13 @@ export function TrainingMarketplace({ userRole }: TrainingMarketplaceProps) {
   const userName = user?.fullName ?? "";
 
   useEffect(() => {
-    if (!session?.token) return;
+    if (!session?.user) return;
     let active = true;
     async function load() {
       try {
         const [trainingsRes, enrollmentsRes] = await Promise.all([
-          listTrainings(session!.token),
-          getMyEnrollments(session!.token),
+          listTrainings((session?.token ?? "")),
+          getMyEnrollments((session?.token ?? "")),
         ]);
         if (active) {
           setTrainings(trainingsRes.trainings);
@@ -51,7 +52,7 @@ export function TrainingMarketplace({ userRole }: TrainingMarketplaceProps) {
     }
     load();
     return () => { active = false; };
-  }, [session?.token]);
+  }, [session?.user?.id, session?.token]);
 
   const getEnrollmentProgress = (trainingId: string) => {
     return enrollments.find((e) => e.trainingId === trainingId)?.progress ?? 0;
@@ -60,20 +61,20 @@ export function TrainingMarketplace({ userRole }: TrainingMarketplaceProps) {
   const isEnrolled = (id: string) => enrolledIds.has(id);
 
   const handleEnrollment = async (training: Training) => {
-    if (!session?.token) return;
+    if (!session?.user) return;
     try {
       if (isEnrolled(training.id)) {
-        await unenrollFromTraining(session.token, training.id);
+        await unenrollFromTraining((session?.token ?? ""), training.id);
         setEnrolledIds((prev) => { const next = new Set(prev); next.delete(training.id); return next; });
         setTrainings((prev) => prev.map((t) => t.id === training.id ? { ...t, enrolled: Math.max(0, t.enrolled - 1) } : t));
       } else if (training.type === "paid") {
         setCheckoutTraining(training);
       } else {
-        await enrollInTraining(session.token, training.id);
+        await enrollInTraining((session?.token ?? ""), training.id);
         setEnrolledIds((prev) => new Set(prev).add(training.id));
         setTrainings((prev) => prev.map((t) => t.id === training.id ? { ...t, enrolled: t.enrolled + 1 } : t));
       }
-    } catch { /* ignore */ }
+    } catch (error) { toast.error(error instanceof Error?error.message:'Could not update enrollment.'); }
   };
 
   const handlePaymentSuccess = () => {

@@ -12,7 +12,7 @@ import path from "path";
 import multer from "multer";
 import { Router } from "express";
 import { config, isSupabaseConfigured } from "../config.js";
-import { createAuthenticate, requireAdmin } from "../middleware/auth.js";
+import { createAuthenticate, requirePermission } from "../middleware/auth.js";
 import { executeTrackedRun, keepAlive } from "../services/agentRuntime.js";
 import { runVerification } from "../services/profileVerificationService.js";
 import { trimText } from "../utils.js";
@@ -153,6 +153,7 @@ export function createVerificationRouter(store) {
 export function createAdminVerificationRouter(store) {
   const router = Router();
   const authenticate = createAuthenticate(store);
+  const requireAdmin = requirePermission('reviews');
 
   // GET /api/admin/verifications?status=manual_review
   router.get("/", authenticate, requireAdmin, async (req, res, next) => {
@@ -172,15 +173,7 @@ export function createAdminVerificationRouter(store) {
       const record = await store.getProfileVerification(id);
       if (!record) return res.status(404).json({ message: "Verification record not found." });
 
-      await store.updateProfileVerification(id, {
-        status: "verified",
-        reviewedBy: req.auth.userId,
-        reviewedAt: new Date().toISOString(),
-        adminNote,
-      });
-
-      // Mark the user's profile as verified
-      await store.setProfileVerified(record.userId, id);
+      await store.adminMutate(req.auth.userId,'document.decision',id,{status:'verified',note:adminNote});
 
       // Notify user
       try {
@@ -204,12 +197,7 @@ export function createAdminVerificationRouter(store) {
       const record = await store.getProfileVerification(id);
       if (!record) return res.status(404).json({ message: "Verification record not found." });
 
-      await store.updateProfileVerification(id, {
-        status: "rejected",
-        reviewedBy: req.auth.userId,
-        reviewedAt: new Date().toISOString(),
-        adminNote,
-      });
+      await store.adminMutate(req.auth.userId,'document.decision',id,{status:'rejected',note:adminNote});
 
       // Notify user
       try {

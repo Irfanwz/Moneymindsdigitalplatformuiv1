@@ -169,10 +169,10 @@ export function FindAdvisorsPage({ userRole }: FindAdvisorsPageProps) {
   const userName = user?.fullName ?? "";
 
   const loadAdvisors = async (params?: { industry?: string; specialization?: string; q?: string }) => {
-    if (!session?.token) return;
+    if (!session?.user) return;
     setIsLoading(true);
     try {
-      const res = await searchAdvisors(session.token, params);
+      const res = await searchAdvisors((session?.token ?? ""), params);
       setAdvisors(res.advisors);
     } catch {
       // keep existing
@@ -183,7 +183,7 @@ export function FindAdvisorsPage({ userRole }: FindAdvisorsPageProps) {
 
   useEffect(() => {
     loadAdvisors();
-  }, [session?.token]);
+  }, [session?.user?.id, session?.token]);
 
   const handleSearch = () => {
     loadAdvisors({
@@ -298,9 +298,9 @@ export function FindAdvisorsPage({ userRole }: FindAdvisorsPageProps) {
                 advisor={advisor}
                 onViewProfile={(userId) => navigate(`/advisors/${userId}/profile`)}
                 onConnect={async (userId) => {
-                  if (!session?.token) return;
+                  if (!session?.user) return;
                   try {
-                    await sendConnectionRequest(session.token, userId);
+                    await sendConnectionRequest((session?.token ?? ""), userId);
                     alert("Connection request sent!");
                   } catch {
                     alert("Failed to send connection request.");

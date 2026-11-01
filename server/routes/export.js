@@ -1,6 +1,6 @@
 import { createRequire } from "node:module";
 import { Router } from "express";
-import { createAuthenticate } from "../middleware/auth.js";
+import { createAuthenticate, requirePermission } from "../middleware/auth.js";
 import { trimText } from "../utils.js";
 
 const require = createRequire(import.meta.url);
@@ -10,7 +10,8 @@ function toCSV(rows, columns) {
   const lines = rows.map((row) =>
     columns.map((col) => {
       const val = row[col] ?? "";
-      const str = String(val).replace(/"/g, '""');
+      const safe = /^[\s]*[=+@\-]/.test(String(val)) ? `'${val}` : String(val);
+      const str = safe.replace(/"/g, '""');
       return str.includes(",") || str.includes("\n") || str.includes('"') ? `"${str}"` : str;
     }).join(",")
   );
@@ -102,7 +103,7 @@ export function createExportRouter(store) {
   });
 
   // Admin: export all users as CSV
-  router.get("/admin/users.csv", authenticate, async (req, res, next) => {
+  router.get("/admin/users.csv", authenticate, requirePermission('users.read'), async (req, res, next) => {
     try {
       if (!req.auth.isAdmin) return res.status(403).json({ message: "Admin access required." });
       const users = await store.listUsers({});

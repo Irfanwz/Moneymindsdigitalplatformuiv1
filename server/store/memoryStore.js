@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { createAgentStore } from "./agentStore.js";
+import { createAdminStore } from "./adminStore.js";
+import { createCheckoutStore } from './checkoutStore.js';
 
 function now() {
   return new Date().toISOString();
@@ -61,6 +63,8 @@ export function createMemoryStore() {
   return {
     mode: "memory",
     ...createAgentStore(),
+    ...createCheckoutStore(null,{payments,trainings,trainingEnrollments,advisorGroups,advisorGroupMembers}),
+    ...createAdminStore(null, { users, payments, verifications, profileVerifications, startupProfiles, investorProfiles, advisorProfiles, advisorGroups, advisorSignals, signalComments, trainings }),
     async listAllSignals() { return structuredClone(advisorSignals); },
 
     async health() {

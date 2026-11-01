@@ -42,7 +42,7 @@ export function StartupProfile() {
   const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
-    if (!session?.token) {
+    if (!session?.user) {
       return;
     }
 
@@ -53,7 +53,7 @@ export function StartupProfile() {
       setErrorMessage("");
 
       try {
-        const response = await getStartupProfile(session.token);
+        const response = await getStartupProfile((session?.token ?? ""));
 
         if (!isActive) {
           return;
@@ -79,7 +79,7 @@ export function StartupProfile() {
     return () => {
       isActive = false;
     };
-  }, [session?.token, user?.id]);
+  }, [session?.user?.id, session?.token, user?.id]);
 
   const teamSizeLabel = useMemo(() => {
     const count = profile.teamMembers.filter((member) => member.name || member.role).length;

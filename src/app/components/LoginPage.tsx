@@ -22,6 +22,8 @@ export function LoginPage() {
   const mode = initialMode; // Fixed to URL parameter, no toggle
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [otp,setOtp]=useState('');
+  const [needsOtp,setNeedsOtp]=useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
@@ -41,7 +43,7 @@ export function LoginPage() {
     setStatusMessage("");
 
     try {
-      const session = await login(email, password);
+      const session = await login(email, password, otp);
       const nextPath = location.state && typeof location.state === "object" && "from" in location.state
         ? String(location.state.from)
         : null;
@@ -50,6 +52,8 @@ export function LoginPage() {
         navigate(nextPath || "/admin/dashboard", { replace: true });
         return;
       }
+
+      if(nextPath?.startsWith('/payments/complete?')){navigate(nextPath,{replace:true});return;}
 
       if (session.user.approvedRoles.length === 1) {
         const [role] = session.user.approvedRoles;
@@ -64,6 +68,7 @@ export function LoginPage() {
     } catch (error) {
       if (error instanceof ApiError) {
         setErrorMessage(error.message);
+        if(error.code==='TWO_FACTOR_REQUIRED')setNeedsOtp(true);
 
         if (error.code === "PENDING_APPROVAL") {
           setStatusMessage("Your profile exists, but admin approval is still pending.");
@@ -139,6 +144,7 @@ export function LoginPage() {
               />
             </div>
 
+            {needsOtp&&<div className="space-y-2"><Label htmlFor="otp">Authenticator code</Label><Input id="otp" autoComplete="one-time-code" inputMode="numeric" maxLength={6} value={otp} onChange={e=>setOtp(e.target.value.replace(/\D/g,''))} placeholder="Six-digit code" required/></div>}
             {errorMessage ? (
               <Alert variant="destructive">
                 <AlertTitle>Sign in failed</AlertTitle>

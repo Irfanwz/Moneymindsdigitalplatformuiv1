@@ -75,6 +75,7 @@ export function createTrainingsRouter(store) {
       const training = await store.findTrainingById(trainingId);
       if (!training) return res.status(404).json({ message: "Training not found." });
       if (training.enrolled >= training.capacity) return res.status(400).json({ message: "Training is full." });
+      if (training.type==='paid' && !await store.hasActivePayment(req.auth.userId,'training',trainingId)) return res.status(402).json({message:'Complete payment before enrolling in this training.'});
       const enrollment = await store.enrollInTraining(trainingId, req.auth.userId);
       res.status(201).json({ message: "Enrolled successfully.", enrollment });
     } catch (error) { next(error); }

@@ -32,11 +32,11 @@ export function PublicAdvisorProfile() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!session?.token || !userId) return;
+    if (!session?.user || !userId) return;
     let active = true;
     async function load() {
       try {
-        const res = await getAdvisorPublicProfile(session!.token, userId!);
+        const res = await getAdvisorPublicProfile((session?.token ?? ""), userId!);
         if (active) {
           setProfile(res.profile);
           setAdvisorName(res.name);
@@ -49,7 +49,7 @@ export function PublicAdvisorProfile() {
     }
     load();
     return () => { active = false; };
-  }, [session?.token, userId]);
+  }, [session?.user?.id, session?.token, userId]);
 
   const currentRole = user?.currentRole ?? "startup";
 

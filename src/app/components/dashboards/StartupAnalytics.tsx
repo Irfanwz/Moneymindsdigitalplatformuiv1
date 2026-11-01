@@ -49,14 +49,14 @@ export function StartupAnalytics() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!session?.token) return;
+    if (!session?.user) return;
     let active = true;
     async function load() {
       try {
         const [profileRes, enrollRes, advisorRes] = await Promise.all([
-          getStartupProfile(session!.token),
-          getMyEnrollments(session!.token),
-          searchAdvisors(session!.token),
+          getStartupProfile((session?.token ?? "")),
+          getMyEnrollments((session?.token ?? "")),
+          searchAdvisors((session?.token ?? "")),
         ]);
         if (active) {
           setProfile(profileRes.profile);
@@ -71,7 +71,7 @@ export function StartupAnalytics() {
     }
     load();
     return () => { active = false; };
-  }, [session?.token]);
+  }, [session?.user?.id, session?.token]);
 
   const companyName = profile?.companyName ?? user?.fullName ?? "Startup";
 

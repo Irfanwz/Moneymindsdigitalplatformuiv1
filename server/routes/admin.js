@@ -2,7 +2,7 @@ import { Router } from "express";
 import { approvalStatuses, normalizeRoles, sanitizeUser } from "../auth.js";
 import { validate, approvalSchema } from "../schemas.js";
 import { sendApprovalEmail, sendRejectionEmail } from "../email.js";
-import { createAuthenticate, requireAdmin } from "../middleware/auth.js";
+import { createAuthenticate, requirePermission } from "../middleware/auth.js";
 import { paginate, trimText } from "../utils.js";
 import { queueAgent } from "../services/agentService.js";
 
@@ -10,7 +10,7 @@ export function createAdminRouter(store) {
   const router = Router();
   const authenticate = createAuthenticate(store);
 
-  router.get("/users", authenticate, requireAdmin, async (req, res, next) => {
+  router.get("/users", authenticate, requirePermission('users.read'), async (req, res, next) => {
     try {
       const requestedStatus = trimText(req.query.status);
       const status = approvalStatuses.includes(requestedStatus) ? requestedStatus : undefined;
@@ -20,7 +20,7 @@ export function createAdminRouter(store) {
     } catch (error) { next(error); }
   });
 
-  router.patch("/users/:userId/approval", authenticate, requireAdmin, validate(approvalSchema), async (req, res, next) => {
+  router.patch("/users/:userId/approval", authenticate, requirePermission('reviews'), validate(approvalSchema), async (req, res, next) => {
     try {
       const userId = trimText(req.params.userId);
       const status = trimText(req.body?.status);
@@ -40,9 +40,10 @@ export function createAdminRouter(store) {
         return res.status(404).json({ message: "User profile not found." });
       }
 
-      const updatedUser = await store.updateApproval(userId, {
+      await store.adminMutate(req.auth.userId,'user.approval',userId, {
         status, approvedRoles, adminNotes, rejectionReason, approvedBy: req.auth.userId,
       });
+      const updatedUser = await store.findUserById(userId);
 
       try {
         await store.createNotification(userId, {
@@ -70,7 +71,7 @@ export function createAdminRouter(store) {
   });
 
   // GET /api/admin/users/:userId/verification — full AI report for one user
-  router.get("/users/:userId/verification", authenticate, requireAdmin, async (req, res, next) => {
+  router.get("/users/:userId/verification", authenticate, requirePermission('reviews'), async (req, res, next) => {
     try {
       const userId = trimText(req.params.userId);
       const verification = await store.findVerification(userId);
@@ -82,7 +83,7 @@ export function createAdminRouter(store) {
   });
 
   // GET /api/admin/verifications/summary — counts by status/recommendation
-  router.get("/verifications/summary", authenticate, requireAdmin, async (req, res, next) => {
+  router.get("/verifications/summary", authenticate, requirePermission('reviews'), async (req, res, next) => {
     try {
       const summary = await store.getVerificationSummary();
       res.json({ summary });
@@ -90,7 +91,7 @@ export function createAdminRouter(store) {
   });
 
   // POST /api/admin/users/:userId/verification/retry — re-run agent for a user
-  router.post("/users/:userId/verification/retry", authenticate, requireAdmin, async (req, res, next) => {
+  router.post("/users/:userId/verification/retry", authenticate, requirePermission('agents'), async (req, res, next) => {
     try {
       const userId = trimText(req.params.userId);
       const user = await store.findUserById(userId);

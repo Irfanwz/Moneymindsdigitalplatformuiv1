@@ -75,10 +75,10 @@ export function StartupEditProfile() {
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !session?.token) return;
+    if (!file || !session?.user) return;
     setPhotoUploading(true);
     try {
-      const result = await uploadFile(session.token, file);
+      const result = await uploadFile((session?.token ?? ""), file);
       setPhotoUrl(result.url);
     } catch {
       setErrorMessage("Failed to upload photo.");
@@ -88,7 +88,7 @@ export function StartupEditProfile() {
   };
 
   useEffect(() => {
-    if (!session?.token) {
+    if (!session?.user) {
       return;
     }
 
@@ -99,7 +99,7 @@ export function StartupEditProfile() {
       setErrorMessage("");
 
       try {
-        const response = await getStartupProfile(session.token);
+        const response = await getStartupProfile((session?.token ?? ""));
 
         if (!isActive) {
           return;
@@ -127,7 +127,7 @@ export function StartupEditProfile() {
     return () => {
       isActive = false;
     };
-  }, [session?.token, user?.id]);
+  }, [session?.user?.id, session?.token, user?.id]);
 
   const updateField = (field: ProfileField, value: string | boolean) => {
     setProfile((currentProfile) => ({
@@ -165,7 +165,7 @@ export function StartupEditProfile() {
   };
 
   const handleSave = async () => {
-    if (!session?.token) {
+    if (!session?.user) {
       return;
     }
 
@@ -174,7 +174,7 @@ export function StartupEditProfile() {
     setSuccessMessage("");
 
     try {
-      const response = await updateStartupProfile(session.token, {
+      const response = await updateStartupProfile((session?.token ?? ""), {
         ...profile,
         companyLogo: photoUrl || profile.companyLogo || "",
         categories: parseCategories(categoriesInput),

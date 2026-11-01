@@ -52,15 +52,15 @@ export function InvestorDashboard() {
   >([]);
 
   useEffect(() => {
-    if (!session?.token) return;
+    if (!session?.user) return;
     let active = true;
     async function load() {
       try {
         const [profileRes, startupsRes, enrollRes, connectionsRes] = await Promise.all([
-          getInvestorProfile(session!.token),
-          searchStartups(session!.token),
-          getMyEnrollments(session!.token),
-          listConnections(session!.token),
+          getInvestorProfile((session?.token ?? "")),
+          searchStartups((session?.token ?? "")),
+          getMyEnrollments((session?.token ?? "")),
+          listConnections((session?.token ?? "")),
         ]);
         if (active) {
           setProfile(profileRes.profile);
@@ -72,7 +72,7 @@ export function InvestorDashboard() {
           const followingProfiles = await Promise.all(
             accepted.map(async (c: Connection) => {
               try {
-                const res = await getStartupPublicProfile(session!.token, c.otherUserId);
+                const res = await getStartupPublicProfile((session?.token ?? ""), c.otherUserId);
                 return {
                   userId: c.otherUserId,
                   name: res.profile?.companyName || res.name || c.otherUserName,
@@ -107,13 +107,13 @@ export function InvestorDashboard() {
     }
     load();
     return () => { active = false; };
-  }, [session?.token]);
+  }, [session?.user?.id, session?.token]);
 
   const handleSearch = async () => {
-    if (!session?.token) return;
+    if (!session?.user) return;
     setStartupsLoading(true);
     try {
-      const res = await searchStartups(session.token, { q: searchQuery || undefined });
+      const res = await searchStartups((session?.token ?? ""), { q: searchQuery || undefined });
       setStartupResults(res.startups);
     } catch {
       // keep existing
@@ -123,11 +123,11 @@ export function InvestorDashboard() {
   };
 
   const handlePrivacyToggle = async (field: "isPrivate" | "anonymousBrowsing", value: boolean) => {
-    if (!session?.token || !profile) return;
+    if (!session?.user || !profile) return;
     const updated = { ...profile, [field]: value };
     setProfile(updated);
     try {
-      await updateInvestorProfile(session.token, updated);
+      await updateInvestorProfile((session?.token ?? ""), updated);
     } catch {
       // revert on failure
       setProfile({ ...profile });

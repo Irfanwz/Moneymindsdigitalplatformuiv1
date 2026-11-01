@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { rateLimit } from "express-rate-limit";
-import { createAuthenticate, requireAdmin } from "../middleware/auth.js";
+import { createAuthenticate, requirePermission } from "../middleware/auth.js";
 import { config } from "../config.js";
 import { investorAgents, operationalAgents, queueAgent, performAgentWork, processVerificationQueue } from "../services/agentService.js";
 import { configuredProviders } from "../services/aiProvider.js";
@@ -10,6 +10,8 @@ import { verificationOverview, queueVerificationBatch, requireVerificationSetup 
 export function createAgentsRouter(store) {
   const router=Router();
   router.use(createAuthenticate(store));
+  const requireAdmin = requirePermission('agents');
+  router.use((req,res,next)=>req.currentUser.isAdmin ? requireAdmin(req,res,next) : next());
   const limiter=rateLimit({windowMs:60000,limit:12,keyGenerator:req=>req.auth.userId,standardHeaders:true,legacyHeaders:false});
   const processingLimiter=rateLimit({windowMs:60000,limit:20,keyGenerator:req=>req.auth.userId,standardHeaders:true,legacyHeaders:false});
   const approved=(req,res,next)=> req.currentUser.isAdmin || req.currentUser.status==="approved" ? next() : res.status(403).json({message:"An approved account is required."});

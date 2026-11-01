@@ -65,10 +65,10 @@ export function AdvisorEditProfile() {
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !session?.token) return;
+    if (!file || !session?.user) return;
     setPhotoUploading(true);
     try {
-      const result = await uploadFile(session.token, file);
+      const result = await uploadFile((session?.token ?? ""), file);
       setPhotoUrl(result.url);
     } catch {
       setError("Failed to upload photo.");
@@ -79,9 +79,9 @@ export function AdvisorEditProfile() {
 
   const handleCertUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !session?.token) return;
+    if (!file || !session?.user) return;
     try {
-      await uploadFile(session.token, file);
+      await uploadFile((session?.token ?? ""), file);
       alert("Certificate uploaded successfully!");
     } catch {
       setError("Failed to upload certificate.");
@@ -89,11 +89,11 @@ export function AdvisorEditProfile() {
   };
 
   useEffect(() => {
-    if (!session?.token) return;
+    if (!session?.user) return;
     let active = true;
     async function load() {
       try {
-        const response = await getAdvisorProfile(session!.token);
+        const response = await getAdvisorProfile((session?.token ?? ""));
         if (active) setProfile(response.profile);
       } catch {
         // Use empty defaults
@@ -103,7 +103,7 @@ export function AdvisorEditProfile() {
     }
     load();
     return () => { active = false; };
-  }, [session?.token]);
+  }, [session?.user?.id, session?.token]);
 
   const updateField = <K extends keyof AdvisorProfile>(field: K, value: AdvisorProfile[K]) => {
     setProfile((prev) => ({ ...prev, [field]: value }));
@@ -165,11 +165,11 @@ export function AdvisorEditProfile() {
   };
 
   const handleSave = async () => {
-    if (!session?.token) return;
+    if (!session?.user) return;
     setIsSaving(true);
     setError(null);
     try {
-      const response = await updateAdvisorProfile(session.token, profile);
+      const response = await updateAdvisorProfile((session?.token ?? ""), profile);
       setProfile(response.profile);
       navigate("/advisor/dashboard");
     } catch (err: any) {

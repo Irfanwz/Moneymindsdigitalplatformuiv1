@@ -9,11 +9,9 @@ import { AdvisorDashboard } from "@/app/components/dashboards/AdvisorDashboard";
 import { StartupAnalytics } from "@/app/components/dashboards/StartupAnalytics";
 import { InvestorAnalytics } from "@/app/components/dashboards/InvestorAnalytics";
 import { AdvisorAnalytics } from "@/app/components/dashboards/AdvisorAnalytics";
-import { AdminDashboard } from "@/app/components/dashboards/AdminDashboard";
 import { StartupProfile } from "@/app/components/profiles/StartupProfile";
 import { InvestorProfile } from "@/app/components/profiles/InvestorProfile";
 import { AdvisorProfile } from "@/app/components/profiles/AdvisorProfile";
-import { AdminProfile } from "@/app/components/profiles/AdminProfile";
 import { StartupEditProfile } from "@/app/components/profiles/StartupEditProfile";
 import { InvestorEditProfile } from "@/app/components/profiles/InvestorEditProfile";
 import { AdvisorEditProfile } from "@/app/components/profiles/AdvisorEditProfile";
@@ -40,6 +38,8 @@ import { AuthProvider, useAuth } from "@/app/contexts/AuthContext";
 import { ThemeProvider } from "@/app/contexts/ThemeContext";
 import { RequireAdmin, RequireRole, RequireSignedIn } from "@/app/components/auth/RouteGuards";
 import { Toaster } from "@/app/components/ui/sonner";
+import { AdminConsole } from '@/app/components/admin/AdminConsole';
+import { PaymentComplete } from '@/app/components/shared/PaymentComplete';
 
 function GroupPredictionsRoute() {
   const { groupId } = useParams<{ groupId: string }>();
@@ -68,6 +68,7 @@ export default function App() {
 
             <Route element={<RequireSignedIn />}>
               <Route path="/choose-role" element={<RoleSelectionPage />} />
+              <Route path="/payments/complete" element={<PaymentComplete/>}/>
             </Route>
 
             <Route element={<RequireRole role="startup" />}>
@@ -121,9 +122,8 @@ export default function App() {
             </Route>
 
             <Route element={<RequireAdmin />}>
-              <Route path="/admin/dashboard" element={<AdminDashboard />} />
-              <Route path="/admin/agents" element={<AgentActivityPage admin />} />
-              <Route path="/admin/profile" element={<AdminProfile />} />
+              {['dashboard','users','reviews','agents','content','payments','reports','settings','profile'].map(section=><Route key={section} path={`/admin/${section}`} element={<AdminConsole section={section}/>} />)}
+              <Route path="/admin" element={<Navigate to="/admin/dashboard" replace/>}/>
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />

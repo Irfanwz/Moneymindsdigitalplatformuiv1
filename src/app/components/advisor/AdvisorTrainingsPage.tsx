@@ -61,17 +61,17 @@ export function AdvisorTrainingsPage() {
   const userName = user?.fullName ?? "Advisor";
 
   useEffect(() => {
-    if (!session?.token) return;
+    if (!session?.user) return;
     let active = true;
     async function load() {
       try {
-        const res = await listTrainings(session!.token);
+        const res = await listTrainings((session?.token ?? ""));
         if (active) setTrainings(res.trainings.filter((t) => t.advisorId === user?.id));
       } catch { /* fallback */ } finally { if (active) setIsLoading(false); }
     }
     load();
     return () => { active = false; };
-  }, [session?.token, user?.id]);
+  }, [session?.user?.id, session?.token, user?.id]);
 
   const resetForm = () => {
     setFormTitle(""); setFormDescription(""); setFormType("paid"); setFormPrice(""); setFormFormat("online");
@@ -80,13 +80,13 @@ export function AdvisorTrainingsPage() {
   };
 
   const handleCreate = async () => {
-    if (!session?.token) return;
+    if (!session?.user) return;
     setIsCreating(true); setError(null);
     try {
       const audience: string[] = [];
       if (formAudienceInvestors) audience.push("Investors");
       if (formAudienceStartups) audience.push("Startups");
-      const res = await createTraining(session.token, {
+      const res = await createTraining((session?.token ?? ""), {
         title: formTitle, description: formDescription, type: formType,
         price: formType === "paid" ? parseInt(formPrice) || 0 : 0,
         format: formFormat as any, duration: formDuration, schedule: formSchedule,
@@ -100,8 +100,8 @@ export function AdvisorTrainingsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!session?.token) return;
-    try { await deleteTraining(session.token, id); setTrainings((prev) => prev.filter((t) => t.id !== id)); } catch { /* */ }
+    if (!session?.user) return;
+    try { await deleteTraining((session?.token ?? ""), id); setTrainings((prev) => prev.filter((t) => t.id !== id)); } catch { /* */ }
   };
 
   const openEdit = (training: Training) => {
@@ -123,13 +123,13 @@ export function AdvisorTrainingsPage() {
   };
 
   const handleEdit = async () => {
-    if (!session?.token || !editTraining) return;
+    if (!session?.user || !editTraining) return;
     setIsEditing(true); setEditError(null);
     try {
       const audience: string[] = [];
       if (formAudienceInvestors) audience.push("Investors");
       if (formAudienceStartups) audience.push("Startups");
-      const res = await updateTraining(session.token, editTraining.id, {
+      const res = await updateTraining((session?.token ?? ""), editTraining.id, {
         title: formTitle, description: formDescription, type: formType,
         price: formType === "paid" ? parseInt(formPrice) || 0 : 0,
         format: formFormat as any, duration: formDuration, schedule: formSchedule,
@@ -143,11 +143,11 @@ export function AdvisorTrainingsPage() {
   };
 
   const openAttendees = async (training: Training) => {
-    if (!session?.token) return;
+    if (!session?.user) return;
     setAttendeesTraining(training);
     setIsLoadingAttendees(true);
     try {
-      const res = await getTrainingEnrollments(session.token, training.id);
+      const res = await getTrainingEnrollments((session?.token ?? ""), training.id);
       setAttendees(res.enrollments);
     } catch { setAttendees([]); } finally { setIsLoadingAttendees(false); }
   };

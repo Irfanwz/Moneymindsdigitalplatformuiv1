@@ -102,6 +102,7 @@ export function createGroupsRouter(store) {
       const groupId = trimText(req.params.groupId);
       const group = await store.findGroupById(groupId);
       if (!group) return res.status(404).json({ message: "Group not found." });
+      if (group.isPaid && (Number(group.joiningFee)>0 || Number(group.monthlyFee)>0) && !await store.hasActivePayment(req.auth.userId,'group_join',groupId) && !await store.hasActivePayment(req.auth.userId,'group_monthly',groupId)) return res.status(402).json({message:'Complete payment before joining this group.'});
       const member = await store.joinGroup(groupId, req.auth.userId);
       try {
         await store.createNotification(group.advisorId, { title: "New Group Member", message: `Someone joined your group "${group.name}".`, type: "info" });

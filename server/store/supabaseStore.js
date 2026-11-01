@@ -1,5 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { createAgentStore } from "./agentStore.js";
+import { createAdminStore } from "./adminStore.js";
+import { createCheckoutStore } from './checkoutStore.js';
 
 const USERS_TABLE = "platform_users";
 const STARTUP_PROFILES_TABLE = "startup_profiles";
@@ -33,6 +35,10 @@ function mapRow(row) {
     requestedRoles: row.requested_roles ?? [],
     approvedRoles: row.approved_roles ?? [],
     isAdmin: row.is_admin ?? false,
+    adminRole: row.admin_role ?? 'super_admin',
+    isSuspended: row.is_suspended ?? false,
+    suspensionReason: row.suspension_reason ?? null,
+    suspendedAt: row.suspended_at ?? null,
     adminNotes: row.admin_notes ?? null,
     rejectionReason: row.rejection_reason ?? null,
     approvedAt: row.approved_at ?? null,
@@ -407,6 +413,8 @@ export function createSupabaseStore({ supabaseUrl, supabaseServiceRoleKey }) {
   return {
     mode: "supabase",
     ...createAgentStore(client),
+    ...createCheckoutStore(client),
+    ...createAdminStore(client),
     async listAllSignals() {
       const rows=[];
       for(let offset=0; ; offset+=500) {
@@ -1435,12 +1443,16 @@ export function createSupabaseStore({ supabaseUrl, supabaseServiceRoleKey }) {
     },
 
     async listProfileVerifications({ userId, status } = {}) {
-      let query = client.from(PROFILE_VERIFICATIONS_TABLE).select("*").order("created_at", { ascending: false });
-      if (userId) query = query.eq("user_id", userId);
-      if (status) query = query.eq("status", status);
-      const { data, error } = await query;
-      if (error) throw toStoreError(error);
-      return (data ?? []).map(mapProfileVerificationRow);
+      const records=[];
+      for(let offset=0;;offset+=500){
+        let query=client.from(PROFILE_VERIFICATIONS_TABLE).select('*').order('created_at',{ascending:false}).order('id');
+        if(userId)query=query.eq('user_id',userId);
+        if(status)query=query.eq('status',status);
+        const {data,error}=await query.range(offset,offset+499);
+        if(error)throw toStoreError(error);
+        records.push(...(data??[]).map(mapProfileVerificationRow));
+        if((data?.length??0)<500)return records;
+      }
     },
 
     async setProfileVerified(userId, verificationId) {

@@ -7,6 +7,7 @@ import path from "path";
 import { config } from "./config.js";
 import { createAuthRouter } from "./routes/auth.js";
 import { createAdminRouter } from "./routes/admin.js";
+import { createAdminConsoleRouter } from './routes/adminConsole.js';
 import { createProfilesRouter } from "./routes/profiles.js";
 import { createGroupsRouter } from "./routes/groups.js";
 import { createTrainingsRouter } from "./routes/trainings.js";
@@ -25,14 +26,17 @@ import { startPredictionCron } from "./cron/predictionCron.js";
 import { startCredibilityCron } from "./cron/credibilityCron.js";
 import { createAgentsRouter } from "./routes/agents.js";
 import { startVerificationWorker } from "./services/agentService.js";
+import { applyContentModeration } from './services/contentModeration.js';
 
 export function createApp(store, { backgroundJobs = process.env.NODE_ENV !== "test" && !process.env.VERCEL } = {}) {
   const app = express();
+  applyContentModeration(store);
   app.set('trust proxy', 1);
 
   app.use(helmet());
   app.use(cors({ origin: config.clientOrigin, credentials: true }));
   app.use(cookieParser());
+  app.use('/api/payments/webhook', express.raw({type:'application/json'}));
   app.use(express.json());
 
   app.get("/api/health", async (_req, res, next) => {
@@ -44,6 +48,7 @@ export function createApp(store, { backgroundJobs = process.env.NODE_ENV !== "te
 
   app.use("/api/auth", createAuthRouter(store));
   app.use("/api/admin", createAdminRouter(store));
+  app.use('/api/admin/console', createAdminConsoleRouter(store));
   app.use("/api", createProfilesRouter(store));
   app.use("/api", createGroupsRouter(store));
   app.use("/api/trainings", createTrainingsRouter(store));

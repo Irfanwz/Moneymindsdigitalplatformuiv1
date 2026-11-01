@@ -23,7 +23,7 @@ interface AuthContextType {
   isLoading: boolean;
   session: AuthSession | null;
   user: AuthUser | null;
-  login: (email: string, password: string) => Promise<AuthSession>;
+  login: (email: string, password: string, otp?:string) => Promise<AuthSession>;
   logout: () => void;
   refreshUser: () => Promise<void>;
   submitProfile: (payload: ProfileApplicationPayload) => Promise<{ message: string; user: AuthUser }>;
@@ -95,8 +95,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isLoading,
     session,
     user: session?.user ?? null,
-    async login(email, password) {
-      const response = await loginRequest({ email, password });
+    async login(email, password, otp) {
+      const response = await loginRequest({ email, password, otp });
       // Server sets HttpOnly cookie; we keep the token in memory for Bearer fallback
       const nextSession = {
         token: response.token,

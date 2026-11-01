@@ -23,9 +23,10 @@ import {
 interface HeaderProps {
   userRole?: "startup" | "investor" | "advisor" | "admin";
   userName?: string;
+  adminShell?: boolean;
 }
 
-export function Header({ userRole, userName }: HeaderProps) {
+export function Header({ userRole, userName, adminShell=false }: HeaderProps) {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
   const { logout, user, session } = useAuth();
@@ -132,7 +133,7 @@ export function Header({ userRole, userName }: HeaderProps) {
             <span className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">MoneyMinds</span>
           </Link>
 
-          {resolvedUserRole ? (
+          {resolvedUserRole && !adminShell ? (
             <nav className="hidden xl:flex items-center gap-4">
               {navLinks.map((link) => (
                 <Link
@@ -152,6 +153,7 @@ export function Header({ userRole, userName }: HeaderProps) {
             variant="ghost"
             size="icon"
             onClick={toggleTheme}
+            aria-label="Toggle color theme"
             className="hidden sm:inline-flex text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
           >
             {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
@@ -161,7 +163,7 @@ export function Header({ userRole, userName }: HeaderProps) {
             <>
               <DropdownMenu open={showNotifications} onOpenChange={setShowNotifications}>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="relative text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white">
+                  <Button aria-label="Notifications" variant="ghost" size="icon" className="relative text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white">
                     <Bell className="h-5 w-5" />
                     {unreadCount > 0 && (
                       <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-cyan-500 text-white text-[10px] flex items-center justify-center font-bold">
@@ -295,7 +297,7 @@ export function Header({ userRole, userName }: HeaderProps) {
           <Button
             variant="ghost"
             size="icon"
-            className="xl:hidden text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
+            className={`${adminShell ? 'hidden' : 'xl:hidden'} text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white`}
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           >
             <Menu className="h-5 w-5" />

@@ -37,15 +37,15 @@ export function StartupDashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!session?.token) return;
+    if (!session?.user) return;
     let active = true;
     async function load() {
       try {
         const [profileRes, enrollRes, advisorRes, trainingsRes] = await Promise.all([
-          getStartupProfile(session!.token),
-          getMyEnrollments(session!.token),
-          searchAdvisors(session!.token),
-          listTrainings(session!.token),
+          getStartupProfile((session?.token ?? "")),
+          getMyEnrollments((session?.token ?? "")),
+          searchAdvisors((session?.token ?? "")),
+          listTrainings((session?.token ?? "")),
         ]);
         if (active) {
           setProfile(profileRes.profile);
@@ -61,7 +61,7 @@ export function StartupDashboard() {
     }
     load();
     return () => { active = false; };
-  }, [session?.token]);
+  }, [session?.user?.id, session?.token]);
 
   const userName = user?.fullName ?? "Startup";
   const companyName = profile?.companyName ?? userName;

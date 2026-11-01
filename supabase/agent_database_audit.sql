@@ -1,6 +1,9 @@
 ﻿-- Read-only audit of all application tables, expected columns and exact row counts.
 -- Run before and after the repair in project ievzkvvidsdrlytvitup.
 WITH expected(table_name, required_columns) AS (VALUES
+  ('admin_audit_events', 'id,actor_id,actor_name,action,target_id,details,created_at'),
+  ('admin_reviews', 'user_id,assigned_to,state,notes,updated_by,updated_at'),
+  ('content_moderation', 'entity_type,entity_id,hidden,reason,updated_by,updated_at'),
   ('advisor_group_members', 'id,group_id,user_id,role,joined_at'),
   ('advisor_groups', 'id,advisor_id,name,description,category,is_private,is_paid,joining_fee,monthly_fee,member_count,signal_count,created_at,updated_at'),
   ('advisor_profiles', 'id,user_id,title,bio,website,linkedin,twitter,contact_email,photo_url,years_experience,clients_helped,specialization,previous_roles,expertise_areas,certifications,industries,preferred_stage,engagement_type,availability,typical_rate,services_offered,default_group_type,default_joining_fee,default_monthly_fee,auto_approve_members,allow_group_discovery,enable_payment_processing,payment_email,tax_id,is_public,show_contact_info,allow_connection_requests,show_testimonials,created_at,updated_at,is_verified,verified_at,verification_id,credibility_score,credibility_tier,credibility_updated_at'),
@@ -15,7 +18,7 @@ WITH expected(table_name, required_columns) AS (VALUES
   ('password_reset_tokens', 'id,user_id,token,expires_at,used,created_at'),
   ('payments', 'id,user_id,item_type,item_id,amount,currency,status,payment_method,transaction_ref,created_at,updated_at'),
   ('platform_settings', 'id,key,value,updated_by,updated_at'),
-  ('platform_users', 'id,full_name,email,password_hash,phone,location,bio,status,requested_roles,approved_roles,is_admin,admin_notes,rejection_reason,approved_at,approved_by,created_at,updated_at'),
+  ('platform_users', 'id,full_name,email,password_hash,phone,location,bio,status,requested_roles,approved_roles,is_admin,admin_role,is_suspended,suspension_reason,suspended_at,admin_notes,rejection_reason,approved_at,approved_by,created_at,updated_at'),
   ('profile_verifications', 'id,user_id,doc_type,doc_url,claim_to_verify,status,ai_confidence,ai_reasoning,ai_extracted,reviewed_by,reviewed_at,admin_note,created_at,updated_at'),
   ('signal_comments', 'id,signal_id,user_id,content,created_at,updated_at'),
   ('signal_reactions', 'id,signal_id,user_id,reaction,created_at'),

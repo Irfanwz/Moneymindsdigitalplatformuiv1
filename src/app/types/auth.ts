@@ -13,6 +13,10 @@ export interface AuthUser {
   requestedRoles: AppRole[];
   approvedRoles: AppRole[];
   isAdmin: boolean;
+  adminRole?: 'super_admin' | 'reviewer' | 'support' | 'finance' | null;
+  isSuspended?: boolean;
+  suspensionReason?: string | null;
+  suspendedAt?: string | null;
   adminNotes: string | null;
   rejectionReason: string | null;
   approvedAt: string | null;

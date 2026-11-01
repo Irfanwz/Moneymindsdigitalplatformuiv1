@@ -15,11 +15,11 @@ export function AdvisorSessionsPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!session?.token) return;
+    if (!session?.user) return;
     let active = true;
     async function load() {
       try {
-        const response = await getAdvisorProfile(session!.token);
+        const response = await getAdvisorProfile((session?.token ?? ""));
         if (active) setProfile(response.profile);
       } catch {
         // Use defaults
@@ -29,7 +29,7 @@ export function AdvisorSessionsPage() {
     }
     load();
     return () => { active = false; };
-  }, [session?.token]);
+  }, [session?.user?.id, session?.token]);
 
   const userName = user?.fullName ?? "";
 

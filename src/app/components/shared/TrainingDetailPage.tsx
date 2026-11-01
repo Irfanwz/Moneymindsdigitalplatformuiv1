@@ -15,6 +15,8 @@ import {
   updateTrainingProgress,
 } from "@/app/lib/api";
 import type { Training, TrainingEnrollment } from "@/app/types/training";
+import { CheckoutDialog } from './CheckoutDialog';
+import { toast } from 'sonner';
 
 interface TrainingDetailPageProps {
   userRole: "investor" | "startup" | "advisor";
@@ -28,19 +30,21 @@ export function TrainingDetailPage({ userRole }: TrainingDetailPageProps) {
   const [enrollment, setEnrollment] = useState<TrainingEnrollment | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isEnrolling, setIsEnrolling] = useState(false);
+  const [checkoutOpen,setCheckoutOpen]=useState(false);
+  const [reload,setReload]=useState(0);
   const [isUpdatingProgress, setIsUpdatingProgress] = useState(false);
   const [progressError, setProgressError] = useState<string | null>(null);
 
   const userName = user?.fullName ?? "";
 
   useEffect(() => {
-    if (!session?.token || !id) return;
+    if (!session?.user || !id) return;
     let active = true;
     async function load() {
       try {
         const [trainingRes, enrollmentsRes] = await Promise.all([
-          getTraining(session!.token, id!),
-          getMyEnrollments(session!.token),
+          getTraining((session?.token ?? ""), id!),
+          getMyEnrollments((session?.token ?? "")),
         ]);
         if (active) {
           setTraining(trainingRes.training);
@@ -55,38 +59,39 @@ export function TrainingDetailPage({ userRole }: TrainingDetailPageProps) {
     }
     load();
     return () => { active = false; };
-  }, [session?.token, id]);
+  }, [session?.user?.id, session?.token, id, reload]);
 
   const isEnrolled = !!enrollment;
 
   const handleEnrollment = async () => {
-    if (!session?.token || !training) return;
+    if (!session?.user || !training) return;
+    if(!isEnrolled && training.type==='paid'){setCheckoutOpen(true);return;}
     setIsEnrolling(true);
     try {
       if (isEnrolled) {
-        await unenrollFromTraining(session.token, training.id);
+        await unenrollFromTraining((session?.token ?? ""), training.id);
         setEnrollment(null);
         setTraining((prev) => prev ? { ...prev, enrolled: Math.max(0, prev.enrolled - 1) } : prev);
       } else {
-        await enrollInTraining(session.token, training.id);
-        const enrollmentsRes = await getMyEnrollments(session.token);
+        await enrollInTraining((session?.token ?? ""), training.id);
+        const enrollmentsRes = await getMyEnrollments((session?.token ?? ""));
         const myEnrollment = enrollmentsRes.enrollments.find((e) => e.trainingId === training.id);
         setEnrollment(myEnrollment ?? null);
         setTraining((prev) => prev ? { ...prev, enrolled: prev.enrolled + 1 } : prev);
       }
-    } catch {
-      // ignore
+    } catch (error) {
+      toast.error(error instanceof Error?error.message:'Could not update enrollment.');
     } finally {
       setIsEnrolling(false);
     }
   };
 
   const handleProgressUpdate = async (newProgress: number) => {
-    if (!session?.token || !training) return;
+    if (!session?.user || !training) return;
     setIsUpdatingProgress(true);
     setProgressError(null);
     try {
-      const res = await updateTrainingProgress(session.token, training.id, newProgress);
+      const res = await updateTrainingProgress((session?.token ?? ""), training.id, newProgress);
       setEnrollment(res.enrollment);
     } catch (err) {
       setProgressError(err instanceof Error ? err.message : "Could not update progress. Please try again.");
@@ -413,6 +418,7 @@ export function TrainingDetailPage({ userRole }: TrainingDetailPageProps) {
           </div>
         </div>
       </div>
+      <CheckoutDialog open={checkoutOpen} onClose={()=>setCheckoutOpen(false)} onSuccess={()=>{setCheckoutOpen(false);setReload(v=>v+1);}} itemType="training" itemId={training.id} itemName={training.title} amount={training.price}/>
     </div>
   );
 }

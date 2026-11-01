@@ -69,7 +69,7 @@ export function registerProfile(payload: ProfileApplicationPayload) {
   });
 }
 
-export function login(payload: { email: string; password: string }) {
+export function login(payload: { email: string; password: string; otp?:string }) {
   return request<{ token: string; user: AuthUser }>("/api/auth/login", {
     method: "POST",
     body: JSON.stringify(payload),

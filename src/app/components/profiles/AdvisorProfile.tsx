@@ -40,11 +40,11 @@ export function AdvisorProfile() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!session?.token) return;
+    if (!session?.user) return;
     let active = true;
     async function load() {
       try {
-        const response = await getAdvisorProfile(session!.token);
+        const response = await getAdvisorProfile((session?.token ?? ""));
         if (active) setProfile(response.profile);
       } catch {
         // Use defaults
@@ -54,7 +54,7 @@ export function AdvisorProfile() {
     }
     load();
     return () => { active = false; };
-  }, [session?.token]);
+  }, [session?.user?.id, session?.token]);
 
   const userName = user?.fullName ?? "";
   const initials = userName.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();

@@ -53,14 +53,14 @@ export function AdvisorAnalytics() {
   const userName = user?.fullName ?? "Advisor";
 
   useEffect(() => {
-    if (!session?.token) return;
+    if (!session?.user) return;
     let active = true;
     async function load() {
       try {
         const [profileRes, groupsRes, trainingsRes] = await Promise.all([
-          getAdvisorProfile(session!.token),
-          listAdvisorGroups(session!.token),
-          listTrainings(session!.token),
+          getAdvisorProfile((session?.token ?? "")),
+          listAdvisorGroups((session?.token ?? "")),
+          listTrainings((session?.token ?? "")),
         ]);
         if (!active) return;
 
@@ -75,7 +75,7 @@ export function AdvisorAnalytics() {
         const allSignals: AdvisorSignal[] = [];
         for (const group of groupsRes.groups) {
           try {
-            const sigRes = await listAdvisorSignals(session!.token, group.id);
+            const sigRes = await listAdvisorSignals((session?.token ?? ""), group.id);
             allSignals.push(...sigRes.signals);
           } catch {
             // skip
@@ -90,7 +90,7 @@ export function AdvisorAnalytics() {
     }
     load();
     return () => { active = false; };
-  }, [session?.token, user?.id]);
+  }, [session?.user?.id, session?.token, user?.id]);
 
   // Group metrics
   const totalGroups = groups.length;

@@ -8,7 +8,7 @@
  */
 
 import { Router } from "express";
-import { createAuthenticate, requireApprovedRole } from "../middleware/auth.js";
+import { createAuthenticate, requirePermission } from "../middleware/auth.js";
 import { trimText } from "../utils.js";
 import { checkDuePredictions, checkOnePrediction } from "../services/predictionCheckerService.js";
 
@@ -19,7 +19,7 @@ const ACCURACY_CACHE_TTL = 5 * 60 * 1000;
 export function createPredictionsRouter(store) {
   const router = Router();
   const authenticate = createAuthenticate(store);
-  const requireAdmin = requireApprovedRole("admin");
+  const requireAdmin = requirePermission('agents');
 
   // ─── GET /api/signals/:signalId/prediction ──────────────────────────────────
   // Returns prediction fields for a single signal (pending or result)

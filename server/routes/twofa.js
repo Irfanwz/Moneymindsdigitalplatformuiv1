@@ -1,9 +1,7 @@
 import { Router } from "express";
-import { createRequire } from "node:module";
+import { generateSecret, generateURI, verify } from 'otplib';
 import QRCode from "qrcode";
 
-const require = createRequire(import.meta.url);
-const { authenticator } = require("otplib");
 import { createAuthenticate } from "../middleware/auth.js";
 import { trimText } from "../utils.js";
 
@@ -19,8 +17,9 @@ export function createTwoFARouter(store) {
       const user = await store.findUserById(req.auth.userId);
       if (!user) return res.status(401).json({ message: "User not found." });
 
-      const secret = authenticator.generateSecret();
-      const otpAuthUrl = authenticator.keyuri(user.email, APP_NAME, secret);
+      if ((await store.getTwoFASecret(user.id))?.enabled) return res.status(409).json({message:'Disable the current authenticator before replacing it.'});
+      const secret = generateSecret();
+      const otpAuthUrl = generateURI({label:user.email,issuer:APP_NAME,secret});
       const qrCodeDataUrl = await QRCode.toDataURL(otpAuthUrl);
 
       // Store secret temporarily (not yet confirmed)
@@ -47,7 +46,7 @@ export function createTwoFARouter(store) {
       const twofa = await store.getTwoFASecret(user.id);
       if (!twofa?.secret) return res.status(400).json({ message: "Run /api/2fa/setup first." });
 
-      const isValid = authenticator.verify({ token: code, secret: twofa.secret });
+      const isValid = /^\d{6}$/.test(code) && (await verify({ token: code, secret: twofa.secret })).valid;
       if (!isValid) return res.status(400).json({ message: "Invalid TOTP code. Please try again." });
 
       await store.setTwoFASecret(user.id, twofa.secret, true); // mark as confirmed/enabled
@@ -67,7 +66,7 @@ export function createTwoFARouter(store) {
       const twofa = await store.getTwoFASecret(user.id);
       if (!twofa?.enabled) return res.status(400).json({ message: "2FA is not enabled on this account." });
 
-      const isValid = authenticator.verify({ token: code, secret: twofa.secret });
+      const isValid = /^\d{6}$/.test(code) && (await verify({ token: code, secret: twofa.secret })).valid;
       if (!isValid) return res.status(400).json({ message: "Invalid TOTP code." });
 
       res.json({ message: "TOTP validated successfully." });
@@ -86,7 +85,7 @@ export function createTwoFARouter(store) {
       const twofa = await store.getTwoFASecret(user.id);
       if (!twofa?.enabled) return res.status(400).json({ message: "2FA is not enabled on this account." });
 
-      const isValid = authenticator.verify({ token: code, secret: twofa.secret });
+      const isValid = /^\d{6}$/.test(code) && (await verify({ token: code, secret: twofa.secret })).valid;
       if (!isValid) return res.status(400).json({ message: "Invalid TOTP code." });
 
       await store.removeTwoFASecret(user.id);
