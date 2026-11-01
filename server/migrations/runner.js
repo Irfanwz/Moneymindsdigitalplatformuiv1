@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
+import { readFileSync } from "node:fs";
+import { rootCertificates } from "node:tls";
 import { pathToFileURL } from "node:url";
 import { resolve } from "node:path";
 import pg from "pg";
@@ -8,6 +10,10 @@ import { migrationBody } from "./sql.js";
 const root = new URL("../../supabase/", import.meta.url);
 const ledger = "moneyminds_internal.schema_migrations";
 const lockKey = "MoneyMinds:deployment-migrations:v1";
+// Supabase's database CA is not part of Node's public Web PKI trust store.
+// Ship the dashboard's public CA so deploys do not require copying PEM into env.
+// This trust addition applies only to the validated Supabase migration connection.
+const supabaseRootCa = readFileSync(new URL("../certs/supabase-prod-ca-2021.crt", import.meta.url), "utf8");
 
 export async function loadMigrations(directory = root) {
   const manifest = JSON.parse(await readFile(new URL("auto-migrations.json", directory), "utf8"));
@@ -56,7 +62,12 @@ export function connectionOptions(env) {
     user: decodeURIComponent(database.username),
     password: decodeURIComponent(database.password),
     database: "postgres",
-    ssl: { rejectUnauthorized: true, ...(env.SUPABASE_DB_SSL_CA ? { ca: env.SUPABASE_DB_SSL_CA.replace(/\\n/g, "\n") } : {}) },
+    ssl: {
+      rejectUnauthorized: true,
+      ca: env.SUPABASE_DB_SSL_CA?.trim()
+        ? env.SUPABASE_DB_SSL_CA.replace(/\\n/g, "\n")
+        : [...rootCertificates, supabaseRootCa],
+    },
     connectionTimeoutMillis: 15_000,
     statement_timeout: 60_000,
     idle_in_transaction_session_timeout: 60_000,

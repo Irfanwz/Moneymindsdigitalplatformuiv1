@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { readFile } from "node:fs/promises";
 import { PGlite } from "@electric-sql/pglite";
+import { X509Certificate } from "node:crypto";
+import { rootCertificates } from "node:tls";
 import { applyMigrations, connectionOptions, loadMigrations, planMigrations, runMigrations } from "../server/migrations/runner.js";
 import { migrationBody } from "../server/migrations/sql.js";
 
@@ -100,6 +102,19 @@ describe("Migration configuration and planning", () => {
   });
   it("supports the project's direct connection", () => {
     expect(connectionOptions({ ...env, SUPABASE_DB_URL: `postgresql://postgres:secret@db.${ref}.supabase.co:5432/postgres` }).host).toBe(`db.${ref}.supabase.co`);
+  });
+  it("trusts the official Supabase CA by default while retaining public roots and certificate verification", () => {
+    const { ssl } = connectionOptions(env);
+    expect(ssl.rejectUnauthorized).toBe(true);
+    expect(ssl).not.toHaveProperty("checkServerIdentity");
+    expect(ssl.ca.slice(0, -1)).toEqual(rootCertificates);
+    const root = new X509Certificate(ssl.ca.at(-1));
+    expect(root.ca).toBe(true);
+    expect(root.verify(root.publicKey)).toBe(true);
+    expect(root.fingerprint256).toBe("80:70:25:AD:50:D4:ED:21:9D:2C:9C:7D:29:9C:00:4F:82:4E:B0:0C:F7:F6:5A:FE:F6:07:D0:7B:72:E6:CA:FA");
+    expect(Date.parse(root.validFrom)).toBeLessThan(Date.now());
+    expect(Date.parse(root.validTo)).toBeGreaterThan(Date.now());
+    expect(connectionOptions({ ...env, SUPABASE_DB_SSL_CA: "  " }).ssl.ca).toEqual(ssl.ca);
   });
   it.each([
     ["transaction pooler", env.SUPABASE_DB_URL.replace(":5432/", ":6543/"), /Session pooler/],
