@@ -38,11 +38,12 @@ export function CredibilityScorePage() {
   const userName = user?.fullName ?? "";
   const [data, setData] = useState<CredibilityScore | null>(null);
   const [tiers, setTiers] = useState<CredibilityTier[]>([]);
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [recalculating, setRecalculating] = useState(false);
 
   useEffect(() => {
-    if (!token) return;
+    if (!user) return;
     let active = true;
     Promise.all([getMyCredibility(token), getCredibilityTiers(token)])
       .then(([credRes, tierRes]) => {
@@ -51,21 +52,23 @@ export function CredibilityScorePage() {
           setTiers(tierRes.tiers);
         }
       })
-      .catch(() => {})
+      .catch(e => { if(active) setError(e instanceof Error ? e.message : "Credibility data could not be loaded."); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [token]);
+  }, [user?.id, token]);
 
   async function handleRecalculate() {
-    if (!token || recalculating) return;
+    if (!user || recalculating) return;
     setRecalculating(true);
     try {
       await recalculateCredibility(token);
       const fresh = await getMyCredibility(token);
       setData(fresh);
-    } catch { /* ignore */ }
+    } catch (e) { setError(e instanceof Error ? e.message : "Recalculation failed. Check Agent Activity."); }
     setRecalculating(false);
   }
+
+  if(error) return <DashboardLayout userRole="advisor" userName={userName}><Card className="p-6"><p role="alert" className="text-destructive">{error}</p><Button asChild variant="outline"><Link to="/activity">Open Agent Activity</Link></Button></Card></DashboardLayout>;
 
   if (loading) {
     return (

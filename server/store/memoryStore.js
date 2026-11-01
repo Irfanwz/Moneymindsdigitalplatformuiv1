@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { createAgentStore } from "./agentStore.js";
 
 function now() {
   return new Date().toISOString();
@@ -59,6 +60,8 @@ export function createMemoryStore() {
 
   return {
     mode: "memory",
+    ...createAgentStore(),
+    async listAllSignals() { return structuredClone(advisorSignals); },
 
     async health() {
       return {
@@ -547,6 +550,7 @@ export function createMemoryStore() {
     async updateSignal(signalId, input) {
       const signal = advisorSignals.find((s) => s.id === signalId);
       if (!signal) return null;
+      if(input.resetAnalysis) Object.assign(signal,{"sentiment": null, "sentimentConfidence": null, "sentimentReasoning": null, "riskLevel": null, "riskReasoning": null, "actionability": null, "actionabilityReasoning": null, "analyzedAt": null, "predictionTicker": null, "predictionDirection": null, "predictionTargetPrice": null, "predictionTimeframe": null, "predictionTimeframeDays": null, "predictionCheckDate": null, "baselinePrice": null, "baselineFetchedAt": null, "actualPrice": null, "predictionAccuracy": null, "predictionResult": null, "predictionCheckedAt": null, "predictionExplanation": null, "entities": [], "sectors": [], "keyPoints": []});
       Object.assign(signal, {
         postType: input.postType ?? signal.postType,
         title: input.title ?? signal.title,
@@ -582,6 +586,7 @@ export function createMemoryStore() {
     async updateSignalPrediction(signalId, data) {
       const signal = advisorSignals.find((s) => s.id === signalId);
       if (!signal) return null;
+      if (data.predictionTicker !== undefined) signal.predictionTicker = data.predictionTicker;
       if (data.predictionDirection !== undefined) signal.predictionDirection = data.predictionDirection;
       if (data.predictionTargetPrice !== undefined) signal.predictionTargetPrice = data.predictionTargetPrice;
       if (data.predictionTimeframe !== undefined) signal.predictionTimeframe = data.predictionTimeframe;

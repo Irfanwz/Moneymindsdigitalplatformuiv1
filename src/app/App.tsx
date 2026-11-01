@@ -21,6 +21,8 @@ import { FindAdvisorsPage } from "@/app/components/FindAdvisorsPage";
 import { AdvisorGroupsPage } from "@/app/components/advisor/AdvisorGroupsPage";
 import { CreatePostSignalPage } from "@/app/components/advisor/CreatePostSignalPage";
 import { AIAgentsPage } from "@/app/components/investor/AIAgentsPage";
+import { AgentInsightsPage } from "@/app/components/investor/AgentInsightsPage";
+import { AgentActivityPage } from "@/app/components/agents/AgentActivityPage";
 import { AdvisorTrainingsPage } from "@/app/components/advisor/AdvisorTrainingsPage";
 import { AdvisorSessionsPage } from "@/app/components/advisor/AdvisorSessionsPage";
 import { TrainingMarketplace } from "@/app/components/shared/TrainingMarketplace";
@@ -85,6 +87,7 @@ export default function App() {
               <Route path="/investor/profile" element={<InvestorProfile />} />
               <Route path="/investor/edit-profile" element={<InvestorEditProfile />} />
               <Route path="/investor/ai-agents" element={<AIAgentsPage />} />
+              <Route path="/investor/ai-agents/:agentId/insights" element={<AgentInsightsPage />} />
               <Route path="/investor/trainings" element={<TrainingMarketplace userRole="investor" />} />
               <Route path="/investor/trainings/:id" element={<TrainingDetailPage userRole="investor" />} />
               <Route path="/investor/find-advisors" element={<FindAdvisorsPage userRole="investor" />} />
@@ -108,6 +111,7 @@ export default function App() {
             {/* Verification — available to all signed-in users */}
             <Route element={<RequireSignedIn />}>
               <Route path="/verify" element={<VerificationUploadPage />} />
+              <Route path="/activity" element={<AgentActivityPage />} />
             </Route>
 
             {/* Public profile routes (any signed-in user) */}
@@ -118,6 +122,7 @@ export default function App() {
 
             <Route element={<RequireAdmin />}>
               <Route path="/admin/dashboard" element={<AdminDashboard />} />
+              <Route path="/admin/agents" element={<AgentActivityPage admin />} />
               <Route path="/admin/profile" element={<AdminProfile />} />
             </Route>
 

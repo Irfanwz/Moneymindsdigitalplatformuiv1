@@ -220,7 +220,7 @@ export function validateFeeCap(credibilityScore, joiningFee, monthlyFee) {
  */
 export async function recalculateForAdvisor(advisorId, store) {
   // Get all checked signals for this advisor
-  const allSignals = await store.listSignalsByAdvisor(advisorId).catch(() => []);
+  const allSignals = await store.listSignalsByAdvisor(advisorId);
   const checked = allSignals.filter(
     (s) => s.predictionResult && s.predictionCheckedAt
   );
@@ -252,7 +252,7 @@ export async function recalculateForAdvisor(advisorId, store) {
  * Called by the daily cron job.
  */
 export async function recalculateAll(store) {
-  const advisors = await store.listAdvisorIds().catch(() => []);
+  const advisors = await store.listAdvisorIds();
   let updated = 0;
 
   for (const advisorId of advisors) {

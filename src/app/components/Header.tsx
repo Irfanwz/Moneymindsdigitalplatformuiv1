@@ -37,11 +37,11 @@ export function Header({ userRole, userName }: HeaderProps) {
   const resolvedUserRole = user?.isAdmin ? "admin" : user?.currentRole ?? user?.approvedRoles?.[0] ?? userRole;
 
   useEffect(() => {
-    if (!session?.token) return;
+    if (!user) return;
     let active = true;
     async function load() {
       try {
-        const res = await listNotifications(session!.token);
+        const res = await listNotifications(session?.token ?? "");
         if (active) setNotifications(res.notifications);
       } catch {
         // keep defaults
@@ -51,14 +51,14 @@ export function Header({ userRole, userName }: HeaderProps) {
     // Poll every 30s
     const interval = setInterval(load, 30000);
     return () => { active = false; clearInterval(interval); };
-  }, [session?.token]);
+  }, [user?.id, session?.token]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   const handleMarkRead = async (id: string) => {
-    if (!session?.token) return;
+    if (!user) return;
     try {
-      await markNotificationRead(session.token, id);
+      await markNotificationRead(session?.token ?? "", id);
       setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, read: true } : n));
     } catch {
       // ignore
@@ -66,9 +66,9 @@ export function Header({ userRole, userName }: HeaderProps) {
   };
 
   const handleMarkAllRead = async () => {
-    if (!session?.token) return;
+    if (!user) return;
     try {
-      await markAllNotificationsRead(session.token);
+      await markAllNotificationsRead(session?.token ?? "");
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
     } catch {
       // ignore
@@ -86,6 +86,7 @@ export function Header({ userRole, userName }: HeaderProps) {
         return [
           { to: "/startup/dashboard", label: "Dashboard" },
           { to: "/startup/profile", label: "Profile" },
+          { to: "/activity", label: "Agent Activity" },
           { to: "/startup/groups", label: "Groups" },
           { to: "/startup/trainings", label: "Trainings" },
           { to: "/startup/find-advisors", label: "Find Advisors" },
@@ -94,6 +95,7 @@ export function Header({ userRole, userName }: HeaderProps) {
         return [
           { to: "/investor/dashboard", label: "Dashboard" },
           { to: "/investor/profile", label: "Profile" },
+          { to: "/activity", label: "Agent Activity" },
           { to: "/investor/groups", label: "Groups" },
           { to: "/investor/ai-agents", label: "AI Agents" },
           { to: "/investor/trainings", label: "Trainings" },
@@ -103,6 +105,7 @@ export function Header({ userRole, userName }: HeaderProps) {
         return [
           { to: "/advisor/dashboard", label: "Dashboard" },
           { to: "/advisor/profile", label: "Profile" },
+          { to: "/activity", label: "Agent Activity" },
           { to: "/advisor/groups", label: "Groups" },
           { to: "/advisor/credibility", label: "Credibility" },
           { to: "/advisor/trainings", label: "Trainings" },
@@ -111,6 +114,7 @@ export function Header({ userRole, userName }: HeaderProps) {
         return [
           { to: "/admin/dashboard", label: "Dashboard" },
           { to: "/admin/profile", label: "Profile" },
+          { to: "/admin/agents", label: "Agent Activity" },
         ];
       default:
         return [];
@@ -129,7 +133,7 @@ export function Header({ userRole, userName }: HeaderProps) {
           </Link>
 
           {resolvedUserRole ? (
-            <nav className="hidden md:flex items-center gap-6">
+            <nav className="hidden xl:flex items-center gap-4">
               {navLinks.map((link) => (
                 <Link
                   key={link.to}
@@ -291,7 +295,7 @@ export function Header({ userRole, userName }: HeaderProps) {
           <Button
             variant="ghost"
             size="icon"
-            className="md:hidden text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
+            className="xl:hidden text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           >
             <Menu className="h-5 w-5" />
@@ -301,7 +305,7 @@ export function Header({ userRole, userName }: HeaderProps) {
 
       {/* Mobile Navigation */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-6 py-4">
+        <div className="xl:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-6 py-4">
           <nav className="flex flex-col gap-3">
             {navLinks.map((link) => (
               <Link

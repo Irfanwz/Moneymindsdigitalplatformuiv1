@@ -190,8 +190,8 @@ async function getMarketSnapshot() {
   ]);
 
   return {
-    crypto: crypto.status === "fulfilled" ? crypto.value.data.slice(0, 10) : [],
-    news: news.status === "fulfilled"   ? news.value.data.slice(0, 5)   : [],
+    crypto: crypto.status === "fulfilled" && crypto.value.source !== "mock" ? crypto.value.data.slice(0, 10) : [],
+    news: news.status === "fulfilled" && news.value.source !== "mock" ? news.value.data.slice(0, 5) : [],
     timestamp: new Date().toISOString(),
   };
 }

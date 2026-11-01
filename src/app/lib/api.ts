@@ -6,7 +6,11 @@ import type { AdvisorSearchResult, StartupSearchResult } from "@/app/types/searc
 import type { StartupProfile } from "@/app/types/startup-profile";
 import type { Training, TrainingEnrollment, CreateTrainingPayload } from "@/app/types/training";
 
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "";
+const configuredApiBaseUrl = (import.meta.env.VITE_API_BASE_URL ?? "").trim();
+// A local development .env must not make deployed browsers call their own PC.
+const apiBaseUrl = import.meta.env.PROD && /^https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?(?:\/|$)/i.test(configuredApiBaseUrl)
+  ? ""
+  : configuredApiBaseUrl;
 
 export interface Pagination {
   page: number;
@@ -34,7 +38,7 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${apiBaseUrl}${path}`, {
     ...init,
     credentials: "include", // send HttpOnly cookie on every request
@@ -340,7 +344,7 @@ export function removeGroupMember(token: string, groupId: string, userId: string
 // --- Advisor Signals ---
 
 export function createAdvisorSignal(token: string, groupId: string, payload: CreateSignalPayload) {
-  return request<{ message: string; signal: AdvisorSignal }>(`/api/advisor/groups/${groupId}/signals`, {
+  return request<{ message: string; signal: AdvisorSignal; agentError?: string }>(`/api/advisor/groups/${groupId}/signals`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify(payload),

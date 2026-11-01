@@ -21,20 +21,23 @@ const TIER_LINES = [
 ];
 
 export function CredibilityHistoryChart({ className }: CredibilityHistoryChartProps) {
-  const { session } = useAuth();
+  const { session, user } = useAuth();
   const token = session?.token ?? "";
   const [history, setHistory] = useState<CredibilityHistoryEntry[]>([]);
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!token) return;
+    if (!user) return;
     let active = true;
     getCredibilityHistory(token, 90)
       .then((res) => { if (active) setHistory(res.history.reverse()); }) // oldest first for chart
-      .catch(() => {})
+      .catch(e => { if(active) setError(e instanceof Error ? e.message : "Credibility data could not be loaded."); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [token]);
+  }, [user?.id, token]);
+
+  if(error) return <Card className={className}><CardContent className="pt-6"><p role="alert" className="text-sm text-destructive">{error}</p></CardContent></Card>;
 
   if (loading) {
     return (

@@ -111,15 +111,15 @@ function PredictionRow({ p }: { p: GroupPredictionSummary }) {
 // ─── Main Component ────────────────────────────────────────────────────────────
 
 export function PredictionHistoryPage({ groupId }: PredictionHistoryPageProps) {
-  const { session } = useAuth();
-  const token = session?.token;
+  const { session, user } = useAuth();
+  const token = session?.token ?? "";
   const [all, setAll]     = useState<GroupPredictionSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState<string | null>(null);
   const [filters, setFilters] = useState<FilterState>({ result: "all", timeframe: "all", dateFrom: "", dateTo: "" });
 
   useEffect(() => {
-    if (!token || !groupId) return;
+    if (!user || !groupId) return;
     let cancelled = false;
     setLoading(true);
 
@@ -141,7 +141,7 @@ export function PredictionHistoryPage({ groupId }: PredictionHistoryPageProps) {
       .catch(() => { if (!cancelled) { setError("Could not load prediction history"); setLoading(false); } });
 
     return () => { cancelled = true; };
-  }, [token, groupId]);
+  }, [user?.id, token, groupId]);
 
   // ── Derive available timeframes for filter dropdown ─────────────────────────
   const timeframes = Array.from(new Set(all.map((p) => p.timeframe).filter(Boolean) as string[]));

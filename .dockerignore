@@ -10,3 +10,7 @@ guidelines
 *.md
 *.pdf
 image
+
+.env.*
+docs/
+supabase/.temp/

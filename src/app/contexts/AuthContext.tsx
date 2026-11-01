@@ -57,8 +57,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true); // always validate on mount via cookie
 
   const refreshUser = async () => {
-    if (!session?.token) return;
-    const response = await getCurrentUser(session.token);
+    if (!session?.user) return;
+    const response = await getCurrentUser(session.token ?? undefined);
     setSession((prev) => prev
       ? { ...prev, user: mergeCurrentRole(prev.user, response.user) }
       : prev

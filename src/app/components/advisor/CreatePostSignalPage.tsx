@@ -1,3 +1,4 @@
+import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { Header } from "@/app/components/Header";
 import { Card } from "@/app/components/ui/card";
@@ -64,11 +65,11 @@ export function CreatePostSignalPage() {
   const userName = user?.fullName ?? "Advisor";
 
   useEffect(() => {
-    if (!session?.token) return;
+    if (!user) return;
     let active = true;
     async function load() {
       try {
-        const response = await listAdvisorGroups(session!.token);
+        const response = await listAdvisorGroups(session?.token ?? "");
         if (active) {
           setGroups(response.groups);
           if (groupId && response.groups.some((g) => g.id === groupId)) {
@@ -83,7 +84,7 @@ export function CreatePostSignalPage() {
     }
     load();
     return () => { active = false; };
-  }, [session?.token, groupId]);
+  }, [user?.id, session?.token, groupId]);
 
   const handleAddTag = () => {
     if (currentTag.trim() && !tags.includes(currentTag.trim())) {
@@ -98,13 +99,13 @@ export function CreatePostSignalPage() {
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: "image" | "file") => {
     const files = e.currentTarget.files;
-    if (!files || !session?.token) return;
+    if (!files || !user) return;
 
     setUploadingAttachment(true);
     try {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        const result = await uploadFile(session.token, file);
+        const result = await uploadFile(session?.token ?? "", file);
         setAttachments((prev) => [...prev, { ...result, type }]);
       }
     } catch (err: any) {
@@ -119,11 +120,11 @@ export function CreatePostSignalPage() {
   };
 
   const handlePublish = async () => {
-    if (!session?.token || !selectedGroup) return;
+    if (!user || !selectedGroup) return;
     setIsPublishing(true);
     setError(null);
     try {
-      await createAdvisorSignal(session.token, selectedGroup, {
+      const response = await createAdvisorSignal(session?.token ?? "", selectedGroup, {
         postType,
         title,
         content,
@@ -135,6 +136,8 @@ export function CreatePostSignalPage() {
         attachments: attachments.length > 0 ? attachments : undefined,
         notifyMembers,
       });
+      if (response.agentError) toast.warning(`Signal saved, but AI could not start: ${response.agentError}`);
+      else toast.success("Signal published. Follow sentiment and prediction processing in Agent Activity.");
       navigate("/advisor/groups");
     } catch (err: any) {
       setError(err?.message ?? "Failed to publish.");

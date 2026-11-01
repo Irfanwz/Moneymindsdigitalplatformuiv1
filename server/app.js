@@ -23,8 +23,9 @@ import { createVerificationRouter, createAdminVerificationRouter } from "./route
 import { createCredibilityRouter } from "./routes/credibility.js";
 import { startPredictionCron } from "./cron/predictionCron.js";
 import { startCredibilityCron } from "./cron/credibilityCron.js";
+import { createAgentsRouter } from "./routes/agents.js";
 
-export function createApp(store) {
+export function createApp(store, { backgroundJobs = process.env.NODE_ENV !== "test" && !process.env.VERCEL } = {}) {
   const app = express();
   app.set('trust proxy', 1);
 
@@ -57,11 +58,12 @@ export function createApp(store) {
   app.use("/api/verify", createVerificationRouter(store));
   app.use("/api/admin/verifications", createAdminVerificationRouter(store));
   app.use("/api/credibility", createCredibilityRouter(store));
+  app.use("/api/agents", createAgentsRouter(store));
 
   // Start daily prediction accuracy checker (9 AM every day)
-  startPredictionCron(store);
+  if (backgroundJobs) startPredictionCron(store);
   // Start daily credibility score recalculation (9:30 AM — after predictions)
-  startCredibilityCron(store);
+  if (backgroundJobs) startCredibilityCron(store);
 
   if (process.env.NODE_ENV === "production") {
     const distPath = path.resolve(import.meta.dirname, "..", "dist");
@@ -73,7 +75,7 @@ export function createApp(store) {
 
   app.use((error, _req, res, _next) => {
     const message = error instanceof Error ? error.message : "Unexpected server error.";
-    res.status(500).json({ message });
+    res.status(error.status || 500).json({ message, code: error.code });
   });
 
   return app;

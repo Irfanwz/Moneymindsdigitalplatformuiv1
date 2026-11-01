@@ -48,6 +48,7 @@
     "@radix-ui/react-tooltip": "1.1.8",
     "@sendgrid/mail": "^8.1.6",
     "@supabase/supabase-js": "^2.57.4",
+    "@vercel/functions": "3.10.5",
     "bcryptjs": "^3.0.2",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
@@ -72,6 +73,7 @@
     "node-cron": "^4.4.1",
     "openai": "^6.44.0",
     "otplib": "^13.4.1",
+    "pdf-parse": "2.4.5",
     "pdfkit": "^0.18.0",
     "qrcode": "^1.5.4",
     "react-day-picker": "8.10.1",
@@ -92,6 +94,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.14",
     "@tailwindcss/vite": "4.1.12",
     "@vitejs/plugin-react": "4.7.0",
     "md-to-pdf": "^5.2.5",

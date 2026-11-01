@@ -42,9 +42,10 @@ interface CredibilityScoreCardProps {
 }
 
 export function CredibilityScoreCard({ score: propScore, tier: propTier, updatedAt: propUpdatedAt, showActions = false, className }: CredibilityScoreCardProps) {
-  const { session } = useAuth();
+  const { session, user } = useAuth();
   const token = session?.token ?? "";
   const [data, setData] = useState<CredibilityScore | null>(null);
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(!propScore && propScore !== 0);
   const [recalculating, setRecalculating] = useState(false);
 
@@ -57,25 +58,27 @@ export function CredibilityScoreCard({ score: propScore, tier: propTier, updated
   const maxMonthlyFee = data?.maxMonthlyFee ?? null;
 
   useEffect(() => {
-    if (propScore !== undefined || !token) return;
+    if (propScore !== undefined || !user) return;
     let active = true;
     getMyCredibility(token)
       .then((res) => { if (active) setData(res); })
-      .catch(() => {})
+      .catch(e => { if(active) setError(e instanceof Error ? e.message : "Credibility data could not be loaded."); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [token, propScore]);
+  }, [user?.id, token, propScore]);
 
   async function handleRecalculate() {
-    if (!token || recalculating) return;
+    if (!user || recalculating) return;
     setRecalculating(true);
     try {
       await recalculateCredibility(token);
       const fresh = await getMyCredibility(token);
       setData(fresh);
-    } catch { /* ignore */ }
+    } catch (e) { setError(e instanceof Error ? e.message : "Recalculation failed. Check Agent Activity."); }
     setRecalculating(false);
   }
+
+  if(error) return <Card className={className}><CardContent className="pt-6"><p role="alert" className="text-sm text-destructive">{error}</p></CardContent></Card>;
 
   if (loading) {
     return (

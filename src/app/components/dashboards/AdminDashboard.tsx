@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import {
   AlertTriangle,
@@ -90,7 +91,7 @@ export function AdminDashboard() {
   });
 
   const loadProfiles = async () => {
-    if (!session?.token) {
+    if (!user) {
       return;
     }
 
@@ -98,7 +99,7 @@ export function AdminDashboard() {
     setErrorMessage("");
 
     try {
-      const response = await getAdminUsers(session.token);
+      const response = await getAdminUsers(session?.token ?? "");
       setProfiles(response.users);
       loadVerifications(response.users);
     } catch (error) {
@@ -112,28 +113,28 @@ export function AdminDashboard() {
   const openReport = async (userId: string) => {
     setReportDialogUserId(userId);
     if (verifications[userId]) return; // already loaded
-    if (!session?.token) return;
+    if (!user) return;
     setLoadingReport(true);
     try {
-      const res = await getUserVerification(session.token, userId);
+      const res = await getUserVerification(session?.token ?? "", userId);
       setVerifications((prev) => ({ ...prev, [userId]: res.verification }));
     } catch { /* no report yet */ }
     setLoadingReport(false);
   };
 
   const loadVerifications = async (userList: AuthUser[]) => {
-    if (!session?.token) return;
+    if (!user) return;
     try {
-      const summaryRes = await getVerificationSummary(session.token);
+      const summaryRes = await getVerificationSummary(session?.token ?? "");
       setVSummary(summaryRes.summary);
-    } catch { /* ignore */ }
+    } catch (e) { setErrorMessage(e instanceof Error ? e.message : "Verification data could not be loaded."); }
 
     const pending = userList.filter((u) => u.status === "pending");
     const results: Record<string, AIVerification> = {};
     await Promise.allSettled(
       pending.map(async (u) => {
         try {
-          const res = await getUserVerification(session.token, u.id);
+          const res = await getUserVerification(session?.token ?? "", u.id);
           results[u.id] = res.verification;
         } catch { /* no report yet */ }
       }),
@@ -144,23 +145,31 @@ export function AdminDashboard() {
   useEffect(() => {
     loadProfiles();
     loadDocVerifications();
-  }, [session?.token]);
+  }, [user?.id, session?.token]);
+
+  useEffect(() => {
+    if (!user || !reportDialogUserId) return;
+    const poll = setInterval(() => {
+      getUserVerification(session?.token ?? "", reportDialogUserId).then(res => setVerifications(prev => ({...prev, [reportDialogUserId]: res.verification}))).catch(e => setErrorMessage(e.message));
+    }, 3000);
+    return () => clearInterval(poll);
+  }, [user?.id, session?.token, reportDialogUserId]);
 
   const loadDocVerifications = async () => {
-    if (!session?.token) return;
+    if (!user) return;
     setDocVerifLoading(true);
     try {
-      const res = await adminListVerifications(session.token);
+      const res = await adminListVerifications(session?.token ?? "");
       setDocVerifications(res.verifications);
-    } catch { /* ignore */ }
+    } catch (e) { setErrorMessage(e instanceof Error ? e.message : "Verification data could not be loaded."); }
     finally { setDocVerifLoading(false); }
   };
 
   const handleDocApprove = async (id: string) => {
-    if (!session?.token) return;
+    if (!user) return;
     setDocVerifBusy(id);
     try {
-      await adminApproveVerification(session.token, id, docVerifNote || undefined);
+      await adminApproveVerification(session?.token ?? "", id, docVerifNote || undefined);
       toast.success("Verification approved — profile is now verified.");
       setDocVerifNote("");
       loadDocVerifications();
@@ -170,10 +179,10 @@ export function AdminDashboard() {
   };
 
   const handleDocReject = async (id: string) => {
-    if (!session?.token) return;
+    if (!user) return;
     setDocVerifBusy(id);
     try {
-      await adminRejectVerification(session.token, id, docVerifNote || undefined);
+      await adminRejectVerification(session?.token ?? "", id, docVerifNote || undefined);
       toast.success("Verification rejected.");
       setDocVerifNote("");
       loadDocVerifications();
@@ -206,7 +215,7 @@ export function AdminDashboard() {
   };
 
   const handleApproval = async (profile: AuthUser, status: "approved" | "rejected") => {
-    if (!session?.token) {
+    if (!user) {
       return;
     }
 
@@ -216,7 +225,7 @@ export function AdminDashboard() {
     setSuccessMessage("");
 
     try {
-      const response = await updateUserApproval(session.token, profile.id, {
+      const response = await updateUserApproval(session?.token ?? "", profile.id, {
         status,
         approvedRoles: draft.approvedRoles,
         adminNotes: draft.adminNotes,
@@ -292,6 +301,7 @@ export function AdminDashboard() {
           })}
         </div>
 
+        <Card className="p-4 mb-6 flex flex-wrap items-center justify-between gap-3"><div><p className="font-semibold">Watch AI agents in action</p><p className="text-sm text-muted-foreground">Inspect running steps, saved results, setup issues, and unprocessed records.</p></div><Button asChild><Link to="/admin/agents">Open Agent Activity</Link></Button></Card>
         {/* AI Verification Summary Bar */}
         {vSummary && vSummary.total > 0 && (
           <Card className="p-4 mb-8">
@@ -593,13 +603,13 @@ export function AdminDashboard() {
                 Automated background verification based on web search and AI analysis.
               </DialogDescription>
             </DialogHeader>
-            {reportDialogUserId && session?.token && (
+            {reportDialogUserId && user && (
               <AIVerificationReport
                 verification={verifications[reportDialogUserId] ?? null}
                 loading={loadingReport}
-                token={session.token}
+                token={session?.token ?? ""}
                 onRetryComplete={() => {
-                  toast.success("Verification re-queued. Refresh in 30-60 seconds.");
+                  toast.success("Verification queued. This report updates automatically; Agent Activity shows its progress.");
                   setReportDialogUserId(null);
                   loadProfiles();
                 }}

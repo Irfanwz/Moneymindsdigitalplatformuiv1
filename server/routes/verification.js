@@ -13,6 +13,7 @@ import multer from "multer";
 import { Router } from "express";
 import { config, isSupabaseConfigured } from "../config.js";
 import { createAuthenticate, requireAdmin } from "../middleware/auth.js";
+import { executeTrackedRun, keepAlive } from "../services/agentRuntime.js";
 import { runVerification } from "../services/profileVerificationService.js";
 import { trimText } from "../utils.js";
 
@@ -94,24 +95,17 @@ export function createVerificationRouter(store) {
       const userObj = req.currentUser;
       let profileClaims = { name: userObj.fullName };
 
-      try {
-        const [advisor, startup, investor] = await Promise.allSettled([
-          store.getAdvisorProfile(userId),
-          store.getStartupProfile(userId),
-          store.getInvestorProfile(userId),
-        ]);
-        const advisorP = advisor.status === "fulfilled" ? advisor.value : null;
-        const startupP = startup.status === "fulfilled" ? startup.value : null;
-        const investorP = investor.status === "fulfilled" ? investor.value : null;
-
-        profileClaims = {
-          name: userObj.fullName,
-          title: advisorP?.title || startupP?.companyName || "",
-          company: startupP?.companyName || advisorP?.previousRoles || "",
-          certifications: (advisorP?.certifications || []).map((c) => c.name).join(", "),
-          yearsExperience: advisorP?.yearsExperience || "",
-        };
-      } catch { /* use minimal claims */ }
+      const [advisorP,startupP]=await Promise.all([
+        store.findAdvisorProfileByUserId(userId),
+        store.findStartupProfileByUserId(userId),
+      ]);
+      profileClaims={
+        name:userObj.fullName,
+        title:advisorP?.title || startupP?.companyName || "",
+        company:startupP?.companyName || advisorP?.previousRoles || "",
+        certifications:(advisorP?.certifications || []).map(c=>typeof c==="string" ? c : c.name).join(", "),
+        yearsExperience:advisorP?.yearsExperience || "",
+      };
 
       // Create verification record in DB
       const verification = await store.createProfileVerification({
@@ -122,19 +116,14 @@ export function createVerificationRouter(store) {
         status: "pending",
       });
 
-      // Fire-and-forget AI analysis
-      runVerification({
-        verificationId: verification.id,
-        fileBuffer: req.file.buffer,
-        mimeType: req.file.mimetype,
-        docType,
-        claimToVerify,
-        userProfile: profileClaims,
-        userId,
-        store,
-      }).catch((err) => {
-        console.error("[Verification] Background pipeline error:", err.message);
-      });
+      const run=await store.createAgentRun({userId,agentKey:"document",targetId:verification.id});
+      keepAlive(executeTrackedRun(store,run,async progress=>{
+        await progress("Reading the uploaded document",20);
+        await runVerification({verificationId:verification.id,fileBuffer:req.file.buffer,mimeType:req.file.mimetype,docType,claimToVerify,userProfile:profileClaims,userId,store,progress});
+        const result=await store.getProfileVerification(verification.id);
+        if(!result?.aiConfidence && result?.status==="manual_review") throw new Error(result.aiReasoning || "Document analysis needs manual review.");
+        return result;
+      }));
 
       res.status(202).json({
         message: "Document received. AI verification is in progress.",

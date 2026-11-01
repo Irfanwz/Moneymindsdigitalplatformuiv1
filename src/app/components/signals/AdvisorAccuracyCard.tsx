@@ -86,8 +86,8 @@ function ResultBar({
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function AdvisorAccuracyCard({ advisorId, stats: propStats, className }: AdvisorAccuracyCardProps) {
-  const { session } = useAuth();
-  const token = session?.token;
+  const { session, user } = useAuth();
+  const token = session?.token ?? "";
   const [stats, setStats] = useState<AdvisorAccuracyStats | null>(propStats ?? null);
   const [loading, setLoading] = useState(!propStats);
   const [error, setError] = useState<string | null>(null);
@@ -98,7 +98,7 @@ export function AdvisorAccuracyCard({ advisorId, stats: propStats, className }: 
       setLoading(false);
       return;
     }
-    if (!token || !advisorId) return;
+    if (!user || !advisorId) return;
 
     let cancelled = false;
     setLoading(true);
@@ -107,7 +107,7 @@ export function AdvisorAccuracyCard({ advisorId, stats: propStats, className }: 
       .catch(() => { if (!cancelled) { setError("Could not load accuracy data"); setLoading(false); } });
 
     return () => { cancelled = true; };
-  }, [token, advisorId, propStats]);
+  }, [user?.id, token, advisorId, propStats]);
 
   // ── Loading state ───────────────────────────────────────────────────────────
   if (loading) {

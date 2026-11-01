@@ -57,11 +57,11 @@ export function BrowseGroupsPage({ userRole }: { userRole: "startup" | "investor
   const userName = user?.fullName ?? "User";
 
   useEffect(() => {
-    if (!session?.token) return;
+    if (!user) return;
     let active = true;
     async function load() {
       try {
-        const res = await browseGroups(session!.token);
+        const res = await browseGroups(session?.token ?? "");
         if (active) setGroups(res.groups);
       } catch (err) {
         if (active) setLoadError(err instanceof Error ? err.message : "Could not load groups. Please try again.");
@@ -71,10 +71,10 @@ export function BrowseGroupsPage({ userRole }: { userRole: "startup" | "investor
     }
     load();
     return () => { active = false; };
-  }, [session?.token]);
+  }, [user?.id, session?.token]);
 
   const handleJoin = async (groupId: string) => {
-    if (!session?.token) return;
+    if (!user) return;
     const group = groups.find((g) => g.id === groupId);
     if (group?.isPaid && parseFloat(group.joiningFee || "0") > 0) {
       setCheckoutGroup(group);
@@ -82,7 +82,7 @@ export function BrowseGroupsPage({ userRole }: { userRole: "startup" | "investor
     }
     setJoiningGroupId(groupId);
     try {
-      await joinAdvisorGroup(session.token, groupId);
+      await joinAdvisorGroup(session?.token ?? "", groupId);
       setGroups((prev) =>
         prev.map((g) =>
           g.id === groupId ? { ...g, isJoined: true, memberCount: g.memberCount + 1 } : g
@@ -107,10 +107,10 @@ export function BrowseGroupsPage({ userRole }: { userRole: "startup" | "investor
   };
 
   const handleLeave = async (groupId: string) => {
-    if (!session?.token || !confirm("Leave this group?")) return;
+    if (!user || !confirm("Leave this group?")) return;
     setJoiningGroupId(groupId);
     try {
-      await leaveAdvisorGroup(session.token, groupId);
+      await leaveAdvisorGroup(session?.token ?? "", groupId);
       setGroups((prev) =>
         prev.map((g) =>
           g.id === groupId
@@ -380,7 +380,7 @@ export function BrowseGroupsPage({ userRole }: { userRole: "startup" | "investor
             <Users className="h-12 w-12 mx-auto mb-4 text-destructive opacity-50" />
             <h3 className="font-semibold mb-2">Could not load groups</h3>
             <p className="text-sm text-muted-foreground mb-4">{loadError}</p>
-            <Button variant="outline" onClick={() => { setLoadError(null); setIsLoading(true); browseGroups(session!.token).then(res => setGroups(res.groups)).catch(() => setLoadError("Still unable to load groups.")).finally(() => setIsLoading(false)); }}>
+            <Button variant="outline" onClick={() => { setLoadError(null); setIsLoading(true); browseGroups(session?.token ?? "").then(res => setGroups(res.groups)).catch(() => setLoadError("Still unable to load groups.")).finally(() => setIsLoading(false)); }}>
               Try Again
             </Button>
           </Card>

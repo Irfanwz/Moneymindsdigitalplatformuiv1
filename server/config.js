@@ -1,6 +1,6 @@
 import dotenv from "dotenv";
 
-dotenv.config();
+if (process.env.NODE_ENV !== "test") dotenv.config();
 
 function toNumber(value, fallback) {
   const parsed = Number.parseInt(value ?? "", 10);
@@ -27,6 +27,9 @@ export const config = {
   tavilyApiKey: process.env.TAVILY_API_KEY ?? "",
   // AI_PROVIDER: "groq" (default if key set), "anthropic", or "auto" (tries groq first, falls back to anthropic)
   aiProvider: process.env.AI_PROVIDER ?? "auto",
+  groqModel: process.env.GROQ_MODEL ?? "openai/gpt-oss-20b",
+  anthropicModel: process.env.ANTHROPIC_MODEL ?? "claude-haiku-4-5-20251001",
+  groqVisionModel: process.env.GROQ_VISION_MODEL ?? "qwen/qwen3.8-27b",
   // Market Data
   coingeckoApiKey: process.env.COINGECKO_API_KEY ?? "",
   alphaVantageKey: process.env.ALPHA_VANTAGE_KEY ?? "",

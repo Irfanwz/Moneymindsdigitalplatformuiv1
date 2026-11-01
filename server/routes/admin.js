@@ -4,7 +4,7 @@ import { validate, approvalSchema } from "../schemas.js";
 import { sendApprovalEmail, sendRejectionEmail } from "../email.js";
 import { createAuthenticate, requireAdmin } from "../middleware/auth.js";
 import { paginate, trimText } from "../utils.js";
-import { runForUser } from "../services/verificationAgent.js";
+import { queueAgent } from "../services/agentService.js";
 
 export function createAdminRouter(store) {
   const router = Router();
@@ -96,14 +96,8 @@ export function createAdminRouter(store) {
       const user = await store.findUserById(userId);
       if (!user) return res.status(404).json({ message: "User not found." });
 
-      // Respond immediately, run in background
-      res.json({ message: "Verification re-queued. Refresh in 30-60 seconds." });
-
-      setImmediate(() => {
-        runForUser(userId, store).catch((err) =>
-          console.error("[AI Verification] Retry error:", err.message)
-        );
-      });
+      const run=await queueAgent(store,{userId,agentKey:"verification",targetId:userId});
+      res.status(200).json({message:"Verification re-queued. Progress is available in Agent Activity.",run});
     } catch (error) { next(error); }
   });
 

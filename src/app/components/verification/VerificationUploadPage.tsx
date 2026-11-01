@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Upload, FileText, Image, CheckCircle2, Clock, XCircle, AlertCircle, BadgeCheck, ChevronRight } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/app/components/ui/card";
@@ -6,6 +6,10 @@ import { Label } from "@/app/components/ui/label";
 import { Textarea } from "@/app/components/ui/textarea";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { uploadVerificationDocument, getMyVerifications, type ProfileVerification } from "@/app/lib/api";
+import { Link } from "react-router-dom";
+import { Header } from "@/app/components/Header";
+import { useAgentRuns } from "@/app/lib/agents";
+import { AgentRunCard } from "@/app/components/agents/AgentRunCard";
 import { cn } from "@/app/components/ui/utils";
 
 const DOC_TYPES = [
@@ -59,8 +63,8 @@ function VerificationRecord({ record }: { record: ProfileVerification }) {
 
 type Step = "type" | "upload" | "claim" | "done";
 
-export function VerificationUploadPage() {
-  const { session } = useAuth();
+function VerificationUploadForm() {
+  const { session, user } = useAuth();
   const token = session?.token ?? "";
 
   const [step, setStep] = useState<Step>("type");
@@ -75,14 +79,20 @@ export function VerificationUploadPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadRecords = useCallback(async () => {
-    if (!token) return;
+    if (!user) return;
     setLoadingRecords(true);
     try {
       const res = await getMyVerifications(token);
       setRecords(res.verifications);
-    } catch { /* ignore */ }
+    } catch (e) { setError(e instanceof Error ? e.message : "Verification history could not be loaded."); }
     finally { setLoadingRecords(false); }
-  }, [token]);
+  }, [user?.id, token]);
+
+  useEffect(() => {
+    void loadRecords();
+    const timer = setInterval(() => { void loadRecords(); }, 5000);
+    return () => clearInterval(timer);
+  }, [loadRecords]);
 
   // Load history when reaching "done" step
   const handleDone = useCallback(() => {
@@ -125,6 +135,8 @@ export function VerificationUploadPage() {
           </p>
         </div>
 
+        {error && <p role="alert" className="text-destructive text-sm">{error}</p>}
+        <div className="flex gap-3"><Button variant="outline" onClick={() => setStep("done")}>View verification history ({records.length})</Button><Button variant="outline" asChild><Link to="/activity">Agent Activity</Link></Button></div>
         <div className="grid gap-3">
           {DOC_TYPES.map((type) => (
             <button
@@ -242,17 +254,18 @@ export function VerificationUploadPage() {
   // ── Step 4: Done + history ────────────────────────────────────
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <Card className="border-green-200 bg-green-50">
+      {file && <Card className="border-green-200 bg-green-50">
         <CardContent className="flex items-center gap-4 pt-6">
           <CheckCircle2 className="h-10 w-10 text-green-600 shrink-0" />
           <div>
             <p className="font-semibold text-green-900">Document submitted successfully</p>
             <p className="text-sm text-green-700 mt-0.5">
-              Our AI is reviewing your document. You'll receive a notification when it's done — usually within a few minutes.
+              The status and processing steps below update automatically while your document is reviewed.
             </p>
           </div>
         </CardContent>
-      </Card>
+      </Card>}
+      {error && <p role="alert" className="text-destructive text-sm">{error}</p>}
 
       <div>
         <h3 className="font-semibold mb-3">Your Verification History</h3>
@@ -272,4 +285,10 @@ export function VerificationUploadPage() {
       </Button>
     </div>
   );
+}
+
+export function VerificationUploadPage() {
+  const {user} = useAuth();
+  const {runs, error} = useAgentRuns("document");
+  return <div className="min-h-screen bg-background"><Header userName={user?.fullName}/><main className="container mx-auto px-4 py-8 space-y-6"><VerificationUploadForm/><section className="max-w-2xl mx-auto space-y-3"><h2 className="font-semibold">Document agent activity</h2>{error && <p role="alert" className="text-sm text-destructive">{error}</p>}{runs.slice(0,5).map(run => <AgentRunCard key={run.id} run={run}/>)}</section></main></div>;
 }

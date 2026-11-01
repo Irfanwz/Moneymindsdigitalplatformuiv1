@@ -1,3 +1,4 @@
+import { executeTrackedRun } from "../services/agentRuntime.js";
 import { Router } from "express";
 import { createAuthenticate, requireApprovedRole } from "../middleware/auth.js";
 import { getTierForScore, recalculateForAdvisor, validateFeeCap } from "../services/credibilityService.js";
@@ -13,7 +14,7 @@ export function createCredibilityRouter(store) {
       const profile = await store.findAdvisorProfileByUserId(req.auth.userId);
       if (!profile) return res.status(404).json({ message: "Advisor profile not found." });
 
-      const score = profile.credibilityScore;
+      const score = profile.credibilityScore ?? null;
       const tier = score !== null && score !== undefined ? getTierForScore(score) : null;
 
       res.json({
@@ -54,7 +55,15 @@ export function createCredibilityRouter(store) {
   // POST /api/credibility/recalculate — force recalculation for the logged-in advisor
   router.post("/recalculate", authenticate, requireAdvisorRole, async (req, res, next) => {
     try {
-      const result = await recalculateForAdvisor(req.auth.userId, store);
+      const run=await store.createAgentRun({userId:req.auth.userId,agentKey:"credibility",targetId:req.auth.userId});
+      const saved=await executeTrackedRun(store,run,async progress=>{
+        await progress("Reading checked predictions and recalculating score",40);
+        const score=await recalculateForAdvisor(req.auth.userId,store);
+        return {...score,summary:score.score===null ? "Not enough checked predictions yet. Five are required for a credibility score." : `Credibility updated to ${score.score}/100.`};
+      });
+      if(saved.status==="failed") return res.status(503).json({message:saved.error});
+      if(saved.status!=="completed") return res.status(202).json({message:"A recalculation is already running. Follow it in Agent Activity."});
+      const result=saved.result;
       res.json({
         message: "Credibility score recalculated.",
         score: result.score,

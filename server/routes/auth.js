@@ -14,7 +14,7 @@ import { validate, registerSchema, loginSchema, forgotPasswordSchema, resetPassw
 import { config } from "../config.js";
 import { sendPasswordResetEmail, sendWelcomeEmail } from "../email.js";
 import { createAuthenticate } from "../middleware/auth.js";
-import { runForUser } from "../services/verificationAgent.js";
+import { queueAgent } from "../services/agentService.js";
 
 const authLimiter = rateLimit({
   windowMs: 60 * 1000,
@@ -61,12 +61,8 @@ export function createAuthRouter(store) {
 
       try { await sendWelcomeEmail(email, fullName); } catch { /* non-critical */ }
 
-      // Fire-and-forget — does NOT delay the registration response
-      setImmediate(() => {
-        runForUser(user.id, store).catch((err) =>
-          console.error("[AI Verification] Unhandled error:", err.message)
-        );
-      });
+      try { await queueAgent(store,{userId:user.id,agentKey:"verification",targetId:user.id}); }
+      catch(error) { console.error("[Verification] Could not queue:",error.message); }
 
       res.status(201).json({
         message: "Profile submitted. An admin must approve it before you can sign in.",

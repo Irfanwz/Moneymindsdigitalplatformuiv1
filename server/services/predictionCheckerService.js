@@ -4,8 +4,8 @@ import { config } from "../config.js";
 import { parseSignalPrediction } from "./predictionParserService.js";
 import { getStockPrice, getCryptoPrice } from "./marketPriceFetcher.js";
 
-const groqClient = config.groqApiKey ? new Groq({ apiKey: config.groqApiKey }) : null;
-const anthropicClient = config.anthropicApiKey ? new Anthropic({ apiKey: config.anthropicApiKey }) : null;
+const groqClient = config.groqApiKey ? new Groq({ apiKey: config.groqApiKey, timeout:30000, maxRetries:0 }) : null;
+const anthropicClient = config.anthropicApiKey ? new Anthropic({ apiKey: config.anthropicApiKey, timeout:30000, maxRetries:0 }) : null;
 
 // ─── Accuracy Calculation ─────────────────────────────────────────────────────
 
@@ -88,10 +88,10 @@ async function generateExplanation(params) {
   if (groqClient && (config.aiProvider === "auto" || config.aiProvider === "groq")) {
     try {
       const res = await groqClient.chat.completions.create({
-        model: "llama-3.3-70b-versatile",
+        model: config.groqModel,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.3,
-        max_tokens: 150,
+        max_tokens: 1500,
       });
       const text = res.choices[0]?.message?.content?.trim();
       if (text && text.length > 0) return text;
@@ -103,8 +103,8 @@ async function generateExplanation(params) {
   if (anthropicClient && (config.aiProvider === "auto" || config.aiProvider === "anthropic")) {
     try {
       const res = await anthropicClient.messages.create({
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: 150,
+        model: config.anthropicModel,
+        max_tokens: 1500,
         messages: [{ role: "user", content: prompt }],
       });
       const text = res.content[0]?.text?.trim();
@@ -151,48 +151,40 @@ async function fetchCurrentPrice(ticker) {
  * @param {object} signal
  * @param {object} store
  */
-export async function scheduleSignalPrediction(signalId, signal, store) {
+export async function scheduleSignalPrediction(signalId, signal, store, {strict=false}={}) {
   try {
-    const parsed = await parseSignalPrediction(signal);
-
-    // Calculate check date
-    const checkDate = new Date();
-    checkDate.setDate(checkDate.getDate() + parsed.timeframeDays);
-
-    // Fetch baseline price
-    const baselinePrice = await fetchCurrentPrice(parsed.ticker);
-    const now = new Date().toISOString();
-
-    await store.updateSignalPrediction(signalId, {
-      predictionDirection: parsed.direction,
-      predictionTargetPrice: parsed.targetPrice,
-      predictionTimeframe: parsed.timeframe,
-      predictionTimeframeDays: parsed.timeframeDays,
-      predictionCheckDate: checkDate.toISOString(),
-      baselinePrice: baselinePrice,
-      baselineFetchedAt: baselinePrice !== null ? now : null,
+    if(signal.predictionCheckedAt) return {summary:"This prediction has already been evaluated. Its recorded result is preserved.",eligible:false};
+    const parsed=await parseSignalPrediction(signal,{strict});
+    if(!parsed.ticker || parsed.direction==="neutral") {
+      await store.updateSignalPrediction(signalId,{predictionDirection:"neutral",predictionTicker:parsed.ticker || null,predictionCheckDate:null});
+      return {summary:"No directional, identifiable asset prediction was found in this post.",eligible:false};
+    }
+    const created=Date.parse(signal.createdAt || new Date().toISOString());
+    const historical=Date.now()-created>60*60*1000 && !signal.baselinePrice;
+    const baselinePrice=signal.baselinePrice || (historical ? null : await fetchCurrentPrice(parsed.ticker));
+    const now=new Date().toISOString();
+    const checkDate=new Date(created+parsed.timeframeDays*86400000).toISOString();
+    const updated=await store.updateSignalPrediction(signalId,{
+      predictionTicker:parsed.ticker,predictionDirection:parsed.direction,predictionTargetPrice:parsed.targetPrice,
+      predictionTimeframe:parsed.timeframe,predictionTimeframeDays:parsed.timeframeDays,
+      predictionCheckDate:baselinePrice ? checkDate : null,baselinePrice,
+      baselineFetchedAt:signal.baselineFetchedAt || (baselinePrice ? now : null),
     });
-
-    console.log(`[PredictionChecker] Scheduled signal ${signalId}: ${parsed.direction} ${parsed.ticker ?? "?"} — check in ${parsed.timeframeDays}d`);
-  } catch (err) {
-    console.error(`[PredictionChecker] scheduleSignalPrediction failed for ${signalId}:`, err.message);
+    if(!updated) throw new Error("The extracted prediction could not be saved.");
+    return {summary:historical ? "Prediction extracted. Original baseline is unavailable for this historical signal; no accuracy score will be fabricated." : baselinePrice ? `Prediction saved; evaluation is due ${checkDate}.` : "Prediction extracted, but a market price was unavailable. Check the price provider and retry while the signal is fresh.",ticker:parsed.ticker,eligible:!!baselinePrice,checkDate:baselinePrice ? checkDate : null};
+  } catch(error) {
+    if(strict) throw error;
+    console.error("[PredictionChecker] Could not schedule:",error.message);
+    return null;
   }
 }
 
-// ─── Check One Prediction ─────────────────────────────────────────────────────
-
-/**
- * Check a single due prediction: fetch actual price, score, generate explanation, save.
- *
- * @param {object} signal - signal from store with prediction fields
- * @param {object} store
- */
 export async function checkOnePrediction(signal, store) {
   try {
-    const ticker = signal.predictionDirection !== null ? signal.ticker : null;
-    // Re-derive ticker from signal if not stored (older signals)
-    const parsed = await parseSignalPrediction(signal);
-    const effectiveTicker = parsed.ticker;
+    if(!signal.baselinePrice || signal.baselinePrice<=0 || !signal.predictionCheckDate || Date.parse(signal.predictionCheckDate)>Date.now()) return null;
+    if(!["up","down"].includes(signal.predictionDirection)) return null;
+    const effectiveTicker=signal.predictionTicker;
+    if(!effectiveTicker) return null;
 
     const actualPrice = await fetchCurrentPrice(effectiveTicker);
     if (actualPrice === null) {
@@ -204,7 +196,7 @@ export async function checkOnePrediction(signal, store) {
       baselinePrice: signal.baselinePrice,
       targetPrice: signal.predictionTargetPrice,
       actualPrice,
-      direction: signal.predictionDirection ?? parsed.direction,
+      direction: signal.predictionDirection,
     });
 
     const explanation = await generateExplanation({

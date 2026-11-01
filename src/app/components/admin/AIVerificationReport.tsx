@@ -117,7 +117,7 @@ export function AIVerificationReport({ verification, loading, token, onRetryComp
     try {
       await retryVerification(token, verification.userId);
       toast.success("Verification re-queued", {
-        description: "The AI agent will re-run in the background. Refresh in 30-60 seconds.",
+        description: "The report updates automatically. Agent Activity shows each processing step.",
       });
       onRetryComplete?.();
     } catch {

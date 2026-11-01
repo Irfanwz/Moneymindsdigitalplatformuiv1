@@ -1,38 +1,14 @@
-/**
- * credibilityCron.js
- * Daily cron job that recalculates credibility scores for all advisors.
- * Runs 30 minutes after the prediction checker (9:30 AM) so new results are included.
- */
-
-import { recalculateAll } from "../services/credibilityService.js";
+import cron from "node-cron";
+import { queueAgent } from "../services/agentService.js";
 
 export function startCredibilityCron(store) {
-  // Run once at startup
-  runRecalc(store);
-
-  // Schedule daily at 9:30 AM
-  const now = new Date();
-  const next = new Date(now);
-  next.setHours(9, 30, 0, 0);
-  if (next <= now) next.setDate(next.getDate() + 1);
-
-  const msUntilFirst = next - now;
-  const msPerDay = 24 * 60 * 60 * 1000;
-
-  console.log(`[CredibilityCron] First recalc in ${Math.round(msUntilFirst / 60000)} minutes (${next.toISOString()})`);
-
-  setTimeout(() => {
-    runRecalc(store);
-    setInterval(() => runRecalc(store), msPerDay);
-  }, msUntilFirst);
-}
-
-async function runRecalc(store) {
-  console.log(`[CredibilityCron] Running credibility recalculation — ${new Date().toISOString()}`);
-  try {
-    const count = await recalculateAll(store);
-    console.log(`[CredibilityCron] Done — ${count} advisor(s) updated`);
-  } catch (err) {
-    console.error("[CredibilityCron] Error:", err.message);
-  }
+  const run=async()=>{
+    try {
+      const users=await store.listUsers({includeAdmins:true});
+      const admin=users.find(u=>u.isAdmin);
+      if(admin) await queueAgent(store,{userId:admin.id,agentKey:"credibility",targetId:"all"});
+    } catch(error) {console.error("[Agent schedule]",error.message);}
+  };
+  void run();
+  return cron.schedule("30 9 * * *",run,{timezone:process.env.AGENT_TIMEZONE || "Asia/Karachi"});
 }

@@ -98,7 +98,7 @@ function SignalCardWithComments({
   const [posting, setPosting] = useState(false);
 
   const loadData = async () => {
-    if (!token) return;
+    if (!currentUserId) return;
     try {
       const [commentsRes, reactionsRes] = await Promise.all([
         listSignalComments(token, signal.id),
@@ -113,13 +113,13 @@ function SignalCardWithComments({
   };
 
   useEffect(() => {
-    if (token) {
+    if (currentUserId) {
       // Load reactions eagerly (counts shown), comments lazily
       listSignalReactions(token, signal.id)
         .then((res) => setReactions(res.reactions))
         .catch(() => {});
     }
-  }, [token, signal.id]);
+  }, [currentUserId, token, signal.id]);
 
   const toggleComments = () => {
     if (!showComments && !commentsLoaded) {
@@ -131,7 +131,7 @@ function SignalCardWithComments({
   };
 
   const handleAddComment = async () => {
-    if (!token || !newComment.trim()) return;
+    if (!currentUserId || !newComment.trim()) return;
     setPosting(true);
     try {
       const res = await createSignalComment(token, signal.id, newComment.trim());
@@ -145,7 +145,7 @@ function SignalCardWithComments({
   };
 
   const handleDeleteComment = async (commentId: string) => {
-    if (!token) return;
+    if (!currentUserId) return;
     try {
       await deleteSignalComment(token, signal.id, commentId);
       setComments((prev) => prev.filter((c) => c.id !== commentId));
@@ -155,7 +155,7 @@ function SignalCardWithComments({
   };
 
   const handleReaction = async (reactionType: string) => {
-    if (!token) return;
+    if (!currentUserId) return;
     try {
       const res = await toggleSignalReaction(token, signal.id, reactionType);
       if (res.added) {
@@ -233,6 +233,7 @@ function SignalCardWithComments({
               ))}
             </div>
           )}
+          {signal.sentiment && <div className="mt-3 space-y-1 text-sm"><div className="flex gap-2 flex-wrap"><Badge variant="outline">AI sentiment: {signal.sentiment}</Badge>{signal.riskLevel && <Badge variant="outline">Risk: {signal.riskLevel}</Badge>}</div><p className="text-muted-foreground">{signal.sentimentReasoning}</p>{signal.sentimentConfidence != null && <p className="text-xs text-muted-foreground">Model confidence: {signal.sentimentConfidence}%</p>}</div>}
           {/* Prediction accuracy badge */}
           <div className="mt-2">
             <PredictionBadge signal={signal} compact />
@@ -402,11 +403,11 @@ export function AdvisorGroupsPage() {
   const userName = user?.fullName ?? "Advisor";
 
   useEffect(() => {
-    if (!session?.token) return;
+    if (!user) return;
     let active = true;
     async function load() {
       try {
-        const response = await listAdvisorGroups(session!.token);
+        const response = await listAdvisorGroups(session?.token ?? "");
         if (active) setGroups(response.groups);
       } catch {
         // empty
@@ -416,7 +417,7 @@ export function AdvisorGroupsPage() {
     }
     load();
     return () => { active = false; };
-  }, [session?.token]);
+  }, [user?.id, session?.token]);
 
   const resetForm = () => {
     setNewGroupName("");
@@ -430,11 +431,11 @@ export function AdvisorGroupsPage() {
   };
 
   const handleCreateGroup = async () => {
-    if (!session?.token || !newGroupName.trim()) return;
+    if (!user || !newGroupName.trim()) return;
     setIsCreating(true);
     setError(null);
     try {
-      const response = await createAdvisorGroup(session.token, {
+      const response = await createAdvisorGroup(session?.token ?? "", {
         name: newGroupName,
         description: newGroupDescription,
         category: newGroupCategory,
@@ -454,9 +455,9 @@ export function AdvisorGroupsPage() {
   };
 
   const handleDeleteGroup = async (groupId: string) => {
-    if (!session?.token || !confirm("Are you sure you want to delete this group?")) return;
+    if (!user || !confirm("Are you sure you want to delete this group?")) return;
     try {
-      await deleteAdvisorGroup(session.token, groupId);
+      await deleteAdvisorGroup(session?.token ?? "", groupId);
       setGroups((prev) => prev.filter((g) => g.id !== groupId));
     } catch {
       // ignore
@@ -477,11 +478,11 @@ export function AdvisorGroupsPage() {
   };
 
   const handleUpdateGroup = async () => {
-    if (!session?.token || !editingGroup || !editName.trim()) return;
+    if (!user || !editingGroup || !editName.trim()) return;
     setIsSaving(true);
     setError(null);
     try {
-      const response = await updateAdvisorGroup(session.token, editingGroup.id, {
+      const response = await updateAdvisorGroup(session?.token ?? "", editingGroup.id, {
         name: editName,
         description: editDescription,
         category: editCategory,
@@ -501,23 +502,32 @@ export function AdvisorGroupsPage() {
   };
 
   const openSignalFeed = async (group: AdvisorGroup) => {
-    if (!session?.token) return;
+    if (!user) return;
     setViewingGroup(group);
     setSignalsLoading(true);
     try {
-      const response = await listAdvisorSignals(session.token, group.id);
+      const response = await listAdvisorSignals(session?.token ?? "", group.id);
       setGroupSignals(response.signals);
-    } catch {
-      setGroupSignals([]);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Signals could not be loaded.");
     } finally {
       setSignalsLoading(false);
     }
   };
 
+  useEffect(() => {
+    if (!viewingGroup || !user) return;
+    let active = true;
+    const timer = setInterval(() => {
+      listAdvisorSignals(session?.token ?? "", viewingGroup.id).then(res => { if(active) setGroupSignals(res.signals); }).catch(e => { if(active) setError(e.message); });
+    }, 5000);
+    return () => { active = false; clearInterval(timer); };
+  }, [viewingGroup?.id, user?.id, session?.token]);
+
   const handleDeleteSignal = async (signalId: string) => {
-    if (!session?.token || !viewingGroup || !confirm("Delete this signal?")) return;
+    if (!user || !viewingGroup || !confirm("Delete this signal?")) return;
     try {
-      await deleteAdvisorSignal(session.token, viewingGroup.id, signalId);
+      await deleteAdvisorSignal(session?.token ?? "", viewingGroup.id, signalId);
       setGroupSignals((prev) => prev.filter((s) => s.id !== signalId));
     } catch {
       // ignore
@@ -539,11 +549,11 @@ export function AdvisorGroupsPage() {
   };
 
   const handleUpdateSignal = async () => {
-    if (!session?.token || !editingSignal || !viewingGroup) return;
+    if (!user || !editingSignal || !viewingGroup) return;
     setIsSavingSignal(true);
     setError(null);
     try {
-      const res = await updateAdvisorSignal(session.token, viewingGroup.id, editingSignal.id, {
+      const res = await updateAdvisorSignal(session?.token ?? "", viewingGroup.id, editingSignal.id, {
         postType: editingSignal.postType,
         title: editSignalTitle,
         content: editSignalContent,
@@ -572,10 +582,10 @@ export function AdvisorGroupsPage() {
   };
 
   const loadMembers = async (groupId: string) => {
-    if (!session?.token) return;
+    if (!user) return;
     setMembersLoading(true);
     try {
-      const res = await listGroupMembers(session.token, groupId);
+      const res = await listGroupMembers(session?.token ?? "", groupId);
       setGroupMembers(res.members);
     } catch {
       setGroupMembers([]);
@@ -585,9 +595,9 @@ export function AdvisorGroupsPage() {
   };
 
   const handleRemoveMember = async (userId: string, userName: string) => {
-    if (!session?.token || !viewingGroup || !confirm(`Remove ${userName} from this group?`)) return;
+    if (!user || !viewingGroup || !confirm(`Remove ${userName} from this group?`)) return;
     try {
-      await removeGroupMember(session.token, viewingGroup.id, userId);
+      await removeGroupMember(session?.token ?? "", viewingGroup.id, userId);
       setGroupMembers((prev) => prev.filter((m) => m.userId !== userId));
       setGroups((prev) =>
         prev.map((g) =>
@@ -723,6 +733,7 @@ export function AdvisorGroupsPage() {
           )}
 
           {/* Signals Feed */}
+          <Button asChild variant="outline" className="mb-4"><Link to="/activity">Watch signal agents in Agent Activity</Link></Button>
           {signalsLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />

@@ -2,7 +2,7 @@ import { Router } from "express";
 import { normalizeGroupInput, normalizeSignalInput } from "../advisorGroups.js";
 import { createAuthenticate, requireApprovedRole } from "../middleware/auth.js";
 import { paginate, trimText } from "../utils.js";
-import { scheduleSignalPrediction } from "../services/predictionCheckerService.js";
+import { queueSignalAgents } from "../services/agentService.js";
 import { validateFeeCap } from "../services/credibilityService.js";
 
 export function createGroupsRouter(store) {
@@ -156,8 +156,10 @@ export function createGroupsRouter(store) {
       if (input.title.length < 2) return res.status(400).json({ message: "Title is required." });
       const signal = await store.createSignal(groupId, req.auth.userId, input);
       // Fire-and-forget: parse prediction + fetch baseline price in background
-      setImmediate(() => scheduleSignalPrediction(signal.id, signal, store));
-      res.status(201).json({ message: "Published successfully.", signal });
+      let agentError;
+      try { await queueSignalAgents(store,signal); }
+      catch(error) { agentError="Published, but AI processing could not start. Check Agent Activity for database setup."; }
+      res.status(201).json({ message: agentError || "Published. AI analysis has started.", signal, agentError });
     } catch (error) { next(error); }
   });
 
@@ -179,8 +181,13 @@ export function createGroupsRouter(store) {
       if (!signal || signal.advisorId !== req.auth.userId) return res.status(404).json({ message: "Signal not found." });
       const input = normalizeSignalInput(req.body);
       if (input.title.length < 2) return res.status(400).json({ message: "Title is required." });
-      const updated = await store.updateSignal(signalId, input);
-      res.json({ message: "Signal updated successfully.", signal: updated });
+      if(signal.predictionCheckDate || signal.predictionCheckedAt) return res.status(409).json({message:"This signal has a recorded prediction. Publish a new signal to preserve its original evidence and accuracy history."});
+      const active=await store.listAgentRuns({targetId:signalId,limit:200});
+      if(active.some(r=>["queued","running"].includes(r.status))) return res.status(409).json({message:"AI is processing this signal. Wait for the run to finish before editing."});
+      const updated = await store.updateSignal(signalId, {...input,resetAnalysis:true});
+      let agentError;
+      try { await queueSignalAgents(store,updated); } catch { agentError="Signal saved, but AI processing could not restart. Check Agent Activity."; }
+      res.json({ message:agentError || "Signal updated. AI analysis restarted.", signal:updated,agentError });
     } catch (error) { next(error); }
   });
 

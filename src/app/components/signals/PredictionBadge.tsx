@@ -109,11 +109,11 @@ export function PredictionBadge({ signal, compact = false }: PredictionBadgeProp
           <TooltipTrigger asChild>
             <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 gap-1 text-xs cursor-default">
               <Clock className="h-3 w-3" />
-              {checkDate ? daysUntil(checkDate) : "Pending"}
+              {checkDate ? daysUntil(checkDate) : "No baseline"}
             </Badge>
           </TooltipTrigger>
           <TooltipContent>
-            <p className="text-xs">Prediction check: {checkDate ? formatDate(checkDate) : "scheduled"}</p>
+            <p className="text-xs">Prediction check: {checkDate ? formatDate(checkDate) : "not scheduled - a valid original baseline is required"}</p>
             {signal.predictionTargetPrice && <p className="text-xs">Target: ${signal.predictionTargetPrice}</p>}
           </TooltipContent>
         </Tooltip>
@@ -125,7 +125,7 @@ export function PredictionBadge({ signal, compact = false }: PredictionBadgeProp
     <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-700 space-y-1">
       <div className="flex items-center gap-2 font-medium">
         <Clock className="h-4 w-4" />
-        <span>Prediction Pending</span>
+        <span>{checkDate ? "Prediction Pending" : "Prediction not scheduled: original baseline unavailable"}</span>
         {directionIcon(signal.predictionDirection)}
         {signal.predictionDirection && (
           <span className="capitalize font-normal">{signal.predictionDirection}</span>

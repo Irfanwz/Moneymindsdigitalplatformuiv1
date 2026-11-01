@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { createAgentStore } from "./agentStore.js";
 
 const USERS_TABLE = "platform_users";
 const STARTUP_PROFILES_TABLE = "startup_profiles";
@@ -306,6 +307,7 @@ function mapSignalRow(row) {
     sectors: row.sectors ?? null,
     keyPoints: row.key_points ?? null,
     analyzedAt: row.analyzed_at ?? null,
+    predictionTicker: row.prediction_ticker ?? null,
     predictionDirection: row.prediction_direction ?? null,
     predictionTargetPrice: row.prediction_target_price ?? null,
     predictionTimeframe: row.prediction_timeframe ?? null,
@@ -391,7 +393,7 @@ function toStoreError(error) {
     return duplicateError;
   }
 
-  return error;
+  return Object.assign(new Error(error.message || "Database request failed."), { code: error.code });
 }
 
 export function createSupabaseStore({ supabaseUrl, supabaseServiceRoleKey }) {
@@ -404,6 +406,16 @@ export function createSupabaseStore({ supabaseUrl, supabaseServiceRoleKey }) {
 
   return {
     mode: "supabase",
+    ...createAgentStore(client),
+    async listAllSignals() {
+      const rows=[];
+      for(let offset=0; ; offset+=500) {
+        const {data,error}=await client.from(ADVISOR_SIGNALS_TABLE).select("*").order("id").range(offset,offset+499);
+        if(error) throw toStoreError(error);
+        rows.push(...data.map(mapSignalRow));
+        if(data.length<500) return rows;
+      }
+    },
 
     async health() {
       const { count, error } = await client
@@ -1122,6 +1134,7 @@ export function createSupabaseStore({ supabaseUrl, supabaseServiceRoleKey }) {
         tags: input.tags,
         notify_members: input.notifyMembers,
       };
+      if(input.resetAnalysis) Object.assign(payload,{"sentiment": null, "sentiment_confidence": null, "sentiment_reasoning": null, "risk_level": null, "risk_reasoning": null, "actionability": null, "actionability_reasoning": null, "analyzed_at": null, "prediction_ticker": null, "prediction_direction": null, "prediction_target_price": null, "prediction_timeframe": null, "prediction_timeframe_days": null, "prediction_check_date": null, "baseline_price": null, "baseline_fetched_at": null, "actual_price": null, "prediction_accuracy": null, "prediction_result": null, "prediction_checked_at": null, "prediction_explanation": null, "entities": [], "sectors": [], "key_points": []});
       const { data, error } = await client.from(ADVISOR_SIGNALS_TABLE).update(payload).eq("id", signalId).select("*").maybeSingle();
       if (error) throw toStoreError(error);
       return data ? mapSignalRow(data) : null;
@@ -1147,6 +1160,7 @@ export function createSupabaseStore({ supabaseUrl, supabaseServiceRoleKey }) {
 
     async updateSignalPrediction(signalId, data) {
       const payload = {};
+      if (data.predictionTicker !== undefined) payload.prediction_ticker = data.predictionTicker;
       if (data.predictionDirection !== undefined) payload.prediction_direction = data.predictionDirection;
       if (data.predictionTargetPrice !== undefined) payload.prediction_target_price = data.predictionTargetPrice;
       if (data.predictionTimeframe !== undefined) payload.prediction_timeframe = data.predictionTimeframe;
@@ -1429,11 +1443,12 @@ export function createSupabaseStore({ supabaseUrl, supabaseServiceRoleKey }) {
     async setProfileVerified(userId, verificationId) {
       const ts = new Date().toISOString();
       const update = { is_verified: true, verified_at: ts, verification_id: verificationId };
-      await Promise.allSettled([
+      const results = await Promise.all([
         client.from(ADVISOR_PROFILES_TABLE).update(update).eq("user_id", userId),
         client.from(STARTUP_PROFILES_TABLE).update(update).eq("user_id", userId),
         client.from(INVESTOR_PROFILES_TABLE).update(update).eq("user_id", userId),
       ]);
+      for (const result of results) if (result.error) throw toStoreError(result.error);
     },
 
     // --- Credibility Score ---

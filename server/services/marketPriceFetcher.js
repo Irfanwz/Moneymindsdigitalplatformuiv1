@@ -51,19 +51,22 @@ const CRYPTO_IDS = {
 export async function getStockPrice(symbol) {
   if (!symbol) return null;
   const upper = symbol.toUpperCase();
+  if(CRYPTO_IDS[upper]) return null; // Avoid resolving common crypto symbols as stock tickers.
   const cacheKey = `stock_${upper}`;
   const cached = priceCache.get(cacheKey);
   if (isCacheValid(cached)) return cached.price;
 
-  if (!config.alphaVantageKey) return null;
-
-  const url = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${upper}&apikey=${config.alphaVantageKey}`;
-  const raw = await safeFetch(url);
-  const quote = raw?.["Global Quote"];
-  if (!quote || !quote["05. price"]) return null;
-
-  const price = parseFloat(quote["05. price"]);
-  if (!Number.isFinite(price)) return null;
+  let price=null;
+  if(config.alphaVantageKey) {
+    const raw=await safeFetch(`https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${encodeURIComponent(upper)}&apikey=${config.alphaVantageKey}`);
+    const parsed=Number.parseFloat(raw?.["Global Quote"]?.["05. price"]);
+    if(Number.isFinite(parsed) && parsed>0) price=parsed;
+  }
+  if(price===null && config.finnhubApiKey) {
+    const raw=await safeFetch(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(upper)}&token=${config.finnhubApiKey}`);
+    if(Number.isFinite(raw?.c) && raw.c>0) price=raw.c;
+  }
+  if(price===null) return null;
 
   priceCache.set(cacheKey, { price, ts: Date.now() });
   return price;
@@ -82,10 +85,10 @@ export async function getCryptoPrice(symbol) {
   const cached = priceCache.get(cacheKey);
   if (isCacheValid(cached)) return cached.price;
 
-  const url = `https://api.coingecko.com/api/v3/simple/price?ids=${coinId}&vs_currencies=usd`;
+  const url = `https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(coinId)}&vs_currencies=usd`;
   const raw = await safeFetch(url);
   const price = raw?.[coinId]?.usd;
-  if (!Number.isFinite(price)) return null;
+  if (!Number.isFinite(price) || price<=0) return null;
 
   priceCache.set(cacheKey, { price, ts: Date.now() });
   return price;
