@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "description": "Reviewed, transactional migrations for the existing platform_users database. Legacy 001/002 target a different schema and must never be replayed here. Append new migrations; do not edit applied files.",
+  "migrations": [
+    "20261101084337_repair_agent_runtime.sql",
+    "20261101090525_repair_profile_photo_columns.sql",
+    "20261101101357_admin_console.sql"
+  ]
+}

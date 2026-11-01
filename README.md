@@ -9,11 +9,50 @@
 
   Run `npm run dev` to start the development server.
 
+## Automatic database migrations with Docker
+
+Docker can apply the reviewed SQL migrations before the server starts. This is opt-in, so existing manual deployments keep working. The runtime image includes `shared/` (required by the admin API), the migration runner and its SQL files.
+
+One-time setup on the production server:
+
+1. In [the Supabase project](https://supabase.com/dashboard/project/ievzkvvidsdrlytvitup), open **Connect**. Copy the **Direct connection** URI, or **Session pooler** URI on port **5432** if your server needs IPv4. Use the database password, not the service-role API key. Percent-encode reserved characters in the password. See [Supabase connection guidance](https://supabase.com/docs/guides/database/connecting-to-postgres).
+2. Edit `/opt/moneyminds/.env.production` privately on the server. Keep the existing `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`, and add:
+
+   ```dotenv
+   AUTO_MIGRATE=true
+   SUPABASE_DB_URL='PASTE_THE_POSTGRES_CONNECTION_URI_HERE'
+   ```
+
+   Both URLs must target the same project. Use single quotes around the URI in Compose's env file to prevent `$` interpolation. Never commit the real env file or paste the password into chat. TLS certificate verification stays enabled. If the connection reports an untrusted certificate, copy the project's root certificate from Supabase Database settings into `SUPABASE_DB_SSL_CA`, using literal `\n` between PEM lines. Do not disable verification. See [node-postgres SSL configuration](https://node-postgres.com/features/ssl).
+3. After committing/pushing the updated code to `develop`, use your existing deployment command:
+
+   ```bash
+   cd /opt/moneyminds && git pull origin develop && docker compose up -d --build moneyminds
+   ```
+
+4. Check completion, because detached Compose returns before startup migrations finish:
+
+   ```bash
+   docker compose logs --tail=100 moneyminds
+   docker compose ps
+   docker compose exec moneyminds npm run db:migrate:status
+   ```
+
+   Logs should show `[migrations] Ready` followed by the API listening message, the container should become `healthy`, and the status command should show all files `APPLIED`. If you prefer the deploy command itself to wait for health, use `docker compose up -d --build --wait --wait-timeout 240 moneyminds` on a Compose version supporting `--wait`.
+
+Only files explicitly listed in [auto-migrations.json](supabase/auto-migrations.json) run, in version order. The initial list contains the two agent/profile repairs and the admin console migration. These three are safe to reapply to the existing schema: the first automated deploy reruns them and records them even if they were already applied manually. It does not invent history from table existence. Legacy `001_initial_schema.sql` and `002_rls_policies.sql` target a different schema and are excluded. An empty database without `platform_users` is rejected.
+
+The private `moneyminds_internal.schema_migrations` table records filename, version, checksum and time. The runner checks history on every startup, skips recorded files and refuses changed/missing applied files or out-of-order additions. A database session lock prevents two deployments from migrating concurrently. Each file and its history entry share one transaction; SQL errors roll back that file and stop startup, while earlier successful files remain recorded. Fix the failed **unapplied** file and redeploy; for an already applied migration, add a new file. A database connection is opened only for migration/status work and then closed. The runner does not start agents, seed users, send email or charge payments; normal application bootstrap follows only after it succeeds.
+
+For future changes, create a timestamped migration with Supabase CLI, use one outer `BEGIN; ... COMMIT;`, test it, and append its filename to `auto-migrations.json`. Commit the SQL and manifest together. This ledger is separate from Supabase CLI migration history; do not mix `supabase db push` with this runner's deployment workflow. `npm run db:migrate` applies pending files without starting the app; `npm run db:migrate:status` only reads history. Both commands read the process environment (and local `.env` outside Docker). Set `AUTO_MIGRATE=false` to keep managing SQL manually. Automatic startup migrations apply to the persistent Node/Docker entrypoint, not Vercel request handlers.
+
+Migration validation on 2026-11-01: **269 tests passed, 2 live-search tests skipped**; production frontend build and Compose configuration validation passed. Isolated PostgreSQL tests cover manual-repair adoption, record preservation, repeat deployment, changed-history rejection, SQL/history-write rollback and retry. Lock contention is tested using a stubbed client. A runtime packaging test copies the Docker runtime's declared source files into an isolated directory, imports the server and migrations, and verifies that missing migration configuration stops startup. The local Docker daemon was unavailable, so an actual image build, container startup and live database migration were not verified here.
+
 ## Admin console deployment (2026-11-01)
 
 The admin area now has Overview, Users, Due Diligence, AI Operations, Content, Payments, Reports & Audit, and Settings. The account page includes authenticator setup. Existing administrators receive `super_admin` access; new admin permissions can be assigned to approved, active users from **Users > View details**.
 
-1. After the two earlier agent repairs, run the **entire** [admin_console.sql](supabase/migrations/20261101101357_admin_console.sql) in the live Supabase SQL Editor. This additive migration adds three admin tables, account access columns, and server-only transaction functions. It preserves existing records and does not run agents, send messages or charge payments.
+1. Enable automatic migrations as described above, or after the two earlier agent repairs run the **entire** [admin_console.sql](supabase/migrations/20261101101357_admin_console.sql) in the live Supabase SQL Editor. This additive migration adds three admin tables, account access columns, and server-only transaction functions. It preserves existing records and does not run agents, send messages or charge payments.
 2. Run [agent_database_audit.sql](supabase/agent_database_audit.sql) (now 25 tables) and [admin_console_audit.sql](supabase/admin_console_audit.sql). All rows should say `READY`. The second audit also checks RLS and access to both transaction functions.
 3. Deploy the server and frontend together, after the migration. Run `npm test` and `npm run build`. No production deployment or production database mutation was performed by this implementation.
 4. Visit `/admin/dashboard`. Test one review, refresh Settings after saving a change, and inspect Reports & Audit. AI Operations still requires production AI/search keys; database readiness and provider configuration are separate checks.

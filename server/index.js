@@ -3,8 +3,11 @@ import { createApp } from "./app.js";
 import { config } from "./config.js";
 import { store } from "./store/index.js";
 import { seedDemoProfiles } from "./seed.js";
+import { runMigrations } from "./migrations/runner.js";
 
 async function bootstrap() {
+  // Finish schema upgrades before admin/bootstrap writes, HTTP requests or jobs.
+  await runMigrations();
   const passwordHash = await hashPassword(config.adminPassword);
 
   await store.ensureAdminAccount({
