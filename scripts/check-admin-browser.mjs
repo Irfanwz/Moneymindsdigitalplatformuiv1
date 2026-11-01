@@ -210,7 +210,7 @@ try {
     ["agents", "Agent Activity"],
     ["content", "Content moderation"],
     ["payments", "Payments"],
-    ["reports", "Payment report"],
+    ["reports", "Reports & Audit"],
     ["settings", "Platform settings"],
     ["profile", "Administrator profile"],
   ]) {
@@ -223,6 +223,13 @@ try {
         fullPage: true,
       });
   }
+  await go(page, "/admin/reports", "Reports & Audit");
+  await page.click('section[aria-label="AI reports"] a[href="/admin/reviews"]');
+  await page.waitForFunction(() => [...document.querySelectorAll("details[open] summary")].some(el => el.textContent.includes("Users and results")));
+  await go(page, "/admin/reports", "Reports & Audit");
+  await page.click('section[aria-label="AI reports"] a[href="/admin/agents?status=completed"]');
+  await page.waitForFunction(() => [...document.querySelectorAll("h2")].some(el => el.textContent === "Completed runs"));
+  checked.push("report links open visible background results and completed agent runs");
   await go(page, "/admin/settings", "Platform settings");
   await page.click("#registrationOpen");
   await clickText(page, "Save settings");
@@ -324,6 +331,8 @@ try {
     null,
   );
   await go(financePage, "/admin/payments", "Payments");
+  await go(financePage, "/admin/reports", "Reports & Audit");
+  assert.equal(await financePage.$('section[aria-label="AI reports"]'), null);
   checked.push("finance role navigation and denied settings route");
   const userPage = await newPage(people[0]);
   await go(userPage, "/investor/dashboard", "Investment Dashboard");

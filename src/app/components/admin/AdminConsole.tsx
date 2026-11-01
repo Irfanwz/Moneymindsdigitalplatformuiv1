@@ -1414,6 +1414,48 @@ function ContentPage() {
   );
 }
 
+function ReportsPage() {
+  const { user } = useAuth();
+  const canReview = adminCan(user, "reviews");
+  const canViewAgents = adminCan(user, "agents");
+  return (
+    <>
+      <Heading
+        title="Reports & Audit"
+        description="Open saved reports, review payment records, and inspect administrator activity."
+      />
+      {(canReview || canViewAgents) && (
+        <section aria-label="AI reports" className="mb-8">
+          <h2 className="text-xl font-semibold mb-2">AI reports</h2>
+          <p className="text-sm text-muted-foreground mb-4">
+            Reports appear after an agent completes its work. Open a completed
+            result below, or check AI Operations for queued, running, failed or
+            skipped work.
+          </p>
+          <div className="grid md:grid-cols-2 gap-4">
+            {canReview && (
+              <Link to="/admin/reviews" className="rounded-xl border bg-card p-5 hover:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent">
+                <h3 className="font-semibold flex items-center gap-2"><ShieldCheck className="h-5 w-5" />Background check reports</h3>
+                <p className="text-sm text-muted-foreground mt-2">Open Users and results, then View report for a completed check. Start checks for existing users from the same page.</p>
+                <span className="inline-flex items-center gap-2 text-sm font-medium text-accent mt-4">Open due diligence <ArrowRight className="h-4 w-4" /></span>
+              </Link>
+            )}
+            {canViewAgents && (
+              <Link to="/admin/agents?status=completed" className="rounded-xl border bg-card p-5 hover:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent">
+                <h3 className="font-semibold flex items-center gap-2"><Activity className="h-5 w-5" />Completed agent results</h3>
+                <p className="text-sm text-muted-foreground mt-2">Find completed research, startup reviews, profile reviews and signal analysis among the latest 100 runs. Select Result to read the saved output.</p>
+                <span className="inline-flex items-center gap-2 text-sm font-medium text-accent mt-4">Open completed runs <ArrowRight className="h-4 w-4" /></span>
+              </Link>
+            )}
+          </div>
+        </section>
+      )}
+      <PaymentsPage report />
+      {adminCan(user, "audit") && <AuditLog />}
+    </>
+  );
+}
+
 function PaymentsPage({ report = false }: { report?: boolean }) {
   const { data, error, loading, refresh } = useData("/payments");
   const [search, setSearch] = useState(""),
@@ -1444,12 +1486,22 @@ function PaymentsPage({ report = false }: { report?: boolean }) {
   );
   return (
     <>
-      <Heading
-        title={report ? "Payment report" : "Payments"}
-        description="Recorded payments, references and account ownership. Totals keep currencies separate and exclude simulated payments."
-      >
-        <Refresh onClick={refresh} />
-      </Heading>
+      {report ? (
+        <div className="flex flex-wrap items-start justify-between gap-4 mb-7">
+          <div>
+            <h2 className="text-xl font-semibold">Payment report</h2>
+            <p className="text-sm text-muted-foreground mt-2 max-w-2xl">Recorded payments, references and account ownership. Totals keep currencies separate and exclude simulated payments.</p>
+          </div>
+          <Refresh onClick={refresh} />
+        </div>
+      ) : (
+        <Heading
+          title="Payments"
+          description="Recorded payments, references and account ownership. Totals keep currencies separate and exclude simulated payments."
+        >
+          <Refresh onClick={refresh} />
+        </Heading>
+      )}
       <Notice error={error} loading={loading} />
       {data && (
         <>
@@ -1822,10 +1874,7 @@ export function AdminConsole({ section = "dashboard" }: { section?: string }) {
       ) : section === "payments" ? (
         <PaymentsPage />
       ) : section === "reports" ? (
-        <>
-          <PaymentsPage report />
-          {adminCan(user, "audit") && <AuditLog />}
-        </>
+        <ReportsPage />
       ) : section === "settings" ? (
         <SettingsPage />
       ) : section === "profile" ? (
