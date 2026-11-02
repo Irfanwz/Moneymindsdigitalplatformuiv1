@@ -28,11 +28,11 @@ import {
   listTrainings,
   listAdvisorSignals,
   getMyCredibility,
+  type CredibilityScore,
 } from "@/app/lib/api";
 import type { AdvisorExpertise, AdvisorProfile } from "@/app/types/advisor-profile";
 import type { AdvisorGroup, AdvisorSignal } from "@/app/types/advisor-groups";
 import type { Training } from "@/app/types/training";
-import type { CredibilityScore } from "@/app/lib/api";
 
 export function AdvisorDashboard() {
   const { session, user } = useAuth();
@@ -324,8 +324,8 @@ export function AdvisorDashboard() {
             <Card className="p-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-semibold">Credibility Profile</h2>
-                {credibility?.label ? (
-                  <CredibilityBadge type="verified" label={credibility.label} />
+                {credibility?.score !== null && credibility?.score !== undefined ? (
+                  <CredibilityBadge score={credibility.score} tier={credibility.tier ?? undefined} label={credibility.label ?? undefined} />
                 ) : (
                   <CredibilityBadge type="pending" label="Not scored yet" />
                 )}
