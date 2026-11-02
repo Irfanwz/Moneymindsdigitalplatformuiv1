@@ -27,15 +27,18 @@ import {
   listAdvisorGroups,
   listTrainings,
   listAdvisorSignals,
+  getMyCredibility,
 } from "@/app/lib/api";
 import type { AdvisorExpertise, AdvisorProfile } from "@/app/types/advisor-profile";
 import type { AdvisorGroup, AdvisorSignal } from "@/app/types/advisor-groups";
 import type { Training } from "@/app/types/training";
+import type { CredibilityScore } from "@/app/lib/api";
 
 export function AdvisorDashboard() {
   const { session, user } = useAuth();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<AdvisorProfile | null>(null);
+  const [credibility, setCredibility] = useState<CredibilityScore | null>(null);
   const [groups, setGroups] = useState<AdvisorGroup[]>([]);
   const [trainings, setTrainings] = useState<Training[]>([]);
   const [signals, setSignals] = useState<AdvisorSignal[]>([]);
@@ -48,14 +51,16 @@ export function AdvisorDashboard() {
     let active = true;
     async function load() {
       try {
-        const [profileRes, groupsRes, trainingsRes] = await Promise.all([
+        const [profileRes, groupsRes, trainingsRes, credibilityRes] = await Promise.all([
           getAdvisorProfile((session?.token ?? "")),
           listAdvisorGroups((session?.token ?? "")),
           listTrainings((session?.token ?? "")),
+          getMyCredibility((session?.token ?? "")).catch(() => null),
         ]);
         if (!active) return;
 
         setProfile(profileRes.profile);
+        if (credibilityRes) setCredibility(credibilityRes);
         setGroups(groupsRes.groups);
 
         // Filter trainings created by this advisor
@@ -114,8 +119,12 @@ export function AdvisorDashboard() {
     return sum;
   }, 0);
 
+  const credibilityValue = credibility?.score !== null && credibility?.score !== undefined
+    ? `${credibility.score}/100`
+    : (profile ? "—" : "—");
+
   const stats = [
-    { label: "Credibility Score", value: profile ? "95" : "—", change: "", icon: Award },
+    { label: "Credibility Score", value: credibilityValue, change: "", icon: Award },
     { label: "Total Groups", value: totalGroups.toString(), change: "", icon: Users },
     { label: "Total Members", value: totalMembers.toString(), change: "", icon: UserPlus },
     { label: "Monthly Revenue", value: monthlyRevenue > 0 ? `$${monthlyRevenue.toLocaleString()}` : "$0", change: "", icon: DollarSign },
@@ -315,14 +324,22 @@ export function AdvisorDashboard() {
             <Card className="p-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-semibold">Credibility Profile</h2>
-                <CredibilityBadge type="verified" label="Expert Verified" />
+                {credibility?.label ? (
+                  <CredibilityBadge type="verified" label={credibility.label} />
+                ) : (
+                  <CredibilityBadge type="pending" label="Not scored yet" />
+                )}
               </div>
 
               <div className="space-y-6">
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <div>
-                      <div className="font-semibold text-3xl">95/100</div>
+                      <div className="font-semibold text-3xl">
+                        {credibility?.score !== null && credibility?.score !== undefined
+                          ? `${credibility.score}/100`
+                          : "—"}
+                      </div>
                       <div className="text-sm text-muted-foreground">
                         Overall Credibility Score
                       </div>

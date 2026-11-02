@@ -207,6 +207,55 @@ export function CredibilityScorePage() {
         {/* History chart */}
         <CredibilityHistoryChart className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800" />
 
+        {/* Prediction breakdown counts */}
+        {data?.breakdown && (
+          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Target className="h-5 w-5 text-emerald-500" />
+                Prediction Breakdown
+                {data.totalPredictions !== null && (
+                  <span className="text-sm font-normal text-muted-foreground ml-2">
+                    ({data.totalPredictions} total checked)
+                  </span>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="p-4 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 text-center">
+                  <div className="text-4xl font-bold text-emerald-700 dark:text-emerald-300">
+                    {data.breakdown.perfect}
+                  </div>
+                  <div className="text-sm font-medium text-emerald-900 dark:text-emerald-100 mt-1">Perfect Match</div>
+                  <div className="text-xs text-emerald-600 dark:text-emerald-400 mt-0.5">+10 pts each</div>
+                </div>
+                <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-center">
+                  <div className="text-4xl font-bold text-blue-700 dark:text-blue-300">
+                    {data.breakdown.late}
+                  </div>
+                  <div className="text-sm font-medium text-blue-900 dark:text-blue-100 mt-1">Late Match</div>
+                  <div className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">+6 pts each</div>
+                </div>
+                <div className="p-4 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 text-center">
+                  <div className="text-4xl font-bold text-yellow-700 dark:text-yellow-300">
+                    {data.breakdown.dateOnly}
+                  </div>
+                  <div className="text-sm font-medium text-yellow-900 dark:text-yellow-100 mt-1">Date Only</div>
+                  <div className="text-xs text-yellow-600 dark:text-yellow-400 mt-0.5">+3 pts each</div>
+                </div>
+                <div className="p-4 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-center">
+                  <div className="text-4xl font-bold text-red-700 dark:text-red-300">
+                    {data.breakdown.incorrect}
+                  </div>
+                  <div className="text-sm font-medium text-red-900 dark:text-red-100 mt-1">Incorrect</div>
+                  <div className="text-xs text-red-600 dark:text-red-400 mt-0.5">-5 pts each</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Tier breakdown table */}
         <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
           <CardHeader>

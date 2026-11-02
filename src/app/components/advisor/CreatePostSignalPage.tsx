@@ -53,6 +53,7 @@ export function CreatePostSignalPage() {
   const [content, setContent] = useState("");
   const [selectedGroup, setSelectedGroup] = useState(groupId ?? "");
   const [signalType, setSignalType] = useState<"buy" | "sell" | "hold" | "alert">("buy");
+  const [predictionTicker, setPredictionTicker] = useState("");
   const [targetPrice, setTargetPrice] = useState("");
   const [timeHorizon, setTimeHorizon] = useState("");
   const [confidenceLevel, setConfidenceLevel] = useState("medium");
@@ -132,6 +133,7 @@ export function CreatePostSignalPage() {
         targetPrice: postType === "signal" ? targetPrice : "",
         timeHorizon: postType === "signal" ? timeHorizon : "",
         confidenceLevel: postType === "signal" ? confidenceLevel : "",
+        predictionTicker: postType === "signal" && predictionTicker.trim() ? predictionTicker.trim().toUpperCase() : undefined,
         tags,
         attachments: attachments.length > 0 ? attachments : undefined,
         notifyMembers,
@@ -233,7 +235,18 @@ export function CreatePostSignalPage() {
                   <Textarea id="signal-content" placeholder="Provide detailed analysis, data points, and reasoning behind this signal..." value={content} onChange={(e) => setContent(e.target.value)} rows={8} className="mt-2" />
                 </div>
 
-                <div className="grid md:grid-cols-3 gap-4">
+                <div className="grid md:grid-cols-4 gap-4">
+                  <div>
+                    <Label htmlFor="prediction-ticker">Ticker Symbol</Label>
+                    <Input
+                      id="prediction-ticker"
+                      placeholder="e.g., BTC, AAPL"
+                      value={predictionTicker}
+                      onChange={(e) => setPredictionTicker(e.target.value.toUpperCase())}
+                      maxLength={10}
+                      className="mt-2 uppercase"
+                    />
+                  </div>
                   <div>
                     <Label htmlFor="target-price">Target Price/Valuation</Label>
                     <Input id="target-price" placeholder="e.g., $50M - $75M" value={targetPrice} onChange={(e) => setTargetPrice(e.target.value)} className="mt-2" />

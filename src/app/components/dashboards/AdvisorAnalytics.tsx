@@ -13,6 +13,7 @@ import {
   TrendingUp,
   BarChart3,
   PieChart as PieChartIcon,
+  Award,
 } from "lucide-react";
 import {
   BarChart,
@@ -28,6 +29,9 @@ import {
   AreaChart,
   Area,
   Legend,
+  LineChart,
+  Line,
+  ReferenceLine,
 } from "recharts";
 import { useAuth } from "@/app/contexts/AuthContext";
 import {
@@ -35,10 +39,12 @@ import {
   listAdvisorGroups,
   listTrainings,
   listAdvisorSignals,
+  getCredibilityHistory,
 } from "@/app/lib/api";
 import type { AdvisorProfile } from "@/app/types/advisor-profile";
 import type { AdvisorGroup, AdvisorSignal } from "@/app/types/advisor-groups";
 import type { Training } from "@/app/types/training";
+import type { CredibilityHistoryEntry } from "@/app/lib/api";
 
 const COLORS = ["#8b5cf6", "#ec4899", "#06b6d4", "#10b981", "#f59e0b", "#ef4444"];
 
@@ -48,6 +54,7 @@ export function AdvisorAnalytics() {
   const [groups, setGroups] = useState<AdvisorGroup[]>([]);
   const [trainings, setTrainings] = useState<Training[]>([]);
   const [signals, setSignals] = useState<AdvisorSignal[]>([]);
+  const [credHistory, setCredHistory] = useState<CredibilityHistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
   const userName = user?.fullName ?? "Advisor";
@@ -57,15 +64,20 @@ export function AdvisorAnalytics() {
     let active = true;
     async function load() {
       try {
-        const [profileRes, groupsRes, trainingsRes] = await Promise.all([
+        const [profileRes, groupsRes, trainingsRes, credHistoryRes] = await Promise.all([
           getAdvisorProfile((session?.token ?? "")),
           listAdvisorGroups((session?.token ?? "")),
           listTrainings((session?.token ?? "")),
+          getCredibilityHistory((session?.token ?? ""), 30).catch(() => null),
         ]);
         if (!active) return;
 
         setProfile(profileRes.profile);
         setGroups(groupsRes.groups);
+        if (credHistoryRes?.history) {
+          // Reverse so oldest is on the left of the chart
+          setCredHistory([...credHistoryRes.history].reverse());
+        }
 
         const myTrainings = trainingsRes.trainings.filter(
           (t) => t.advisorId === user?.id
@@ -364,6 +376,50 @@ export function AdvisorAnalytics() {
             )}
           </Card>
         </div>
+
+        {/* Credibility Score Trend */}
+        <Card className="p-6 mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-2">
+              <Award className="h-5 w-5 text-purple-500" />
+              <h2 className="text-lg font-semibold">Credibility Score Trend</h2>
+            </div>
+            <Link to="/advisor/credibility">
+              <Button variant="outline" size="sm">View Details</Button>
+            </Link>
+          </div>
+          {credHistory.length > 0 ? (
+            <ResponsiveContainer width="100%" height={220}>
+              <LineChart data={credHistory.map((e) => ({
+                date: new Date(e.recordedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+                score: e.score,
+                tier: e.tier,
+              }))}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} />
+                <Tooltip formatter={(value: number, _name: string) => [`${value}/100`, "Score"]} />
+                <ReferenceLine y={90} stroke="#8b5cf6" strokeDasharray="4 2" label={{ value: "Elite", fontSize: 10, fill: "#8b5cf6" }} />
+                <ReferenceLine y={75} stroke="#10b981" strokeDasharray="4 2" label={{ value: "Expert", fontSize: 10, fill: "#10b981" }} />
+                <Line
+                  type="monotone"
+                  dataKey="score"
+                  stroke="#8b5cf6"
+                  strokeWidth={2}
+                  dot={{ fill: "#8b5cf6", r: 4 }}
+                  activeDot={{ r: 6 }}
+                  name="Score"
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+              <Award className="h-8 w-8 mb-2 opacity-30" />
+              <p className="text-sm">No credibility history yet</p>
+              <p className="text-xs mt-1">Score is recorded daily after predictions are checked</p>
+            </div>
+          )}
+        </Card>
 
         {/* Training Enrollment */}
         {trainingData.length > 0 && (

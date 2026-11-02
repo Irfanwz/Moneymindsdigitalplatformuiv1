@@ -55,6 +55,7 @@ export function normalizeSignalInput(input) {
     keyPoints: null,
     analyzedAt: null,
     // Prediction Accuracy — initialized as null, populated async after creation
+    predictionTicker: postType === "signal" ? (trimText(input?.predictionTicker)?.toUpperCase() || null) : null,
     predictionDirection: null,
     predictionTargetPrice: null,
     predictionTimeframe: null,

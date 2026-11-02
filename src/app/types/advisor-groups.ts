@@ -137,6 +137,7 @@ export interface CreateSignalPayload {
   targetPrice: string;
   timeHorizon: string;
   confidenceLevel: string;
+  predictionTicker?: string;
   tags: string[];
   attachments?: Attachment[];
   notifyMembers: boolean;

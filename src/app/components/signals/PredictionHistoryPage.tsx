@@ -35,6 +35,18 @@ function resultConfig(result: PredictionResult | null) {
   return                             { color: "bg-blue-50 text-blue-700 border-blue-200",        icon: Clock,         label: "Pending" };
 }
 
+type CredibilityClass = { label: string; color: string; points: string };
+
+function credibilityClass(result: PredictionResult | null, accuracy: number | null): CredibilityClass | null {
+  if (!result || result === null) return null;
+  if (result === "incorrect") return { label: "Incorrect", color: "bg-red-100 text-red-700 border-red-300", points: "-5 pts" };
+  const acc = accuracy ?? 0;
+  if (acc >= 90) return { label: "Perfect Match", color: "bg-emerald-100 text-emerald-700 border-emerald-300", points: "+10 pts" };
+  if (acc >= 70) return { label: "Late Match",    color: "bg-blue-100 text-blue-700 border-blue-300",         points: "+6 pts"  };
+  if (acc >= 50) return { label: "Date Only",     color: "bg-yellow-100 text-yellow-700 border-yellow-300",   points: "+3 pts"  };
+  return               { label: "Incorrect",      color: "bg-red-100 text-red-700 border-red-300",            points: "-5 pts"  };
+}
+
 function DirectionIcon({ dir }: { dir: GroupPredictionSummary["direction"] }) {
   if (dir === "up")   return <TrendingUp   className="h-3.5 w-3.5 text-green-600" />;
   if (dir === "down") return <TrendingDown className="h-3.5 w-3.5 text-red-500" />;
@@ -55,6 +67,7 @@ function applyFilters(items: GroupPredictionSummary[], f: FilterState): GroupPre
 
 function PredictionRow({ p }: { p: GroupPredictionSummary }) {
   const { color, icon: Icon, label } = resultConfig(p.result);
+  const credClass = credibilityClass(p.result, p.accuracy);
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -87,6 +100,13 @@ function PredictionRow({ p }: { p: GroupPredictionSummary }) {
           <Icon className="h-3 w-3" />
           {p.accuracy !== null ? `${p.accuracy}%` : ""} {label}
         </Badge>
+
+        {/* Credibility classification badge */}
+        {credClass && (
+          <Badge variant="outline" className={`text-xs ${credClass.color} whitespace-nowrap`}>
+            {credClass.label} <span className="opacity-70 ml-1">{credClass.points}</span>
+          </Badge>
+        )}
 
         {/* Date */}
         {p.checkDate && (

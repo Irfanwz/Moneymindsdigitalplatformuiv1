@@ -8,14 +8,18 @@ export function createCredibilityRouter(store) {
   const authenticate = createAuthenticate(store);
   const requireAdvisorRole = requireApprovedRole("advisor");
 
-  // GET /api/credibility/me — advisor's own score + tier
+  // GET /api/credibility/me — advisor's own score + tier + latest breakdown
   router.get("/me", authenticate, requireAdvisorRole, async (req, res, next) => {
     try {
-      const profile = await store.findAdvisorProfileByUserId(req.auth.userId);
+      const [profile, history] = await Promise.all([
+        store.findAdvisorProfileByUserId(req.auth.userId),
+        store.getCredibilityHistory(req.auth.userId, 1),
+      ]);
       if (!profile) return res.status(404).json({ message: "Advisor profile not found." });
 
       const score = profile.credibilityScore ?? null;
       const tier = score !== null && score !== undefined ? getTierForScore(score) : null;
+      const latestEntry = history?.[0] ?? null;
 
       res.json({
         score,
@@ -25,6 +29,8 @@ export function createCredibilityRouter(store) {
         maxJoinFee: tier?.maxJoinFee ?? 0,
         maxMonthlyFee: tier?.maxMonthlyFee ?? 0,
         updatedAt: profile.credibilityUpdatedAt ?? null,
+        breakdown: latestEntry?.breakdown ?? null,
+        totalPredictions: latestEntry?.totalPredictions ?? null,
       });
     } catch (error) { next(error); }
   });

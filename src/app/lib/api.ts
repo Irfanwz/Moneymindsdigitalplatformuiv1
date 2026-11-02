@@ -764,6 +764,8 @@ export interface CredibilityScore {
   maxJoinFee: number;
   maxMonthlyFee: number;
   updatedAt: string | null;
+  breakdown: { perfect: number; late: number; dateOnly: number; incorrect: number } | null;
+  totalPredictions: number | null;
 }
 
 export interface CredibilityHistoryEntry {
