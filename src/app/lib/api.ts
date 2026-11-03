@@ -69,10 +69,18 @@ export function registerProfile(payload: ProfileApplicationPayload) {
   });
 }
 
-export function login(payload: { email: string; password: string; otp?:string }) {
-  return request<{ token: string; user: AuthUser }>("/api/auth/login", {
+export function login(payload: { email: string; password: string; otp?: string }) {
+  // Server returns {code, message} when OTP is required, or {token, user} when OTP is bypassed.
+  return request<{ code?: string; message?: string; token?: string; user?: AuthUser }>("/api/auth/login", {
     method: "POST",
     body: JSON.stringify(payload),
+  });
+}
+
+export function verifyLoginOtp(email: string, otp: string) {
+  return request<{ token: string; user: AuthUser }>("/api/auth/verify-login-otp", {
+    method: "POST",
+    body: JSON.stringify({ email, otp }),
   });
 }
 

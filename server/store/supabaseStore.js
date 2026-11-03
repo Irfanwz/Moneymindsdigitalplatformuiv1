@@ -206,6 +206,19 @@ function mapAdvisorProfileRow(row) {
     availability: row.availability ?? "",
     typicalRate: row.typical_rate ?? "",
     servicesOffered: row.services_offered ?? "",
+    regulatoryLicenseNo: row.regulatory_license_no ?? "",
+    regulatoryBody: row.regulatory_body ?? "",
+    licenseExpiryDate: row.license_expiry_date ?? "",
+    educationUniversity: row.education_university ?? "",
+    educationDegree: row.education_degree ?? "",
+    educationYear: row.education_year ?? "",
+    previousFirm: row.previous_firm ?? "",
+    previousRole: row.previous_role ?? "",
+    previousFirmDuration: row.previous_firm_duration ?? "",
+    primaryTickers: row.primary_tickers ?? [],
+    languages: row.languages ?? [],
+    conflictDisclosure: row.conflict_disclosure ?? false,
+    performanceClaim: row.performance_claim ?? "",
     defaultGroupType: row.default_group_type ?? "free",
     defaultJoiningFee: row.default_joining_fee ?? "",
     defaultMonthlyFee: row.default_monthly_fee ?? "",
@@ -247,6 +260,19 @@ function mapAdvisorProfileInsert(userId, profile) {
     availability: profile.availability,
     typical_rate: profile.typicalRate,
     services_offered: profile.servicesOffered,
+    regulatory_license_no: profile.regulatoryLicenseNo ?? "",
+    regulatory_body: profile.regulatoryBody ?? "",
+    license_expiry_date: profile.licenseExpiryDate ?? "",
+    education_university: profile.educationUniversity ?? "",
+    education_degree: profile.educationDegree ?? "",
+    education_year: profile.educationYear ?? "",
+    previous_firm: profile.previousFirm ?? "",
+    previous_role: profile.previousRole ?? "",
+    previous_firm_duration: profile.previousFirmDuration ?? "",
+    primary_tickers: profile.primaryTickers ?? [],
+    languages: profile.languages ?? [],
+    conflict_disclosure: profile.conflictDisclosure ?? false,
+    performance_claim: profile.performanceClaim ?? "",
     default_group_type: profile.defaultGroupType,
     default_joining_fee: profile.defaultJoiningFee,
     default_monthly_fee: profile.defaultMonthlyFee,
@@ -1357,6 +1383,45 @@ export function createSupabaseStore({ supabaseUrl, supabaseServiceRoleKey }) {
       const { error } = await client.from(TWO_FA_SECRETS_TABLE)
         .delete().eq("user_id", userId);
       if (error) throw toStoreError(error);
+    },
+
+    // --- Email Login OTPs ---
+
+    async createEmailLoginOtp(userId, code, expiresAt) {
+      // Invalidate any previous unused OTPs for this user
+      await client.from("email_login_otps")
+        .update({ used: true })
+        .eq("user_id", userId).eq("used", false);
+      const { data, error } = await client.from("email_login_otps")
+        .insert({ user_id: userId, code, expires_at: expiresAt })
+        .select("id,user_id,code,expires_at,attempts,used").single();
+      if (error) throw toStoreError(error);
+      return data;
+    },
+
+    async verifyEmailLoginOtp(userId, code) {
+      const { data, error } = await client.from("email_login_otps")
+        .select("id,code,expires_at,attempts,used")
+        .eq("user_id", userId).eq("used", false)
+        .order("created_at", { ascending: false })
+        .limit(1).maybeSingle();
+      if (error) throw toStoreError(error);
+      if (!data) return { valid: false, reason: "no_otp" };
+      if (data.used) return { valid: false, reason: "used" };
+      if (new Date(data.expires_at) < new Date()) {
+        await client.from("email_login_otps").update({ used: true }).eq("id", data.id);
+        return { valid: false, reason: "expired" };
+      }
+      if (data.attempts >= 3) {
+        await client.from("email_login_otps").update({ used: true }).eq("id", data.id);
+        return { valid: false, reason: "max_attempts" };
+      }
+      if (data.code !== code) {
+        await client.from("email_login_otps").update({ attempts: data.attempts + 1 }).eq("id", data.id);
+        return { valid: false, reason: "wrong_code", attemptsLeft: 3 - (data.attempts + 1) };
+      }
+      await client.from("email_login_otps").update({ used: true }).eq("id", data.id);
+      return { valid: true };
     },
 
     // --- AI Verifications ---

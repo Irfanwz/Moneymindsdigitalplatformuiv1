@@ -1,6 +1,6 @@
-import { useState, type FormEvent } from "react";
+import { useState, useRef, type FormEvent, type KeyboardEvent } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { LockKeyhole, ShieldCheck, UserCog } from "lucide-react";
+import { LockKeyhole, Mail, ShieldCheck, UserCog } from "lucide-react";
 
 import { useAuth } from "@/app/contexts/AuthContext";
 import { ApiError } from "@/app/lib/api";
@@ -11,74 +11,109 @@ import { Input } from "@/app/components/ui/input";
 import { Label } from "@/app/components/ui/label";
 
 type LoginMode = "user" | "admin";
+type LoginStep = "credentials" | "otp" | "totp";
 
 export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, selectRole } = useAuth();
+  const { login, verifyLoginOtp, selectRole } = useAuth();
   const [searchParams] = useSearchParams();
-  const initialMode = searchParams.get("mode") === "admin" ? "admin" : "user";
+  const mode: LoginMode = searchParams.get("mode") === "admin" ? "admin" : "user";
 
-  const mode = initialMode; // Fixed to URL parameter, no toggle
+  const [step, setStep] = useState<LoginStep>("credentials");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [otp,setOtp]=useState('');
-  const [needsOtp,setNeedsOtp]=useState(false);
+  // Email OTP — 4 separate digit inputs
+  const [otpDigits, setOtpDigits] = useState(["", "", "", ""]);
+  const otpRef0 = useRef<HTMLInputElement>(null);
+  const otpRef1 = useRef<HTMLInputElement>(null);
+  const otpRef2 = useRef<HTMLInputElement>(null);
+  const otpRef3 = useRef<HTMLInputElement>(null);
+  const otpRefs = [otpRef0, otpRef1, otpRef2, otpRef3];
+  // TOTP (Google Authenticator fallback)
+  const [totp, setTotp] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
 
-  const heading = mode === "admin"
-    ? "Admin sign in"
-    : "Sign in after approval";
-
+  const heading = mode === "admin" ? "Admin sign in" : "Sign in after approval";
   const helperText = mode === "admin"
     ? "Use the admin account to approve or reject submitted profiles."
     : "Users can only sign in after their general profile has been reviewed and approved.";
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  function navigateAfterLogin(session: { user: { isAdmin: boolean; approvedRoles: string[]; currentRole?: string | null } }) {
+    const nextPath = location.state && typeof location.state === "object" && "from" in location.state
+      ? String(location.state.from) : null;
+    if (session.user.isAdmin) { navigate(nextPath || "/admin/dashboard", { replace: true }); return; }
+    if (nextPath?.startsWith("/payments/complete?")) { navigate(nextPath, { replace: true }); return; }
+    if (session.user.approvedRoles.length === 1) {
+      const [role] = session.user.approvedRoles;
+      selectRole(role as any);
+      navigate(nextPath?.startsWith(`/${role}/`) ? nextPath : `/${role}/dashboard`, { replace: true });
+      return;
+    }
+    navigate("/choose-role", { replace: true });
+  }
+
+  const handleCredentials = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsSubmitting(true);
     setErrorMessage("");
     setStatusMessage("");
-
     try {
-      const session = await login(email, password, otp);
-      const nextPath = location.state && typeof location.state === "object" && "from" in location.state
-        ? String(location.state.from)
-        : null;
-
-      if (session.user.isAdmin) {
-        navigate(nextPath || "/admin/dashboard", { replace: true });
-        return;
+      const result = await login(email, password, totp || undefined);
+      if (result.code === "EMAIL_OTP_REQUIRED") {
+        setStep("otp");
+        setTimeout(() => otpRefs[0].current?.focus(), 100);
+      } else if (result.code === "LOGIN_SUCCESS" && result.session) {
+        navigateAfterLogin(result.session);
+      } else {
+        setErrorMessage(result.message || "Unexpected response. Please try again.");
       }
-
-      if(nextPath?.startsWith('/payments/complete?')){navigate(nextPath,{replace:true});return;}
-
-      if (session.user.approvedRoles.length === 1) {
-        const [role] = session.user.approvedRoles;
-        selectRole(role);
-        navigate(nextPath && nextPath.startsWith(`/${role}/`) ? nextPath : `/${role}/dashboard`, {
-          replace: true,
-        });
-        return;
-      }
-
-      navigate("/choose-role", { replace: true });
     } catch (error) {
       if (error instanceof ApiError) {
         setErrorMessage(error.message);
-        if(error.code==='TWO_FACTOR_REQUIRED')setNeedsOtp(true);
-
-        if (error.code === "PENDING_APPROVAL") {
-          setStatusMessage("Your profile exists, but admin approval is still pending.");
-        }
-
-        if (error.code === "PROFILE_REJECTED") {
-          setStatusMessage(error.user?.rejectionReason || "Your profile was rejected. Contact admin for changes.");
-        }
+        if (error.code === "TWO_FACTOR_REQUIRED") setStep("totp");
+        if (error.code === "PENDING_APPROVAL") setStatusMessage("Your profile exists, but admin approval is still pending.");
+        if (error.code === "PROFILE_REJECTED") setStatusMessage(error.user?.rejectionReason || "Your profile was rejected. Contact admin for changes.");
       } else {
         setErrorMessage("Could not sign in with those credentials.");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleOtpInput = (index: number, value: string) => {
+    const digit = value.replace(/\D/g, "").slice(-1);
+    const next = [...otpDigits];
+    next[index] = digit;
+    setOtpDigits(next);
+    if (digit && index < 3) otpRefs[index + 1].current?.focus();
+  };
+
+  const handleOtpKeyDown = (index: number, e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Backspace" && !otpDigits[index] && index > 0) {
+      otpRefs[index - 1].current?.focus();
+    }
+  };
+
+  const handleOtpSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const code = otpDigits.join("");
+    if (code.length !== 4) { setErrorMessage("Please enter all 4 digits."); return; }
+    setIsSubmitting(true);
+    setErrorMessage("");
+    try {
+      const session = await verifyLoginOtp(email, code);
+      navigateAfterLogin(session);
+    } catch (error) {
+      if (error instanceof ApiError) {
+        setErrorMessage(error.message);
+        if (error.code === "INVALID_OTP") setOtpDigits(["", "", "", ""]);
+        setTimeout(() => otpRefs[0].current?.focus(), 50);
+      } else {
+        setErrorMessage("Verification failed. Please try again.");
       }
     } finally {
       setIsSubmitting(false);
@@ -114,52 +149,100 @@ export function LoginPage() {
           </div>
 
 
-          <form className="space-y-4" onSubmit={handleSubmit}>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder={mode === "admin" ? "admin@moneyminds.local" : "you@example.com"}
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password">Password</Label>
-                <Link to="/forgot-password" className="text-xs text-primary hover:underline">
-                  Forgot password?
-                </Link>
+          {step === "otp" ? (
+            <form className="space-y-6" onSubmit={handleOtpSubmit}>
+              <div className="text-center space-y-2">
+                <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 mb-2">
+                  <Mail className="h-7 w-7 text-primary" />
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  A 4-digit code was sent to <strong>{email}</strong>.<br />
+                  Enter it below. It expires in 10 minutes.
+                </p>
               </div>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder="Enter your password"
-                required
-              />
-            </div>
-
-            {needsOtp&&<div className="space-y-2"><Label htmlFor="otp">Authenticator code</Label><Input id="otp" autoComplete="one-time-code" inputMode="numeric" maxLength={6} value={otp} onChange={e=>setOtp(e.target.value.replace(/\D/g,''))} placeholder="Six-digit code" required/></div>}
-            {errorMessage ? (
-              <Alert variant="destructive">
-                <AlertTitle>Sign in failed</AlertTitle>
-                <AlertDescription>
-                  <p>{errorMessage}</p>
-                  {statusMessage ? <p>{statusMessage}</p> : null}
-                </AlertDescription>
-              </Alert>
-            ) : null}
-
-            <Button className="w-full" disabled={isSubmitting} type="submit">
-              <LockKeyhole className="mr-2 h-4 w-4" />
-              {isSubmitting ? "Signing in..." : mode === "admin" ? "Enter admin panel" : "Continue"}
-            </Button>
-          </form>
+              <div className="flex justify-center gap-3">
+                {otpDigits.map((digit, i) => (
+                  <Input
+                    key={i}
+                    ref={otpRefs[i]}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={1}
+                    value={digit}
+                    onChange={e => handleOtpInput(i, e.target.value)}
+                    onKeyDown={e => handleOtpKeyDown(i, e)}
+                    className="w-14 h-14 text-center text-2xl font-bold"
+                    autoComplete="one-time-code"
+                  />
+                ))}
+              </div>
+              {errorMessage ? (
+                <Alert variant="destructive">
+                  <AlertTitle>Verification failed</AlertTitle>
+                  <AlertDescription>{errorMessage}</AlertDescription>
+                </Alert>
+              ) : null}
+              <Button className="w-full" disabled={isSubmitting || otpDigits.join("").length !== 4} type="submit">
+                <ShieldCheck className="mr-2 h-4 w-4" />
+                {isSubmitting ? "Verifying..." : "Verify & Sign in"}
+              </Button>
+              <p className="text-center text-sm text-muted-foreground">
+                Wrong email?{" "}
+                <button type="button" className="text-primary hover:underline" onClick={() => { setStep("credentials"); setOtpDigits(["","","",""]); setErrorMessage(""); }}>
+                  Go back
+                </button>
+              </p>
+            </form>
+          ) : (
+            <form className="space-y-4" onSubmit={handleCredentials}>
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder={mode === "admin" ? "admin@moneyminds.local" : "you@example.com"}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">Password</Label>
+                  <Link to="/forgot-password" className="text-xs text-primary hover:underline">
+                    Forgot password?
+                  </Link>
+                </div>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder="Enter your password"
+                  required
+                />
+              </div>
+              {step === "totp" && (
+                <div className="space-y-2">
+                  <Label htmlFor="totp">Authenticator code</Label>
+                  <Input id="totp" autoComplete="one-time-code" inputMode="numeric" maxLength={6} value={totp} onChange={e => setTotp(e.target.value.replace(/\D/g, ""))} placeholder="Six-digit code" required />
+                </div>
+              )}
+              {errorMessage ? (
+                <Alert variant="destructive">
+                  <AlertTitle>Sign in failed</AlertTitle>
+                  <AlertDescription>
+                    <p>{errorMessage}</p>
+                    {statusMessage ? <p className="mt-1">{statusMessage}</p> : null}
+                  </AlertDescription>
+                </Alert>
+              ) : null}
+              <Button className="w-full" disabled={isSubmitting} type="submit">
+                <LockKeyhole className="mr-2 h-4 w-4" />
+                {isSubmitting ? "Sending code..." : mode === "admin" ? "Enter admin panel" : "Continue"}
+              </Button>
+            </form>
+          )}
         </Card>
 
         {mode === "admin" ? (

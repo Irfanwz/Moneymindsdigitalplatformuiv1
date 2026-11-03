@@ -16,6 +16,8 @@ export const config = {
   adminName: process.env.ADMIN_NAME ?? "Platform Admin",
   // Only an explicit false disables the factor; unset/invalid values keep it on.
   twoFactorEnabled: process.env.TWO_FACTOR_ENABLED?.trim().toLowerCase() !== "false",
+  // Set EMAIL_OTP_ENABLED=false in .env to skip email OTP during local development.
+  emailOtpEnabled: process.env.EMAIL_OTP_ENABLED?.trim().toLowerCase() !== "false",
   supabaseUrl: process.env.SUPABASE_URL ?? "",
   supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
   sendgridApiKey: process.env.SENDGRID_API_KEY ?? "",

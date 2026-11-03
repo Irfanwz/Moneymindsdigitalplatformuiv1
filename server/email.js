@@ -80,6 +80,22 @@ export async function sendRejectionEmail(email, fullName, reason) {
   });
 }
 
+export async function sendLoginOtpEmail(email, fullName, code) {
+  await sendEmail({
+    to: email,
+    subject: `${code} — Your MoneyMinds login code`,
+    text: `Hi ${fullName},\n\nYour login verification code is:\n\n${code}\n\nThis code expires in 10 minutes. Do not share it with anyone.\n\nIf you did not request this, change your password immediately.\n\nThe MoneyMinds Team`,
+    html: `
+      <p>Hi ${fullName},</p>
+      <p>Your login verification code is:</p>
+      <h1 style="font-size:40px;letter-spacing:12px;font-family:monospace;color:#111;">${code}</h1>
+      <p>This code expires in <strong>10 minutes</strong>. Do not share it with anyone.</p>
+      <p>If you did not request this, please change your password immediately.</p>
+      <p>The MoneyMinds Team</p>
+    `,
+  });
+}
+
 export async function sendPaymentReceiptEmail(email, fullName, amount, itemDescription) {
   await sendEmail({
     to: email,

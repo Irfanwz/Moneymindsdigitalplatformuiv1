@@ -28,11 +28,13 @@ import {
   DollarSign,
   Briefcase,
   Loader2,
+  AlertTriangle,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { getInvestorProfile, updateInvestorProfile, uploadFile } from "@/app/lib/api";
 import { createEmptyInvestorProfile } from "@/app/lib/investor-profile";
+import { getInvestorGaps } from "@/app/lib/profile-complete";
 import type { InvestorProfile } from "@/app/types/investor-profile";
 
 const INDUSTRIES = [
@@ -48,6 +50,8 @@ const INDUSTRIES = [
 
 export function InvestorEditProfile() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const isSetup = searchParams.get("setup") === "true";
   const { session, user } = useAuth();
   const [profile, setProfile] = useState<InvestorProfile>(() => createEmptyInvestorProfile(user));
   const [isLoading, setIsLoading] = useState(true);
@@ -147,6 +151,19 @@ export function InvestorEditProfile() {
             Update your investor profile and preferences
           </p>
         </div>
+
+        {isSetup && (() => {
+          const gaps = getInvestorGaps(profile);
+          return gaps.length > 0 ? (
+            <div className="mb-6 p-4 bg-amber-500/10 border border-amber-500/40 rounded-lg flex gap-3">
+              <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-medium text-amber-700 dark:text-amber-400">Complete your profile to access the dashboard</p>
+                <p className="text-sm text-muted-foreground mt-1">Missing: {gaps.map((g: { label: string }) => g.label).join(" · ")}</p>
+              </div>
+            </div>
+          ) : null;
+        })()}
 
         {error && (
           <div className="mb-6 p-4 bg-destructive/10 border border-destructive/30 text-destructive rounded-lg">

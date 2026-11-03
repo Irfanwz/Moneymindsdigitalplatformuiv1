@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
+  AlertTriangle,
   Building2,
   DollarSign,
   Globe,
@@ -16,6 +17,7 @@ import {
 
 import { useAuth } from "@/app/contexts/AuthContext";
 import { getStartupProfile, updateStartupProfile, uploadFile } from "@/app/lib/api";
+import { getStartupGaps } from "@/app/lib/profile-complete";
 import {
   createEmptyStartupProfile,
   parseCategories,
@@ -63,6 +65,8 @@ const stageOptions = [
 
 export function StartupEditProfile() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const isSetup = searchParams.get("setup") === "true";
   const { session, user } = useAuth();
   const [profile, setProfile] = useState<StartupProfile>(() => createEmptyStartupProfile(user));
   const [categoriesInput, setCategoriesInput] = useState("");
@@ -214,6 +218,19 @@ export function StartupEditProfile() {
             Save your startup details to Supabase and use them across the platform.
           </p>
         </div>
+
+        {isSetup && (() => {
+          const gaps = getStartupGaps(profile);
+          return gaps.length > 0 ? (
+            <div className="mb-6 p-4 bg-amber-500/10 border border-amber-500/40 rounded-lg flex gap-3">
+              <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-medium text-amber-700 dark:text-amber-400">Complete your profile to access the dashboard</p>
+                <p className="text-sm text-muted-foreground mt-1">Missing: {gaps.map(g => g.label).join(" · ")}</p>
+              </div>
+            </div>
+          ) : null;
+        })()}
 
         {errorMessage ? (
           <Alert variant="destructive" className="mb-6">

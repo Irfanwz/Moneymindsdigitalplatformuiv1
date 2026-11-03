@@ -9,6 +9,7 @@ import {
 import {
   getCurrentUser,
   login as loginRequest,
+  verifyLoginOtp as verifyLoginOtpRequest,
   logoutRequest,
   registerProfile,
 } from "@/app/lib/api";
@@ -23,7 +24,8 @@ interface AuthContextType {
   isLoading: boolean;
   session: AuthSession | null;
   user: AuthUser | null;
-  login: (email: string, password: string, otp?:string) => Promise<AuthSession>;
+  login: (email: string, password: string, otp?: string) => Promise<{ code: string; message: string; session?: AuthSession }>;
+  verifyLoginOtp: (email: string, otp: string) => Promise<AuthSession>;
   logout: () => void;
   refreshUser: () => Promise<void>;
   submitProfile: (payload: ProfileApplicationPayload) => Promise<{ message: string; user: AuthUser }>;
@@ -97,7 +99,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user: session?.user ?? null,
     async login(email, password, otp) {
       const response = await loginRequest({ email, password, otp });
-      // Server sets HttpOnly cookie; we keep the token in memory for Bearer fallback
+      // EMAIL_OTP_ENABLED=false bypass: server returns {token, user} directly
+      if (response.token && response.user) {
+        const nextSession = { token: response.token, user: mergeCurrentRole(null, response.user) };
+        setSession(nextSession);
+        return { code: "LOGIN_SUCCESS", message: "Signed in.", session: nextSession };
+      }
+      return { code: response.code ?? "", message: response.message ?? "" };
+    },
+    async verifyLoginOtp(email, otp) {
+      const response = await verifyLoginOtpRequest(email, otp);
       const nextSession = {
         token: response.token,
         user: mergeCurrentRole(null, response.user),

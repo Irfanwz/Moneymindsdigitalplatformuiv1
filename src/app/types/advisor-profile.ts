@@ -30,6 +30,24 @@ export interface AdvisorProfile {
   availability: string;
   typicalRate: string;
   servicesOffered: string;
+  // Regulatory
+  regulatoryLicenseNo: string;
+  regulatoryBody: string;
+  licenseExpiryDate: string;
+  // Education
+  educationUniversity: string;
+  educationDegree: string;
+  educationYear: string;
+  // Professional background
+  previousFirm: string;
+  previousRole: string;
+  previousFirmDuration: string;
+  // Platform-specific
+  primaryTickers: string[];
+  languages: string[];
+  conflictDisclosure: boolean;
+  performanceClaim: string;
+  // Group settings
   defaultGroupType: string;
   defaultJoiningFee: string;
   defaultMonthlyFee: string;

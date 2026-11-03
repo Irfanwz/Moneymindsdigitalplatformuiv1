@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import { Router } from "express";
 import { rateLimit } from "express-rate-limit";
-import { verify as verifyOtp } from 'otplib';
+import { authenticator } from 'otplib';
 
 import {
   createToken,
@@ -13,9 +13,8 @@ import {
 import { isEmail, trimText } from "../utils.js";
 import { validate, registerSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema } from "../schemas.js";
 import { config } from "../config.js";
-import { sendPasswordResetEmail, sendWelcomeEmail } from "../email.js";
+import { sendPasswordResetEmail, sendWelcomeEmail, sendLoginOtpEmail } from "../email.js";
 import { createAuthenticate } from "../middleware/auth.js";
-import { queueAgent } from "../services/agentService.js";
 
 const authLimiter = rateLimit({
   windowMs: 60 * 1000,
@@ -23,6 +22,14 @@ const authLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: "Too many requests, please try again later." },
+});
+
+const otpLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many OTP requests. Please wait 15 minutes." },
 });
 
 function buildSessionResponse(user) {
@@ -64,8 +71,9 @@ export function createAuthRouter(store) {
 
       try { await sendWelcomeEmail(email, fullName); } catch { /* non-critical */ }
 
-      try { await queueAgent(store,{userId:user.id,agentKey:"verification",targetId:user.id}); }
-      catch(error) { console.error("[Verification] Could not queue:",error.message); }
+      // Verification agent is NOT queued automatically — admin triggers it manually
+      // after the user has completed their profile. This avoids wasting tokens on
+      // empty or incomplete profiles.
 
       res.status(201).json({
         message: "Profile submitted. An admin must approve it before you can sign in.",
@@ -77,7 +85,7 @@ export function createAuthRouter(store) {
     }
   });
 
-  router.post("/login", authLimiter, validate(loginSchema), async (req, res, next) => {
+  router.post("/login", authLimiter, otpLimiter, validate(loginSchema), async (req, res, next) => {
     try {
       const email = trimText(req.body?.email).toLowerCase();
       const password = trimText(req.body?.password);
@@ -90,8 +98,8 @@ export function createAuthRouter(store) {
       const passwordMatches = await verifyPassword(password, user.passwordHash);
       if (!passwordMatches) return res.status(401).json({ message: "Invalid email or password." });
 
-      if (user.isSuspended) return res.status(403).json({message:'Your account is suspended. Please contact the administrator.'});
-      if (!user.isAdmin && (await store.getAdminSettings()).maintenanceMode) return res.status(503).json({message:'MoneyMinds is undergoing maintenance. Please try again later.'});
+      if (user.isSuspended) return res.status(403).json({ message: "Your account is suspended. Please contact the administrator." });
+      if (!user.isAdmin && (await store.getAdminSettings()).maintenanceMode) return res.status(503).json({ message: "MoneyMinds is undergoing maintenance. Please try again later." });
 
       if (!user.isAdmin && user.status !== "approved") {
         return res.status(403).json({
@@ -103,13 +111,67 @@ export function createAuthRouter(store) {
         });
       }
 
+      // Check TOTP 2FA (optional, for users who have it enabled)
       if (config.twoFactorEnabled) {
         const twofa = await store.getTwoFASecret(user.id);
         if (twofa?.enabled) {
-          const code=trimText(req.body?.otp);
-          if (!/^\d{6}$/.test(code) || !(await verifyOtp({token:code,secret:twofa.secret})).valid) return res.status(401).json({code:'TWO_FACTOR_REQUIRED',message:'Enter the current six-digit code from your authenticator app.'});
+          const code = trimText(req.body?.otp);
+          if (!/^\d{6}$/.test(code) || !authenticator.verify({ token: code, secret: twofa.secret })) {
+            return res.status(401).json({ code: "TWO_FACTOR_REQUIRED", message: "Enter the current six-digit code from your authenticator app." });
+          }
         }
       }
+
+      // Skip email OTP if disabled via EMAIL_OTP_ENABLED=false in .env
+      if (!config.emailOtpEnabled) {
+        const session = buildSessionResponse(user);
+        res.cookie("mm_token", session.token, COOKIE_OPTIONS);
+        return res.json(session);
+      }
+
+      // Generate 4-digit email OTP
+      const otpCode = String(Math.floor(1000 + Math.random() * 9000));
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 minutes
+      await store.createEmailLoginOtp(user.id, otpCode, expiresAt);
+      try {
+        await sendLoginOtpEmail(user.email, user.fullName, otpCode);
+      } catch (err) {
+        // Always log so dev environments can get the code even without email configured
+        console.log(`[Login OTP] ${user.email} → code: ${otpCode} (email send failed: ${err?.message})`);
+      }
+
+      return res.status(200).json({ code: "EMAIL_OTP_REQUIRED", message: "A 4-digit verification code has been sent to your email." });
+    } catch (error) { next(error); }
+  });
+
+  // Step 2 of login: verify the email OTP and issue the session
+  router.post("/verify-login-otp", authLimiter, async (req, res, next) => {
+    try {
+      const email = trimText(req.body?.email).toLowerCase();
+      const otp = trimText(req.body?.otp);
+
+      if (!isEmail(email) || !otp) return res.status(400).json({ message: "Email and OTP code are required." });
+      if (!/^\d{4}$/.test(otp)) return res.status(400).json({ message: "OTP must be a 4-digit number." });
+
+      const user = await store.findUserByEmail(email);
+      if (!user) return res.status(401).json({ message: "Invalid request." });
+
+      const result = await store.verifyEmailLoginOtp(user.id, otp);
+      if (!result.valid) {
+        const messages = {
+          no_otp: "No verification code found. Please sign in again.",
+          expired: "Your verification code has expired. Please sign in again.",
+          used: "This code has already been used. Please sign in again.",
+          max_attempts: "Too many wrong attempts. Please sign in again to get a new code.",
+          wrong_code: `Incorrect code.${result.attemptsLeft > 0 ? ` ${result.attemptsLeft} attempt(s) remaining.` : ""}`,
+        };
+        return res.status(401).json({ code: "INVALID_OTP", message: messages[result.reason] ?? "Invalid code." });
+      }
+
+      // Re-check status — user may have been suspended between OTP send and verify
+      if (user.isSuspended) return res.status(403).json({ message: "Your account has been suspended. Please contact the administrator." });
+      if (!user.isAdmin && user.status !== "approved") return res.status(403).json({ message: "Your account is no longer approved." });
+
       const session = buildSessionResponse(user);
       res.cookie("mm_token", session.token, COOKIE_OPTIONS);
       res.json(session);

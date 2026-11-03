@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Header } from "@/app/components/Header";
 import { Card } from "@/app/components/ui/card";
 import { Button } from "@/app/components/ui/button";
@@ -35,11 +36,13 @@ import {
   CreditCard,
   Lock,
   Loader2,
+  AlertTriangle,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { getAdvisorProfile, updateAdvisorProfile, uploadFile } from "@/app/lib/api";
 import { createEmptyAdvisorProfile } from "@/app/lib/advisor-profile";
+import { getAdvisorGaps } from "@/app/lib/profile-complete";
 import type { AdvisorProfile, AdvisorExpertise, AdvisorCertification } from "@/app/types/advisor-profile";
 
 const INDUSTRIES = [
@@ -55,6 +58,8 @@ const INDUSTRIES = [
 
 export function AdvisorEditProfile() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const isSetup = searchParams.get("setup") === "true";
   const { session, user } = useAuth();
   const [profile, setProfile] = useState<AdvisorProfile>(() => createEmptyAdvisorProfile(user));
   const [isLoading, setIsLoading] = useState(true);
@@ -206,6 +211,21 @@ export function AdvisorEditProfile() {
           <h1 className="text-3xl font-semibold mb-2">Edit Profile</h1>
           <p className="text-muted-foreground">Update your advisor profile and credentials</p>
         </div>
+
+        {isSetup && (() => {
+          const gaps = getAdvisorGaps(profile);
+          return gaps.length > 0 ? (
+            <div className="mb-6 p-4 bg-amber-500/10 border border-amber-500/40 rounded-lg flex gap-3">
+              <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-medium text-amber-700 dark:text-amber-400">Complete your profile to access the dashboard</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Missing: {gaps.map(g => g.label).join(" · ")}
+                </p>
+              </div>
+            </div>
+          ) : null;
+        })()}
 
         {error && (
           <div className="mb-6 p-4 bg-destructive/10 border border-destructive/30 text-destructive rounded-lg">
@@ -519,6 +539,102 @@ export function AdvisorEditProfile() {
                   </div>
                 </div>
               ))}
+            </div>
+          </Card>
+
+          {/* Regulatory & License */}
+          <Card className="p-6">
+            <div className="flex items-center gap-3 mb-6">
+              <Award className="h-5 w-5 text-accent" />
+              <h2 className="text-xl font-semibold">Regulatory & License</h2>
+            </div>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="reg-license">License / Registration No.</Label>
+                <Input id="reg-license" placeholder="e.g., SECP-FA-12345" value={profile.regulatoryLicenseNo} onChange={e => updateField("regulatoryLicenseNo", e.target.value)} className="mt-2" />
+              </div>
+              <div>
+                <Label htmlFor="reg-body">Regulatory Body</Label>
+                <Input id="reg-body" placeholder="e.g., SECP / FINRA / FCA" value={profile.regulatoryBody} onChange={e => updateField("regulatoryBody", e.target.value)} className="mt-2" />
+              </div>
+              <div>
+                <Label htmlFor="license-expiry">License Expiry Date</Label>
+                <Input id="license-expiry" type="date" value={profile.licenseExpiryDate} onChange={e => updateField("licenseExpiryDate", e.target.value)} className="mt-2" />
+              </div>
+            </div>
+          </Card>
+
+          {/* Education */}
+          <Card className="p-6">
+            <div className="flex items-center gap-3 mb-6">
+              <GraduationCap className="h-5 w-5 text-accent" />
+              <h2 className="text-xl font-semibold">Education</h2>
+            </div>
+            <div className="grid md:grid-cols-3 gap-4">
+              <div>
+                <Label htmlFor="edu-university">University / Institution</Label>
+                <Input id="edu-university" placeholder="e.g., LUMS" value={profile.educationUniversity} onChange={e => updateField("educationUniversity", e.target.value)} className="mt-2" />
+              </div>
+              <div>
+                <Label htmlFor="edu-degree">Degree</Label>
+                <Input id="edu-degree" placeholder="e.g., MBA Finance" value={profile.educationDegree} onChange={e => updateField("educationDegree", e.target.value)} className="mt-2" />
+              </div>
+              <div>
+                <Label htmlFor="edu-year">Graduation Year</Label>
+                <Input id="edu-year" type="number" placeholder="2015" value={profile.educationYear} onChange={e => updateField("educationYear", e.target.value)} className="mt-2" />
+              </div>
+            </div>
+          </Card>
+
+          {/* Previous Employer */}
+          <Card className="p-6">
+            <div className="flex items-center gap-3 mb-6">
+              <Briefcase className="h-5 w-5 text-accent" />
+              <h2 className="text-xl font-semibold">Previous Employer</h2>
+            </div>
+            <div className="grid md:grid-cols-3 gap-4">
+              <div>
+                <Label htmlFor="prev-firm">Firm / Company</Label>
+                <Input id="prev-firm" placeholder="e.g., Habib Bank Limited" value={profile.previousFirm} onChange={e => updateField("previousFirm", e.target.value)} className="mt-2" />
+              </div>
+              <div>
+                <Label htmlFor="prev-role">Role / Title</Label>
+                <Input id="prev-role" placeholder="e.g., Head of Research" value={profile.previousRole} onChange={e => updateField("previousRole", e.target.value)} className="mt-2" />
+              </div>
+              <div>
+                <Label htmlFor="prev-duration">Duration</Label>
+                <Input id="prev-duration" placeholder="e.g., 2015-2022" value={profile.previousFirmDuration} onChange={e => updateField("previousFirmDuration", e.target.value)} className="mt-2" />
+              </div>
+            </div>
+          </Card>
+
+          {/* Platform-Specific */}
+          <Card className="p-6">
+            <div className="flex items-center gap-3 mb-6">
+              <FileText className="h-5 w-5 text-accent" />
+              <h2 className="text-xl font-semibold">Platform Details</h2>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="primary-tickers">Primary Assets / Tickers</Label>
+                <p className="text-sm text-muted-foreground mb-2">Comma-separated. Used to track prediction accuracy.</p>
+                <Input id="primary-tickers" placeholder="e.g., OGDC, BTC, AAPL, LUCK" value={profile.primaryTickers.join(", ")} onChange={e => updateField("primaryTickers", e.target.value.split(",").map(t => t.trim()).filter(Boolean))} className="mt-2" />
+              </div>
+              <div>
+                <Label htmlFor="languages">Languages Spoken</Label>
+                <Input id="languages" placeholder="e.g., Urdu, English, Arabic" value={profile.languages.join(", ")} onChange={e => updateField("languages", e.target.value.split(",").map(l => l.trim()).filter(Boolean))} className="mt-2" />
+              </div>
+              <div>
+                <Label htmlFor="performance-claim">Performance Claim (optional)</Label>
+                <Input id="performance-claim" placeholder="e.g., 75% accuracy over 12 months" value={profile.performanceClaim} onChange={e => updateField("performanceClaim", e.target.value)} className="mt-2" />
+              </div>
+              <div className="flex items-center justify-between p-4 border rounded-lg">
+                <div>
+                  <p className="font-medium">Conflict of Interest Disclosure</p>
+                  <p className="text-sm text-muted-foreground">I may hold positions in assets I recommend</p>
+                </div>
+                <Switch checked={profile.conflictDisclosure} onCheckedChange={val => updateField("conflictDisclosure", val)} />
+              </div>
             </div>
           </Card>
 
