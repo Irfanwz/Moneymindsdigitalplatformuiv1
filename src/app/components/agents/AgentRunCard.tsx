@@ -5,11 +5,13 @@ import { Button } from "@/app/components/ui/button";
 import { Badge } from "@/app/components/ui/badge";
 import { Progress } from "@/app/components/ui/progress";
 import { agentName, type AgentRun } from "@/app/lib/agents";
+import { DueDiligenceReport } from "./DueDiligenceReport";
 
 export function AgentResult({result}:{result:Record<string,any>}) {
   const summary=result.summary || result.executiveSummary || result.aiReasoning;
   return <div className="space-y-4 text-sm">
     {summary && <p className="leading-relaxed whitespace-pre-wrap">{summary}</p>}
+    {result.reportType === "profile-due-diligence" && <DueDiligenceReport report={result as any} />}
     {result.recommendation && <Badge variant="outline">Recommendation: {result.recommendation}</Badge>}
     {result.sentiment && <Badge variant="outline">{result.sentiment}</Badge>}
     {result.sentimentReasoning && <p>{result.sentimentReasoning}</p>}

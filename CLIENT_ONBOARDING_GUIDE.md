@@ -96,6 +96,18 @@ Advisors can explicitly select **No previous employment**, **No formal qualifica
 
 Admin reviewers see the complete registration submission and can download its private documents under **Users > View details > Registration application**. After approval, the applicant can see their original submission from their profile. Private references and supporting files are not included in public profiles. No credentials or testimonials are treated as verified merely because they were submitted.
 
+### Profile due diligence — all three roles
+
+An admin can open **Users > View details > Run profile due diligence**, or choose a user in **AI Operations** and select **Profile due diligence**. This works before approval, and one run covers every selected role. Approved users can run it on their own account from **Agent Activity**. Checks start when requested; registration does not automatically run them.
+
+The agent reviews personal information, the complete registration submission (including every education, certification, license, regulatory, work history, team, review and reference entry), current professional profile details, and the uploaded supporting files. Later profile edits remain separate from original registration claims. Older accounts without a registration snapshot use their available current profiles.
+
+Open **Result** on the saved run for a field-by-field report, supporting excerpts, source links and document reading status. Results distinguish **Supported by evidence**, **Inconsistency found**, **Insufficient evidence**, **Manual review required**, **Not provided**, and **Self-reported**. Optional omissions are not adverse findings; preferences and intentions remain self-reported.
+
+An AI provider is required. Web searches use the configured search provider; missing search configuration or results are disclosed as incomplete external verification. PDFs are read as text, and images require an image-capable provider. Unreadable documents require manual review. At most the first 20,000 extracted characters per file are assessed, with truncation disclosed in the report.
+
+Supporting evidence does not certify document authenticity, identity or current license standing. Phone/email ownership and professional references require separate verification; the agent does not contact references. Passwords, payment settings and tax identifiers are excluded. Reports stay private to the account owner and authorized admin reviewers, and never automatically approve or reject an account. Run due diligence again after material profile changes.
+
 > **Important:** New users CANNOT log in until the Admin approves them. This is by design — you control who gets access.
 
 ---

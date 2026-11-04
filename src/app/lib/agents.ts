@@ -56,5 +56,5 @@ export function useAgentRuns(agentKey?:string,targetId?:string) {
   return {runs,error,loading,refresh};
 }
 export function agentName(key:string) {
-  return ({verification:"Background verification","signal-sentiment":"Signal sentiment","signal-prediction":"Prediction extraction","prediction-check":"Prediction checker",credibility:"Credibility scoring",document:"Document verification","due-diligence":"Startup due diligence","profile-quality":"Profile quality","investor-1":"Crypto Market Expert","investor-2":"FinTech Intelligence","investor-3":"HealthTech Advisor","investor-4":"CleanTech Analyst","investor-5":"AI/ML Investment Scout","investor-6":"SaaS Metrics Expert"} as Record<string,string>)[key] || key;
+  return ({verification:"Background verification","signal-sentiment":"Signal sentiment","signal-prediction":"Prediction extraction","prediction-check":"Prediction checker",credibility:"Credibility scoring",document:"Document verification","due-diligence":"Profile due diligence","profile-quality":"Profile quality","investor-1":"Crypto Market Expert","investor-2":"FinTech Intelligence","investor-3":"HealthTech Advisor","investor-4":"CleanTech Analyst","investor-5":"AI/ML Investment Scout","investor-6":"SaaS Metrics Expert"} as Record<string,string>)[key] || key;
 }

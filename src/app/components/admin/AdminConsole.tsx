@@ -514,15 +514,15 @@ function UserDetail({
       setBusy("");
     }
   }
-  async function check() {
+  async function check(agentKey = "verification") {
     setBusy("check");
     try {
       const ready = await getAgentReadiness();
-      if (!ready.ready || !ready.providers.length || !ready.searchConfigured)
+      if (!ready.ready || !ready.providers.length || (agentKey === "verification" && !ready.searchConfigured))
         throw new Error(
-          "Configure the database, an AI provider and web search in AI Operations first.",
+          agentKey === "verification" ? "Configure the database, an AI provider and web search in AI Operations first." : "Configure the database and an AI provider in AI Operations first.",
         );
-      await startAgent("verification", id);
+      await startAgent(agentKey, id);
       navigate(`/admin/agents?user=${id}`);
       onClose();
     } catch (e) {
@@ -623,8 +623,11 @@ function UserDetail({
                 <section className="space-y-3">
                   <div className="flex flex-wrap justify-between items-center gap-2">
                     <h3 className="font-semibold">Background evidence</h3>
-                    <Button disabled={!!busy} onClick={check}>
+                    <Button disabled={!!busy} onClick={() => check()}>
                       Run background check
+                    </Button>
+                    <Button variant="outline" disabled={!!busy} onClick={() => check("due-diligence")}>
+                      Run profile due diligence
                     </Button>
                   </div>
                   <AIVerificationReport
@@ -1440,13 +1443,13 @@ function ReportsPage() {
               <Link to="/admin/reviews" className="rounded-xl border bg-card p-5 hover:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent">
                 <h3 className="font-semibold flex items-center gap-2"><ShieldCheck className="h-5 w-5" />Background check reports</h3>
                 <p className="text-sm text-muted-foreground mt-2">Open Users and results, then View report for a completed check. Start checks for existing users from the same page.</p>
-                <span className="inline-flex items-center gap-2 text-sm font-medium text-accent mt-4">Open due diligence <ArrowRight className="h-4 w-4" /></span>
+                <span className="inline-flex items-center gap-2 text-sm font-medium text-accent mt-4">Open background checks <ArrowRight className="h-4 w-4" /></span>
               </Link>
             )}
             {canViewAgents && (
               <Link to="/admin/agents?status=completed" className="rounded-xl border bg-card p-5 hover:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent">
                 <h3 className="font-semibold flex items-center gap-2"><Activity className="h-5 w-5" />Completed agent results</h3>
-                <p className="text-sm text-muted-foreground mt-2">Find completed research, startup reviews, profile reviews and signal analysis among the latest 100 runs. Select Result to read the saved output.</p>
+                <p className="text-sm text-muted-foreground mt-2">Find completed due diligence for all profile roles, research, profile reviews and signal analysis among the latest 100 runs. Select Result to read the saved output.</p>
                 <span className="inline-flex items-center gap-2 text-sm font-medium text-accent mt-4">Open completed runs <ArrowRight className="h-4 w-4" /></span>
               </Link>
             )}

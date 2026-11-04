@@ -6,6 +6,7 @@ import { investorAgents, operationalAgents, queueAgent, performAgentWork, proces
 import { configuredProviders } from "../services/aiProvider.js";
 import { executeTrackedRun, expireStaleRuns, keepAlive } from "../services/agentRuntime.js";
 import { verificationOverview, queueVerificationBatch, requireVerificationSetup } from "../services/verificationBatch.js";
+import { adminCan } from "../../shared/adminPermissions.js";
 
 export function createAgentsRouter(store) {
   const router=Router();
@@ -30,7 +31,7 @@ export function createAgentsRouter(store) {
     try {
       await expireStaleRuns(store);
       const runs=await store.listAgentRuns({userId:req.currentUser.isAdmin ? undefined : req.auth.userId,agentKey:typeof req.query.agentKey==="string" ? req.query.agentKey : undefined,targetId:typeof req.query.targetId==="string" ? req.query.targetId : undefined,limit:100});
-      res.json({runs});
+      res.json({runs: req.currentUser.isAdmin && !adminCan(req.currentUser,"reviews") ? runs.filter(run=>run.agentKey!=="due-diligence") : runs});
     }catch(e){next(e);}
   });
   router.get("/readiness",requireAdmin,async(_req,res,next)=>{
@@ -83,9 +84,11 @@ export function createAgentsRouter(store) {
         if(!req.currentUser.isAdmin) return res.status(403).json({message:"Admin access is required."});
         targetId="all";
       } else if(["due-diligence","profile-quality"].includes(agentKey)) {
+        if(agentKey==="due-diligence" && req.currentUser.isAdmin && !adminCan(req.currentUser,"reviews")) return res.status(403).json({message:"Application review access is required."});
         if(targetId==="self") targetId=userId;
         if(!req.currentUser.isAdmin && targetId!==userId) return res.status(403).json({message:"You can analyze only your own profile."});
-        if(!await store.findUserById(targetId)) return res.status(404).json({message:"Profile not found."});
+        const target=await store.findUserById(targetId);
+        if(!target || (agentKey==="due-diligence" && target.isAdmin)) return res.status(404).json({message:"Profile not found."});
         userId=targetId;
       } else return res.status(400).json({message:"Unknown agent."});
       const run=await queueAgent(store,{userId,agentKey,targetId});
@@ -97,6 +100,7 @@ export function createAgentsRouter(store) {
     try {
       const run=await store.getAgentRun(req.params.id);
       if(!run || (!req.currentUser.isAdmin && run.userId!==req.auth.userId)) return res.status(404).json({message:"Run not found."});
+      if(run.agentKey==="due-diligence" && req.currentUser.isAdmin && !adminCan(req.currentUser,"reviews")) return res.status(403).json({message:"Application review access is required."});
       if(["verification","prediction-check","credibility","document"].includes(run.agentKey) && !req.currentUser.isAdmin) return res.status(403).json({message:"Admin access is required."});
       if(run.agentKey==="document") return res.status(400).json({message:"Please upload the document again to retry verification."});
       if(run.agentKey==="verification") {
