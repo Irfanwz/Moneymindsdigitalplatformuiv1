@@ -6,6 +6,7 @@ import { Badge } from "@/app/components/ui/badge";
 import { Progress } from "@/app/components/ui/progress";
 import { agentName, type AgentRun } from "@/app/lib/agents";
 import { DueDiligenceReport } from "./DueDiligenceReport";
+import { AgentTokenUsage } from "./AgentTokenUsage";
 
 export function AgentResult({result}:{result:Record<string,any>}) {
   const summary=result.summary || result.executiveSummary || result.aiReasoning;
@@ -40,6 +41,7 @@ export function AgentRunCard({run,onRetry,showOwner=false,ownerName}:{run:AgentR
     {active && <div className="mt-4"><Progress value={run.progress}/><div className="mt-2 flex justify-between text-xs text-muted-foreground"><span>Queued → Processing → Saved result</span><span>{run.progress}%</span></div></div>}
     {!!run.events?.length && <details className="mt-3 text-sm" open={active}><summary className="cursor-pointer text-muted-foreground">Execution steps</summary><ol className="border-l ml-2 mt-3 space-y-2 pl-4">{run.events.map((event,i)=><li key={i}><span>{event.stage}</span><time className="ml-3 text-xs text-muted-foreground">{new Date(event.at).toLocaleTimeString()}</time></li>)}</ol></details>}
     {run.error && <p className="mt-3 text-sm text-amber-700 dark:text-amber-300" role="status">{run.error}</p>}
+    <AgentTokenUsage usage={run.usage} runStatus={run.status} />
     <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground"><span>Created {new Date(run.createdAt).toLocaleString()}</span>{run.startedAt && <span>Started {new Date(run.startedAt).toLocaleTimeString()}</span>}{run.completedAt && <span>Finished {new Date(run.completedAt).toLocaleTimeString()}</span>}</div>
     {showOwner && <p className="text-xs text-muted-foreground mt-2 break-all">User: {ownerName || run.userId} · Target: {run.targetId}</p>}
     {onRetry && !active && run.agentKey!=="document" && <Button variant="outline" size="sm" className="mt-3" onClick={()=>onRetry(run)}>{run.status==="failed" ? "Retry" : "Run again"}</Button>}

@@ -108,6 +108,14 @@ An AI provider is required. Web searches use the configured search provider; mis
 
 Supporting evidence does not certify document authenticity, identity or current license standing. Phone/email ownership and professional references require separate verification; the agent does not contact references. Passwords, payment settings and tax identifiers are excluded. Reports stay private to the account owner and authorized admin reviewers, and never automatically approve or reject an account. Run due diligence again after material profile changes.
 
+### Agent token usage
+
+New agent runs show **AI token usage** in Agent Activity, AI Operations, research history and document activity. The card shows input tokens, output tokens, total tokens and the number of AI requests. Expand **Why were these tokens used?** to see each request's purpose, provider/model, retry or fallback, and the number of fields, sources or documents involved where applicable.
+
+Input covers instructions and supplied evidence; output covers the model response and any reported internal reasoning. Multi-batch due diligence can send some context repeatedly. Image reading uses an AI request; extracting PDF text locally does not, although sending that text for assessment uses input tokens. Web search is a separate service and its charges are not included in these token counts.
+
+Counts come from provider responses, not estimates or maximum output limits. Cached/reasoning token breakdowns are already included in the totals. A failed or unusable response may still consume tokens. **Partial usage** and **Usage unavailable** mean some provider counts were not returned; missing counts are never assumed to be zero. A new run that makes no model requests shows zero. Older runs show **not recorded** because historical counts cannot be reconstructed. Token usage is not a currency cost estimate.
+
 > **Important:** New users CANNOT log in until the Admin approves them. This is by design — you control who gets access.
 
 ---

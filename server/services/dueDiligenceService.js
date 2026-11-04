@@ -648,6 +648,8 @@ export async function runDueDiligence(
             }),
             {
               maxTokens: 4200,
+              purpose: `Profile due diligence: assess ${fields.length} fields against supplied evidence`,
+              usageDetails: {fieldCount:fields.length,sourceCount:supplied.length,documentCount:supplied.filter(source=>source.kind==="document").length},
               validate: (data) => reportSchema.parse(data),
               onRetry: (delay) =>
                 progress(`Provider busy; retrying in ${delay} seconds`, 55),

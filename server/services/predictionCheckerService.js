@@ -3,6 +3,7 @@ import Groq from "groq-sdk";
 import { config } from "../config.js";
 import { parseSignalPrediction } from "./predictionParserService.js";
 import { getStockPrice, getCryptoPrice } from "./marketPriceFetcher.js";
+import { trackAIRequest } from "./aiUsage.js";
 
 const groqClient = config.groqApiKey ? new Groq({ apiKey: config.groqApiKey, timeout:30000, maxRetries:0 }) : null;
 const anthropicClient = config.anthropicApiKey ? new Anthropic({ apiKey: config.anthropicApiKey, timeout:30000, maxRetries:0 }) : null;
@@ -84,32 +85,36 @@ Write the explanation now (2 sentences max):`;
 
 async function generateExplanation(params) {
   const prompt = buildExplanationPrompt(params);
+  let trigger = "initial";
 
   if (groqClient && (config.aiProvider === "auto" || config.aiProvider === "groq")) {
     try {
-      const res = await groqClient.chat.completions.create({
+      const res = await trackAIRequest({provider:"groq",model:config.groqModel,purpose:"Explain a prediction result using checked market prices",trigger},()=>groqClient.chat.completions.create({
         model: config.groqModel,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.3,
         max_tokens: 1500,
-      });
+      }));
       const text = res.choices[0]?.message?.content?.trim();
       if (text && text.length > 0) return text;
     } catch (err) {
+      if(err?.code==="AI_USAGE_SAVE_FAILED") throw err;
       console.warn("[PredictionChecker] Groq explanation failed:", err.message);
     }
+    trigger = "fallback";
   }
 
   if (anthropicClient && (config.aiProvider === "auto" || config.aiProvider === "anthropic")) {
     try {
-      const res = await anthropicClient.messages.create({
+      const res = await trackAIRequest({provider:"anthropic",model:config.anthropicModel,purpose:"Explain a prediction result using checked market prices",trigger},()=>anthropicClient.messages.create({
         model: config.anthropicModel,
         max_tokens: 1500,
         messages: [{ role: "user", content: prompt }],
-      });
+      }));
       const text = res.content[0]?.text?.trim();
       if (text && text.length > 0) return text;
     } catch (err) {
+      if(err?.code==="AI_USAGE_SAVE_FAILED") throw err;
       console.warn("[PredictionChecker] Claude explanation failed:", err.message);
     }
   }

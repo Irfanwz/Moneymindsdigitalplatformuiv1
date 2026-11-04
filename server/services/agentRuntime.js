@@ -1,4 +1,5 @@
 import { waitUntil } from "@vercel/functions";
+import { createUsageTracker } from "./aiUsage.js";
 
 export class AgentSkipped extends Error {}
 
@@ -6,16 +7,22 @@ export async function executeTrackedRun(store, run, work) {
   const events=[...(run.events || []),{stage:"Starting",at:new Date().toISOString()}];
   const claimed = await store.updateAgentRun(run.id,{status:"running",startedAt:new Date().toISOString(),stage:"Starting",progress:5,events},"queued");
   if (!claimed) return store.getAgentRun(run.id);
+  const usage=createUsageTracker(async snapshot=>{
+    const saved=await store.updateAgentRun(run.id,{usage:snapshot},"running");
+    if(!saved) throw new Error("Run is no longer active.");
+  });
   const progress = (stage,value) => {
     events.push({stage,at:new Date().toISOString()});
     return store.updateAgentRun(run.id,{stage,progress:value,events:[...events]},"running");
   };
   try {
-    const result = await work(progress);
-    return await store.updateAgentRun(run.id,{status:"completed",stage:"Complete",progress:100,events:[...events,{stage:"Result saved",at:new Date().toISOString()}],result:result ?? {},completedAt:new Date().toISOString()},"running");
+    const result = await usage.run(()=>work(progress));
+    await usage.settle();
+    return await store.updateAgentRun(run.id,{status:"completed",stage:"Complete",progress:100,events:[...events,{stage:"Result saved",at:new Date().toISOString()}],result:result ?? {},usage:usage.snapshot(),completedAt:new Date().toISOString()},"running");
   } catch(error) {
+    await usage.settle().catch(()=>{});
     const skipped = error instanceof AgentSkipped;
-    return store.updateAgentRun(run.id,{status:skipped ? "skipped" : "failed",stage:skipped ? "No eligible work" : "Needs attention",error:safeAgentError(error),events:[...events,{stage:skipped ? "No eligible work" : "Failed",at:new Date().toISOString()}],completedAt:new Date().toISOString()},"running");
+    return store.updateAgentRun(run.id,{status:skipped ? "skipped" : "failed",stage:skipped ? "No eligible work" : "Needs attention",error:safeAgentError(error),events:[...events,{stage:skipped ? "No eligible work" : "Failed",at:new Date().toISOString()}],usage:usage.snapshot(),completedAt:new Date().toISOString()},"running");
   }
 }
 

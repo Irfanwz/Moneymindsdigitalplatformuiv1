@@ -4,6 +4,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { agentSchema } from "../server/store/agentStore.js";
 
 const repair = readFileSync(new URL("../supabase/migrations/20261101084337_repair_agent_runtime.sql", import.meta.url), "utf8");
+const usageMigration = readFileSync(new URL("../supabase/migrations/20261104182053_agent_token_usage.sql", import.meta.url), "utf8");
 const base = readFileSync(new URL("../supabase/schema.sql", import.meta.url), "utf8");
 const userTable = base.match(/create table if not exists public\.platform_users[\s\S]*?\n\);/i)[0];
 
@@ -21,6 +22,13 @@ describe("Production agent repair SQL", () => {
       await db.exec("DROP TABLE ai_verifications; ALTER TABLE advisor_signals DROP COLUMN sentiment; ALTER TABLE advisor_signals DROP COLUMN prediction_ticker;");
       await db.exec(repair);
       await db.exec(repair);
+      await db.query("INSERT INTO agent_runs(user_id,agent_key,status) VALUES ($1,'legacy-fixture','completed')", [user.id]);
+      await db.exec(usageMigration);
+      await db.exec(usageMigration);
+      expect((await db.query("SELECT usage FROM agent_runs WHERE agent_key='legacy-fixture'")).rows[0].usage).toBeNull();
+      const usage = {version:1,status:"complete",totalTokens:125,calls:[{provider:"groq",inputTokens:100,outputTokens:25}]};
+      await db.query("UPDATE agent_runs SET usage=$1::jsonb WHERE agent_key='legacy-fixture'", [JSON.stringify(usage)]);
+      expect((await db.query("SELECT usage FROM agent_runs WHERE agent_key='legacy-fixture'")).rows[0].usage).toEqual(usage);
       expect((await db.query("SELECT content FROM advisor_signals")).rows).toEqual([{content:"Keep this content"}]);
       for (const [table, columns] of Object.entries(agentSchema)) {
         const present = (await db.query("SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name=$1", [table])).rows.map(r=>r.column_name);

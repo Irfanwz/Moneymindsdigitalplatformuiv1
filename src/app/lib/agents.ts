@@ -6,7 +6,23 @@ export type AgentRun = {
   status:"queued"|"running"|"completed"|"failed"|"skipped";
   stage:string; progress:number; error:string|null; events?:{stage:string;at:string}[];
   result:Record<string, any>|null;
+  usage?: AgentTokenUsage | null;
   createdAt:string; startedAt:string|null; completedAt:string|null;
+};
+export type AgentTokenCounts = {
+  inputTokens:number|null; outputTokens:number|null; totalTokens:number|null;
+  cachedInputTokens:number|null; cacheWriteTokens:number|null; reasoningTokens:number|null;
+};
+export type AgentTokenCall = AgentTokenCounts & {
+  id:string; provider:string; model:string; purpose:string; trigger:"initial"|"retry"|"fallback";
+  status:"running"|"response_received"|"failed";
+  details:{fieldCount?:number;sourceCount?:number;documentCount?:number};
+  startedAt:string; completedAt:string|null;
+};
+export type AgentTokenUsage = AgentTokenCounts & {
+  version:1; status:"complete"|"partial"|"unavailable"|"not_used";
+  requestCount:number; reportedRequests:number; unreportedRequests:number; pendingRequests:number;
+  calls:AgentTokenCall[];
 };
 export type ResearchAgent = {id:string;name:string;industry:string;description:string};
 export type AgentCatalog = {agents:ResearchAgent[];follows:string[];operationalAgents:{key:string;name:string;description:string}[]};

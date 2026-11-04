@@ -53,6 +53,14 @@ globalThis.fetch = async (input, init) => {
       evidence: [],
     }));
     return Response.json({
+      model: "synthetic-token-fixture",
+      usage: {
+        prompt_tokens: 100,
+        completion_tokens: 20,
+        total_tokens: 120,
+        prompt_tokens_details: { cached_tokens: 10 },
+        completion_tokens_details: { reasoning_tokens: 5 },
+      },
       choices: [{ message: { content: JSON.stringify({ checks }) } }],
     });
   }
@@ -235,6 +243,25 @@ try {
   assert.equal(report.result.documents[0].status, "read");
   assert.equal((await store.findUserById(pending.id)).status, "pending");
   assert.ok(modelRequests > 0);
+  assert.equal(report.usage.status, "complete");
+  assert.equal(report.usage.totalTokens, report.usage.requestCount * 120);
+  assert.equal(report.usage.inputTokens, report.usage.requestCount * 100);
+  await page.waitForSelector('[aria-label="AI token usage"]');
+  assert.equal(
+    await page.$eval('[data-token-metric="Total"]', (el) => el.textContent),
+    report.usage.totalTokens.toLocaleString(),
+  );
+  await page.$eval('[aria-label="AI token usage"] summary', (el) => el.click());
+  await page.waitForFunction(() =>
+    document.body.textContent.includes("synthetic-token-fixture"),
+  );
+  await page.$eval('[aria-label="AI token usage"]', (el) =>
+    el.scrollIntoView({ block: "start" }),
+  );
+  await page.screenshot({ path: path.join(output, "agent-token-usage.png") });
+  checked.push(
+    "Token totals match all provider responses and each field batch has a visible purpose/model breakdown",
+  );
   await page.select(
     'select[aria-label="Filter due diligence checks"]',
     "manual_review",
@@ -250,6 +277,9 @@ try {
     "Admin runs all-role due diligence before approval; saved report includes a real parsed PDF and filterable field results",
   );
   await page.setViewport({ width: 390, height: 844 });
+  await page.$eval('[aria-label="AI token usage"]', (el) =>
+    el.scrollIntoView({ block: "start" }),
+  );
   assert.equal(
     await page.evaluate(
       () => document.documentElement.scrollWidth > innerWidth + 2,
@@ -275,8 +305,50 @@ try {
     });
     assert.equal(run.status, "completed");
     assert.deepEqual(run.result.roles, [role]);
+    assert.equal(run.usage.totalTokens, run.usage.requestCount * 120);
     checked.push(`Approved ${role} starts and reads their own report`);
   }
+  const legacy = await store.createAgentRun({
+    userId: pending.id,
+    agentKey: "profile-quality",
+    targetId: pending.id,
+  });
+  await store.updateAgentRun(legacy.id, {
+    status: "completed",
+    stage: "Legacy result",
+    result: { summary: "Synthetic historical fixture" },
+    completedAt: new Date().toISOString(),
+  });
+  const failed = await store.createAgentRun({
+    userId: pending.id,
+    agentKey: "document",
+    targetId: "failed-usage-fixture",
+  });
+  await store.updateAgentRun(failed.id, {
+    status: "failed",
+    stage: "Needs attention",
+    error: "Synthetic failed run after a response",
+    usage: report.usage,
+    completedAt: new Date().toISOString(),
+  });
+  await login(admin, `/admin/agents?user=${pending.id}`);
+  await page.waitForFunction(
+    () =>
+      document.body.textContent.includes("not recorded for this run") &&
+      document.body.textContent.includes(
+        "Synthetic failed run after a response",
+      ),
+  );
+  assert.equal(
+    await page.$$eval(
+      '[aria-label="AI token usage"]',
+      (elements) => elements.length,
+    ),
+    2,
+  );
+  checked.push(
+    "Historical runs show not recorded and failed runs retain visible token usage without a result",
+  );
   assert.deepEqual(errors, []);
   console.log(
     JSON.stringify(

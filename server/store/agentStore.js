@@ -8,14 +8,14 @@ export const agentSchema = {
   startup_profiles: "user_id,is_verified,verified_at,verification_id",
   investor_profiles: "user_id,is_verified,verified_at,verification_id",
   credibility_scores_history: "id,advisor_id,score,tier,total_predictions,breakdown,recorded_at",
-  agent_runs: "id,user_id,agent_key,target_id,status,stage,progress,result,error,events,created_at,started_at,completed_at,updated_at",
+  agent_runs: "id,user_id,agent_key,target_id,status,stage,progress,result,error,events,usage,created_at,started_at,completed_at,updated_at",
   agent_follows: "user_id,agent_key,created_at",
 };
 const camel = row => row && Object.fromEntries(Object.entries(row).map(([k,v]) => [k.replace(/_([a-z])/g,(_,c)=>c.toUpperCase()),v]));
 const snake = row => Object.fromEntries(Object.entries(row).map(([k,v]) => [k.replace(/[A-Z]/g,c=>`_${c.toLowerCase()}`),v]));
 function databaseError(error) {
   const missing = ["42P01", "42703", "PGRST204", "PGRST205"].includes(error.code);
-  const result = new Error(missing ? "Agent database setup is incomplete. Ask an administrator to run the agent repair SQL." : "Agent data could not be saved or loaded. Please try again.");
+  const result = new Error(missing ? "Agent database setup is incomplete. Ask an administrator to apply the pending database migrations." : "Agent data could not be saved or loaded. Please try again.");
   result.code = missing ? "AGENT_SCHEMA_MISSING" : "AGENT_STORAGE_ERROR";
   result.status = 503;
   return result;
@@ -44,7 +44,7 @@ export function createAgentStore(client = null) {
         : [...rows.values()].find(r=>r.userId===userId && r.agentKey===agentKey && r.targetId===targetId && ["queued","running"].includes(r.status));
       if (existing) return {...existing};
       const now = new Date().toISOString();
-      const run = {id:randomUUID(),userId,agentKey,targetId,status:"queued",stage:"Waiting to start",progress:0,events:[{stage:"Queued",at:now}],result:null,error:null,createdAt:now,startedAt:null,completedAt:null,updatedAt:now};
+      const run = {id:randomUUID(),userId,agentKey,targetId,status:"queued",stage:"Waiting to start",progress:0,events:[{stage:"Queued",at:now}],result:null,usage:null,error:null,createdAt:now,startedAt:null,completedAt:null,updatedAt:now};
       if (!client) {rows.set(run.id,run); return structuredClone(run);}
       const {data,error} = await client.from("agent_runs").insert(snake(run)).select("*").single();
       if (error?.code === "23505") return unwrap(client.from("agent_runs").select("*").eq("user_id",userId).eq("agent_key",agentKey).eq("target_id",targetId).in("status",["queued","running"]).single(),true);
