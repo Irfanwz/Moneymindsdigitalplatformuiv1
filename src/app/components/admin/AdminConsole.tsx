@@ -1,3 +1,4 @@
+import { RegistrationSummary } from "@/app/components/registration/RegistrationSummary";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
@@ -556,6 +557,7 @@ function UserDetail({
                 )}
               </div>
               <p className="text-sm break-all">{data.user.email}</p>
+              <p className="text-sm mt-1">{data.user.phone || "No phone supplied"}</p>
               <p className="text-sm text-muted-foreground mt-1">
                 {data.user.location || "No location supplied"} · Joined{" "}
                 {date(data.user.createdAt)}
@@ -564,6 +566,7 @@ function UserDetail({
                 {data.user.bio || "No biography supplied."}
               </p>
             </div>
+            {data.application && <details open className="rounded-xl border p-4"><summary className="font-medium cursor-pointer">Registration application</summary><div className="mt-4"><RegistrationSummary application={data.application} userId={data.user.id} /></div></details>}
             <details className="rounded-xl border p-4">
               <summary className="font-medium cursor-pointer">
                 Submitted role profiles

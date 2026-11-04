@@ -35,7 +35,8 @@ it("loads the server and migrations from the files included in the Docker runtim
       console.log('runtime-ready:' + migrations.length);
     `);
     const { stdout } = await promisify(execFile)(process.execPath, ["runtime-check.mjs"], { cwd: directory, env, timeout: 30_000 });
-    expect(stdout).toContain("runtime-ready:3");
+    const manifest = JSON.parse(await readFile(join(root, "supabase/auto-migrations.json"), "utf8"));
+    expect(stdout).toContain(`runtime-ready:${manifest.migrations.length}`);
     // Startup must stop before seeding or listening if automatic mode cannot run.
     await expect(promisify(execFile)(process.execPath, ["server/index.js"], {
       cwd: directory, env: { ...env, AUTO_MIGRATE: "true" }, timeout: 15_000,

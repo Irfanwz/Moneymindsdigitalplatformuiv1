@@ -647,7 +647,7 @@ export function AdvisorEditProfile() {
 
             <div className="space-y-4">
               <div>
-                <Label>Industries You Specialize In *</Label>
+                <Label>Industries You Specialize In (optional)</Label>
                 <p className="text-sm text-muted-foreground mb-4">Select the industries where you have the most expertise</p>
                 <div className="flex flex-wrap gap-2">
                   {INDUSTRIES.map((industry) => (

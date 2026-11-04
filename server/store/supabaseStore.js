@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { createAgentStore } from "./agentStore.js";
 import { createAdminStore } from "./adminStore.js";
 import { createCheckoutStore } from './checkoutStore.js';
+import { createApplicationStore } from './applicationStore.js';
 
 const USERS_TABLE = "platform_users";
 const STARTUP_PROFILES_TABLE = "startup_profiles";
@@ -443,6 +444,18 @@ export function createSupabaseStore({ supabaseUrl, supabaseServiceRoleKey }) {
 
   return {
     mode: "supabase",
+    ...createApplicationStore(client),
+    async createProfileApplication(profile, profiles, application) {
+      const { data, error } = await client.rpc("create_profile_application", {
+        p_user: { id: profile.id, ...mapInsert({ ...profile, status: "pending", approvedRoles: [], isAdmin: false }) },
+        p_startup: profiles.startup ? mapStartupProfileInsert(profile.id, profiles.startup) : null,
+        p_investor: profiles.investor ? mapInvestorProfileInsert(profile.id, profiles.investor) : null,
+        p_advisor: profiles.advisor ? mapAdvisorProfileInsert(profile.id, profiles.advisor) : null,
+        p_application: application,
+      });
+      if (error) throw toStoreError(error);
+      return mapRow(data);
+    },
     ...createAgentStore(client),
     ...createCheckoutStore(client),
     ...createAdminStore(client),
@@ -725,8 +738,11 @@ export function createSupabaseStore({ supabaseUrl, supabaseServiceRoleKey }) {
     async searchStartups({ industry, stage, query } = {}) {
       let q = client
         .from(STARTUP_PROFILES_TABLE)
-        .select("id, user_id, company_name, tagline, industry, stage, total_raised, description, categories, location")
-        .eq("is_public", true);
+        .select("id, user_id, company_name, tagline, industry, stage, total_raised, description, categories, location, platform_users!inner(id)")
+        .eq("is_public", true)
+        .eq("platform_users.status", "approved")
+        .eq("platform_users.is_suspended", false)
+        .contains("platform_users.approved_roles", ["startup"]);
 
       if (industry) {
         q = q.or(`industry.ilike.%${industry}%,categories.cs.{${industry}}`);
@@ -758,8 +774,11 @@ export function createSupabaseStore({ supabaseUrl, supabaseServiceRoleKey }) {
     async searchAdvisors({ industry, specialization, query } = {}) {
       let q = client
         .from(ADVISOR_PROFILES_TABLE)
-        .select("id, user_id, title, bio, years_experience, clients_helped, specialization, typical_rate, availability, industries, expertise_areas, credibility_score, credibility_tier")
-        .eq("is_public", true);
+        .select("id, user_id, title, bio, years_experience, clients_helped, specialization, typical_rate, availability, industries, expertise_areas, credibility_score, credibility_tier, platform_users!inner(full_name, location)")
+        .eq("is_public", true)
+        .eq("platform_users.status", "approved")
+        .eq("platform_users.is_suspended", false)
+        .contains("platform_users.approved_roles", ["advisor"]);
 
       if (industry) {
         q = q.contains("industries", [industry]);
@@ -774,15 +793,8 @@ export function createSupabaseStore({ supabaseUrl, supabaseServiceRoleKey }) {
       const { data, error } = await q.order("created_at", { ascending: false });
       if (error) throw toStoreError(error);
 
-      // Need user names — fetch them
-      const userIds = (data ?? []).map((r) => r.user_id);
-      const { data: usersData } = userIds.length > 0
-        ? await client.from(USERS_TABLE).select("id, full_name, location").in("id", userIds)
-        : { data: [] };
-      const usersMap = Object.fromEntries((usersData ?? []).map((u) => [u.id, u]));
-
       return (data ?? []).map((row) => {
-        const u = usersMap[row.user_id] ?? {};
+        const u = row.platform_users ?? {};
         return {
           id: row.id,
           userId: row.user_id,

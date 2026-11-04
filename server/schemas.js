@@ -1,15 +1,7 @@
 import { z } from "zod";
 
 // --- Auth ---
-export const registerSchema = z.object({
-  fullName: z.string().min(2, "Full name is required."),
-  email: z.string().email("A valid email address is required."),
-  password: z.string().min(8, "Password must be at least 8 characters long."),
-  phone: z.string().optional().default(""),
-  location: z.string().optional().default(""),
-  bio: z.string().optional().default(""),
-  requestedRoles: z.array(z.enum(["startup", "investor", "advisor"])).min(1, "Select at least one role."),
-});
+export { registrationSchema as registerSchema } from "./registration.js";
 
 export const loginSchema = z.object({
   email: z.string().email("A valid email address is required."),

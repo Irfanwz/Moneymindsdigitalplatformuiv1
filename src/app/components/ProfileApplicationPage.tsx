@@ -1,300 +1,481 @@
-import { useState, type FormEvent } from "react";
+﻿import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
-import { Building2, TrendingUp, Users, ShieldCheck, Sun, Moon } from "lucide-react";
-
+import {
+  Building2,
+  TrendingUp,
+  Users,
+  ShieldCheck,
+  Sun,
+  Moon,
+  ArrowRight,
+  ArrowLeft,
+  Check,
+} from "lucide-react";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { useTheme } from "@/app/contexts/ThemeContext";
 import { Alert, AlertDescription, AlertTitle } from "@/app/components/ui/alert";
 import { Button } from "@/app/components/ui/button";
 import { Card } from "@/app/components/ui/card";
-import { Checkbox } from "@/app/components/ui/checkbox";
 import { Input } from "@/app/components/ui/input";
 import { Label } from "@/app/components/ui/label";
-import { Textarea } from "@/app/components/ui/textarea";
+import {
+  RegistrationField,
+  RoleRegistrationFields,
+} from "./registration/RegistrationFields";
+import { RegistrationSummary } from "./registration/RegistrationSummary";
+import {
+  commonRegistrationFields,
+  registrationRoles,
+  registrationSections,
+  registrationDocumentSlots,
+  isRegistrationFieldVisible,
+} from "../../../shared/registrationFields.js";
 import type { AppRole } from "@/app/types/auth";
 
-const roles: {
-  id: AppRole;
-  label: string;
-  description: string;
-  icon: typeof Building2;
-  accent: string;
-}[] = [
-  {
-    id: "startup",
-    label: "Startup",
-    description: "Apply to raise visibility and connect with investors and advisors.",
-    icon: Building2,
-    accent: "text-cyan-500",
-  },
-  {
-    id: "investor",
-    label: "Investor",
-    description: "Apply to review verified startups and track opportunities.",
-    icon: TrendingUp,
-    accent: "text-indigo-500",
-  },
-  {
-    id: "advisor",
-    label: "Financial Advisor",
-    description: "Apply to share expertise and build your public credibility.",
-    icon: Users,
-    accent: "text-emerald-500",
-  },
-];
+const steps = ["Account", "Profile details", "Documents", "Review"];
+const icons = { startup: Building2, investor: TrendingUp, advisor: Users };
+const emptyCommon = {
+  fullName: "",
+  email: "",
+  password: "",
+  phone: "",
+  city: "",
+  country: "",
+};
 
 export function ProfileApplicationPage() {
   const { submitProfile } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [phone, setPhone] = useState("");
-  const [location, setLocation] = useState("");
-  const [bio, setBio] = useState("");
-  const [requestedRoles, setRequestedRoles] = useState<AppRole[]>(["startup"]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
+  const [common, setCommon] = useState(emptyCommon);
+  const [requestedRoles, setRequestedRoles] = useState<AppRole[]>([]);
+  const [profiles, setProfiles] = useState<
+    Record<AppRole, Record<string, any>>
+  >({ startup: {}, investor: {}, advisor: {} });
+  const [files, setFiles] = useState<Record<string, File>>({});
+  const [step, setStep] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
-  const toggleRole = (role: AppRole, checked: boolean) => {
-    setRequestedRoles((currentRoles) => {
-      if (checked) {
-        return currentRoles.includes(role) ? currentRoles : [...currentRoles, role];
-      }
+  function activeProfiles() {
+    return Object.fromEntries(
+      requestedRoles.map((role) => {
+        const values = profiles[role],
+          section = registrationSections[role];
+        return [
+          role,
+          Object.fromEntries([
+            ...section.fields
+              .filter((f: any) => isRegistrationFieldVisible(f, values))
+              .map((f: any) => [f.key, values[f.key] || ""]),
+            ...section.collections
+              .filter((g: any) => isRegistrationFieldVisible(g, values))
+              .map((g: any) => [g.key, values[g.key] || []]),
+          ]),
+        ];
+      }),
+    );
+  }
+  const selectedProfiles = activeProfiles();
+  const slots = registrationDocumentSlots(selectedProfiles);
+  const selectedFiles = slots.filter((slot) => files[slot.key]);
 
-      return currentRoles.filter((entry) => entry !== role);
-    });
-  };
-
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  function move(next: number) {
+    setStep(next);
+    setError("");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setIsSubmitting(true);
-    setErrorMessage("");
-    setSuccessMessage("");
-
-    try {
-      const response = await submitProfile({
-        fullName,
-        email,
-        password,
-        phone,
-        location,
-        bio,
-        requestedRoles,
-      });
-
-      setSuccessMessage(response.message);
-      setFullName("");
-      setEmail("");
-      setPassword("");
-      setPhone("");
-      setLocation("");
-      setBio("");
-      setRequestedRoles(["startup"]);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Could not submit your profile.";
-      setErrorMessage(message);
-    } finally {
-      setIsSubmitting(false);
+    setError("");
+    if (!requestedRoles.length) {
+      setError("Select at least one profile role.");
+      return;
     }
-  };
+    if (step === 0) {
+      const digits = common.phone.replace(/\D/g, "");
+      if (
+        !/^[+\d\s().-]+$/.test(common.phone) ||
+        digits.length < 7 ||
+        digits.length > 15
+      ) {
+        setError("Enter a valid phone number with 7-15 digits.");
+        return;
+      }
+      if (
+        ![common.fullName, common.city, common.country].every((v) => v.trim())
+      ) {
+        setError("Full name, city and country are required.");
+        return;
+      }
+    }
+    if (step === 2 || step === 3) {
+      const missing = slots.find((slot) => slot.required && !files[slot.key]);
+      if (missing) {
+        setError(`Upload ${missing.label}.`);
+        return;
+      }
+      if (
+        selectedFiles.length > 10 ||
+        selectedFiles.reduce((sum, slot) => sum + files[slot.key].size, 0) >
+          20 * 1024 * 1024
+      ) {
+        setError("Attach at most 10 documents, totalling 20 MB or less.");
+        return;
+      }
+    }
+    if (step < 3) {
+      move(step + 1);
+      return;
+    }
+    setBusy(true);
+    try {
+      const result = await submitProfile({
+        ...common,
+        requestedRoles,
+        profiles: selectedProfiles,
+        attachments: selectedFiles.map((slot) => ({ key: slot.key })),
+        files: selectedFiles.map((slot) => files[slot.key]),
+      });
+      setSuccess(result.message);
+      setCommon(emptyCommon);
+      setFiles({});
+      setProfiles({ startup: {}, investor: {}, advisor: {} });
+    } catch (e) {
+      setError(
+        e instanceof Error ? e.message : "Could not submit your application.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      {/* Top bar */}
-      <div className="border-b px-6 py-4 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2 w-fit">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-r from-cyan-500 to-purple-500">
-            <span className="font-bold text-white text-sm">MM</span>
-          </div>
-          <span className="font-semibold text-lg">MoneyMinds</span>
+    <div className="min-h-screen bg-background">
+      <header className="border-b px-6 py-4 flex items-center justify-between">
+        <Link to="/" className="flex items-center gap-2 font-semibold text-lg">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-r from-cyan-500 to-purple-500 text-sm text-white">
+            MM
+          </span>
+          MoneyMinds
         </Link>
-        <Button variant="ghost" size="icon" onClick={toggleTheme}>
-          {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Toggle color theme"
+          onClick={toggleTheme}
+        >
+          {theme === "dark" ? (
+            <Sun className="h-5 w-5" />
+          ) : (
+            <Moon className="h-5 w-5" />
+          )}
         </Button>
-      </div>
-
-      <div className="flex-1 px-6 py-12">
-      <div className="mx-auto max-w-6xl">
-        <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
-          <div>
-            <div className="mb-8 max-w-xl">
-              <div className="inline-flex items-center gap-2 rounded-full border border-cyan-500/20 bg-cyan-500/10 px-4 py-2 text-sm text-cyan-700 dark:text-cyan-300">
-                <ShieldCheck className="h-4 w-4" />
-                Admin approval is required before login
-              </div>
-              <h1 className="mt-6 text-4xl font-semibold tracking-tight">Create your general profile first</h1>
-              <p className="mt-4 text-muted-foreground">
-                Every user enters through one reviewed profile. After admin approval, the same account can access any approved roles.
-              </p>
-            </div>
-
-            <Card className="p-8">
-              <form className="space-y-6" onSubmit={handleSubmit}>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="fullName">Full name</Label>
-                    <Input
-                      id="fullName"
-                      value={fullName}
-                      onChange={(event) => setFullName(event.target.value)}
-                      placeholder="Your legal or public name"
-                      required
-                    />
+      </header>
+      <main className="mx-auto max-w-5xl px-4 sm:px-6 py-10 sm:py-14">
+        <div className="max-w-2xl mb-8">
+          <div className="inline-flex items-center gap-2 rounded-full bg-cyan-500/10 px-3 py-2 text-sm text-cyan-700 dark:text-cyan-300">
+            <ShieldCheck className="h-4 w-4" />
+            Reviewed by our team
+          </div>
+          <h1 className="mt-4 text-3xl sm:text-4xl font-semibold tracking-tight">
+            Apply to MoneyMinds
+          </h1>
+          <p className="mt-3 text-muted-foreground">
+            Choose your profile roles and tell us about yourself. Admin approval
+            is required before you can sign in.
+          </p>
+        </div>
+        {success ? (
+          <Card className="p-8 space-y-4" role="status">
+            <ShieldCheck className="h-10 w-10 text-emerald-500" />
+            <h2 className="text-2xl font-semibold">Application submitted</h2>
+            <p>{success}</p>
+            <p className="text-muted-foreground">
+              Your profile information and supporting documents have been
+              submitted for review.
+            </p>
+            <Button asChild>
+              <Link to="/login">Go to sign in</Link>
+            </Button>
+          </Card>
+        ) : (
+          <>
+            <ol
+              aria-label="Registration progress"
+              className="grid grid-cols-4 gap-2 mb-6"
+            >
+              {steps.map((label, index) => (
+                <li
+                  key={label}
+                  aria-current={index === step ? "step" : undefined}
+                  className={`border-t-2 pt-3 ${index <= step ? "border-primary" : "border-border text-muted-foreground"}`}
+                >
+                  <span className="text-xs uppercase tracking-wide">
+                    Step {index + 1}
+                  </span>
+                  <div className="text-xs sm:text-sm font-medium mt-1 flex gap-1 items-center">
+                    {index < step && <Check className="h-3 w-3 shrink-0" />}
+                    {label}
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={email}
-                      onChange={(event) => setEmail(event.target.value)}
-                      placeholder="you@example.com"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="password">Password</Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      value={password}
-                      onChange={(event) => setPassword(event.target.value)}
-                      placeholder="Minimum 8 characters"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Phone</Label>
-                    <Input
-                      id="phone"
-                      value={phone}
-                      onChange={(event) => setPhone(event.target.value)}
-                      placeholder="+1 555 123 4567"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-[0.7fr_1.3fr]">
-                  <div className="space-y-2">
-                    <Label htmlFor="location">Location</Label>
-                    <Input
-                      id="location"
-                      value={location}
-                      onChange={(event) => setLocation(event.target.value)}
-                      placeholder="City, Country"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="bio">Short profile summary</Label>
-                    <Textarea
-                      id="bio"
-                      value={bio}
-                      onChange={(event) => setBio(event.target.value)}
-                      placeholder="Tell the admin what you do and why you want access."
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-3">
+                </li>
+              ))}
+            </ol>
+            <Card className="p-5 sm:p-8">
+              <form onSubmit={handleSubmit} className="space-y-8">
+                <fieldset disabled={busy} className="space-y-8 min-w-0">
                   <div>
-                    <Label>Requested roles</Label>
+                    <h2 className="text-xl font-semibold">{steps[step]}</h2>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      Admin can approve one or multiple roles from this request.
+                      Fields marked <span className="text-destructive">*</span>{" "}
+                      are required.
                     </p>
                   </div>
-
-                  <div className="grid gap-4 md:grid-cols-3">
-                    {roles.map((role) => {
-                      const Icon = role.icon;
-                      const selected = requestedRoles.includes(role.id);
-
-                      return (
-                        <label
-                          key={role.id}
-                          className={`flex cursor-pointer flex-col rounded-2xl border p-4 transition-colors ${
-                            selected ? "border-primary bg-primary/5" : "border-border"
-                          }`}
+                  {step === 0 && (
+                    <>
+                      <fieldset>
+                        <legend className="font-medium mb-3">
+                          Requested profile roles *
+                        </legend>
+                        <div className="grid md:grid-cols-3 gap-3">
+                          {registrationRoles.map((item) => {
+                            const role = item.id as AppRole,
+                              Icon = icons[role],
+                              selected = requestedRoles.includes(role);
+                            return (
+                              <label
+                                key={role}
+                                className={`relative cursor-pointer rounded-xl border p-4 transition-colors ${selected ? "border-primary bg-primary/5" : "border-border"}`}
+                              >
+                                <div className="flex justify-between items-center mb-3">
+                                  <Icon className="h-6 w-6 text-cyan-600 dark:text-cyan-400" />
+                                  <input
+                                    type="checkbox"
+                                    aria-label={item.label}
+                                    checked={selected}
+                                    onChange={(event) =>
+                                      setRequestedRoles((current) =>
+                                        event.target.checked
+                                          ? [...current, role]
+                                          : current.filter((r) => r !== role),
+                                      )
+                                    }
+                                    className="h-4 w-4 accent-primary"
+                                  />
+                                </div>
+                                <span className="font-medium">
+                                  {item.label}
+                                </span>
+                                <p className="mt-2 text-sm text-muted-foreground">
+                                  {item.description}
+                                </p>
+                              </label>
+                            );
+                          })}
+                        </div>
+                        <p className="mt-3 text-xs text-muted-foreground">
+                          You can request more than one role. Your personal
+                          details are shared across all selected roles.
+                        </p>
+                      </fieldset>
+                      <div className="grid md:grid-cols-2 gap-5">
+                        {commonRegistrationFields.map((field) => (
+                          <RegistrationField
+                            key={field.key}
+                            field={field}
+                            value={common[field.key as keyof typeof common]}
+                            onChange={(value) =>
+                              setCommon((current) => ({
+                                ...current,
+                                [field.key]: value,
+                              }))
+                            }
+                          />
+                        ))}
+                      </div>
+                    </>
+                  )}
+                  {step === 1 &&
+                    registrationRoles
+                      .filter((item) =>
+                        requestedRoles.includes(item.id as AppRole),
+                      )
+                      .map((item) => (
+                        <section
+                          key={item.id}
+                          className="space-y-5 border-t pt-6"
                         >
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <div className={`mb-3 inline-flex rounded-xl bg-muted p-3 ${role.accent}`}>
-                                <Icon className="h-5 w-5" />
-                              </div>
-                              <div className="font-medium">{role.label}</div>
-                              <p className="mt-2 text-sm text-muted-foreground">{role.description}</p>
+                          <h3 className="text-lg font-semibold">
+                            {item.label} profile
+                          </h3>
+                          <RoleRegistrationFields
+                            role={item.id as AppRole}
+                            values={profiles[item.id as AppRole]}
+                            onChange={(value) =>
+                              setProfiles((current) => ({
+                                ...current,
+                                [item.id]: value,
+                              }))
+                            }
+                          />
+                        </section>
+                      ))}
+                  {step === 2 && (
+                    <div className="space-y-5">
+                      <p className="text-sm text-muted-foreground">
+                        PDF, JPG or PNG. Up to 5 MB per file, 10 files and 20 MB
+                        in total. Documents are private and available to you
+                        after approval and to authorized reviewers.
+                      </p>
+                      {!slots.length && (
+                        <p className="rounded-xl bg-muted/40 p-5">
+                          No supporting documents are required for your selected
+                          profile details. Continue to review your application.
+                        </p>
+                      )}
+                      {slots.map((slot) => (
+                        <div
+                          key={slot.key}
+                          className="space-y-2 rounded-xl border p-4"
+                        >
+                          <Label htmlFor={slot.key}>
+                            {slot.label} {slot.required ? "*" : "(optional)"}
+                          </Label>
+                          <Input
+                            id={slot.key}
+                            type="file"
+                            accept="application/pdf,image/jpeg,image/png"
+                            required={slot.required && !files[slot.key]}
+                            onChange={(event) => {
+                              const file = event.target.files?.[0];
+                              if (!file) return;
+                              if (
+                                ![
+                                  "application/pdf",
+                                  "image/jpeg",
+                                  "image/png",
+                                ].includes(file.type) ||
+                                file.size > 5 * 1024 * 1024 ||
+                                !file.size
+                              ) {
+                                setError(
+                                  "Choose a non-empty PDF, JPG or PNG file up to 5 MB.",
+                                );
+                                event.target.value = "";
+                                return;
+                              }
+                              setError("");
+                              setFiles((current) => ({
+                                ...current,
+                                [slot.key]: file,
+                              }));
+                            }}
+                          />
+                          {files[slot.key] && (
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <span className="text-xs text-muted-foreground break-all">
+                                {files[slot.key].name}
+                              </span>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setFiles((current) => {
+                                    const next = { ...current };
+                                    delete next[slot.key];
+                                    return next;
+                                  });
+                                  const input = document.getElementById(
+                                    slot.key,
+                                  ) as HTMLInputElement;
+                                  if (input) input.value = "";
+                                }}
+                              >
+                                Remove file
+                              </Button>
                             </div>
-                            <Checkbox
-                              checked={selected}
-                              onCheckedChange={(checked) => toggleRole(role.id, checked === true)}
-                            />
-                          </div>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {errorMessage ? (
-                  <Alert variant="destructive">
-                    <AlertTitle>Submission failed</AlertTitle>
-                    <AlertDescription>{errorMessage}</AlertDescription>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {step === 3 && (
+                    <div className="space-y-7">
+                      <p className="text-sm text-muted-foreground">
+                        Check your details and documents before submitting. Use
+                        Back to make changes.
+                      </p>
+                      <dl className="grid sm:grid-cols-2 gap-4 rounded-xl bg-muted/40 p-5">
+                        {commonRegistrationFields
+                          .filter((f) => f.key !== "password")
+                          .map((field) => (
+                            <div key={field.key} className="min-w-0">
+                              <dt className="text-xs text-muted-foreground">
+                                {field.label}
+                              </dt>
+                              <dd className="mt-1 text-sm break-words">
+                                {common[field.key as keyof typeof common]}
+                              </dd>
+                            </div>
+                          ))}
+                      </dl>
+                      <RegistrationSummary
+                        application={{
+                          profiles: selectedProfiles,
+                          documents: selectedFiles.map((slot) => ({
+                            key: slot.key,
+                            label: slot.label,
+                            name: files[slot.key].name,
+                          })),
+                        }}
+                      />
+                      <p className="text-sm text-muted-foreground">
+                        Submitted credentials and reviews remain subject to
+                        admin assessment.
+                      </p>
+                    </div>
+                  )}
+                </fieldset>
+                {error && (
+                  <Alert variant="destructive" role="alert">
+                    <AlertTitle>Please check your application</AlertTitle>
+                    <AlertDescription>{error}</AlertDescription>
                   </Alert>
-                ) : null}
-
-                {successMessage ? (
-                  <Alert>
-                    <ShieldCheck className="h-4 w-4" />
-                    <AlertTitle>Profile submitted</AlertTitle>
-                    <AlertDescription>{successMessage}</AlertDescription>
-                  </Alert>
-                ) : null}
-
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? "Submitting..." : "Submit for admin approval"}
-                  </Button>
-                  <p className="text-sm text-muted-foreground">
-                    Already registered?{" "}
-                    <Link className="font-medium text-primary hover:underline" to="/login">
-                      Go to sign in
+                )}
+                <div className="flex flex-wrap items-center justify-between gap-4 border-t pt-5">
+                  {step ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={busy}
+                      onClick={() => move(step - 1)}
+                    >
+                      <ArrowLeft className="mr-2 h-4 w-4" />
+                      Back
+                    </Button>
+                  ) : (
+                    <Link
+                      to="/login"
+                      className="text-sm text-muted-foreground underline underline-offset-4"
+                    >
+                      Already registered? Sign in
                     </Link>
-                  </p>
+                  )}
+                  <Button type="submit" disabled={busy}>
+                    {busy
+                      ? "Submitting application..."
+                      : step === 3
+                        ? "Submit for admin approval"
+                        : "Continue"}
+                    {step < 3 && <ArrowRight className="ml-2 h-4 w-4" />}
+                  </Button>
                 </div>
               </form>
             </Card>
-          </div>
-
-          <div className="space-y-4">
-            <Card className="p-6">
-              <h2 className="text-xl font-semibold">How access works</h2>
-              <div className="mt-6 space-y-4">
-                <div>
-                  <div className="text-sm font-medium">1. Submit one general profile</div>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    This becomes the single identity record for your account.
-                  </p>
-                </div>
-                <div>
-                  <div className="text-sm font-medium">2. Admin reviews your details</div>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Approval decides whether you can sign in and which roles you can access.
-                  </p>
-                </div>
-                <div>
-                  <div className="text-sm font-medium">3. Login and choose your approved role</div>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    After approval, you can enter as Startup, Investor, Advisor, or any combination granted by admin.
-                  </p>
-                </div>
-              </div>
-            </Card>
-
-          </div>
-        </div>
-      </div>
-      </div>
+          </>
+        )}
+      </main>
     </div>
   );
 }

@@ -35,7 +35,10 @@ export interface ProfileApplicationPayload {
   email: string;
   password: string;
   phone: string;
-  location: string;
-  bio: string;
+  city: string;
+  country: string;
   requestedRoles: AppRole[];
+  profiles: Partial<Record<AppRole, Record<string, any>>>;
+  attachments: { key: string }[];
+  files?: File[];
 }

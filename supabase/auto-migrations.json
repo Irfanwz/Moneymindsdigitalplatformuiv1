@@ -6,6 +6,7 @@
     "20261101090525_repair_profile_photo_columns.sql",
     "20261101101357_admin_console.sql",
     "20261104120000_email_login_otp.sql",
-    "20261104130000_advisor_enhanced_profile.sql"
+    "20261104130000_advisor_enhanced_profile.sql",
+    "20261104130001_profile_registration.sql"
   ]
 }

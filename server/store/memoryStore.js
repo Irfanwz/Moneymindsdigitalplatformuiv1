@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { createAgentStore } from "./agentStore.js";
 import { createAdminStore } from "./adminStore.js";
 import { createCheckoutStore } from './checkoutStore.js';
+import { createApplicationStore } from './applicationStore.js';
 
 function now() {
   return new Date().toISOString();
@@ -59,9 +60,23 @@ export function createMemoryStore() {
   const verifications = [];
   const profileVerifications = [];
   const credibilityHistory = [];
+  const applications = new Map();
 
   return {
     mode: "memory",
+    ...createApplicationStore(null, applications),
+    async createProfileApplication(profile, profiles, application) {
+      if (users.some(user => user.email === profile.email.toLowerCase())) throw Object.assign(new Error("An account with this email already exists."), { code: "DUPLICATE_EMAIL" });
+      const timestamp = now();
+      const user = { ...profile, email: profile.email.toLowerCase(), status: "pending", approvedRoles: [], isAdmin: false, adminNotes: null, rejectionReason: null, approvedAt: null, approvedBy: null, createdAt: timestamp, updatedAt: timestamp };
+      const rows = Object.entries(profiles).map(([role, details]) => [role, { ...structuredClone(details), id: randomUUID(), userId: user.id, createdAt: timestamp, updatedAt: timestamp }]);
+      const savedApplication = structuredClone(application);
+      // All preparation completes before publishing any of the records.
+      users.push(user);
+      for (const [role, row] of rows) ({ startup: startupProfiles, investor: investorProfiles, advisor: advisorProfiles })[role].push(row);
+      applications.set(user.id, savedApplication);
+      return cloneUser(user);
+    },
     ...createAgentStore(),
     ...createCheckoutStore(null,{payments,trainings,trainingEnrollments,advisorGroups,advisorGroupMembers}),
     ...createAdminStore(null, { users, payments, verifications, profileVerifications, startupProfiles, investorProfiles, advisorProfiles, advisorGroups, advisorSignals, signalComments, trainings }),
@@ -312,7 +327,7 @@ export function createMemoryStore() {
       for (const profile of startupProfiles) {
         if (!profile.companyName) continue;
         const user = users.find((u) => u.id === profile.userId);
-        if (!user || user.status !== "approved") continue;
+        if (!user || user.status !== "approved" || user.isSuspended || !user.approvedRoles.includes("startup")) continue;
         if (profile.isPublic === false) continue;
 
         if (industry && profile.industry?.toLowerCase() !== industry.toLowerCase()
@@ -344,7 +359,7 @@ export function createMemoryStore() {
       const results = [];
       for (const profile of advisorProfiles) {
         const user = users.find((u) => u.id === profile.userId);
-        if (!user || user.status !== "approved") continue;
+        if (!user || user.status !== "approved" || user.isSuspended || !user.approvedRoles.includes("advisor")) continue;
         if (profile.isPublic === false) continue;
 
         if (industry && !profile.industries?.some((i) => i.toLowerCase() === industry.toLowerCase())) continue;

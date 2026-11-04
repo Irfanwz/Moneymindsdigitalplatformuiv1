@@ -79,10 +79,22 @@ Share these steps with anyone who wants to join the platform:
 
 1. Go to **https://moneymindsdigital.site**
 2. Click **"Apply"** or **"Get Started"**
-3. Fill in their name, email, password, and select their role (Startup / Investor / Advisor)
-4. Submit the form
+3. Select one or more roles (Startup / Investor / Financial Advisor). Enter **full name, email, password, phone number, city and country**. All six fields are mandatory.
+4. Complete each selected role's details, attach any required evidence, review the application, then submit for admin approval.
 5. **Wait for Admin approval** — they will receive an email once approved
 6. After approval, they can log in at https://moneymindsdigital.site/login
+
+The registration form has four steps: **Account > Profile details > Documents > Review**.
+
+| Profile | Required details | Optional / conditional details |
+| --- | --- | --- |
+| Investor | Investor type, occupation/background, introduction and investment interests | Firm, LinkedIn, website, industries, stages and investment range |
+| Startup | Company name, applicant position, industry, stage, description, purpose of joining and business registration status | Website, LinkedIn, founding year, team size/members, funding and pitch deck. Registered businesses also supply registration number, authority and evidence. |
+| Financial Advisor | Title, biography, specialization, advisory experience, LinkedIn and work/education/credential status | Multiple work history and education entries; certifications, licenses and regulatory registrations when held/applicable. Website, client reviews and references are optional. |
+
+Advisors can explicitly select **No previous employment**, **No formal qualification**, **None** for certifications, or **Not applicable** for licenses/registrations. Otherwise, the relevant entries and qualification/credential evidence are required. Documents accept PDF, JPG and PNG, up to 5 MB each, 10 files and 20 MB total.
+
+Admin reviewers see the complete registration submission and can download its private documents under **Users > View details > Registration application**. After approval, the applicant can see their original submission from their profile. Private references and supporting files are not included in public profiles. No credentials or testimonials are treated as verified merely because they were submitted.
 
 > **Important:** New users CANNOT log in until the Admin approves them. This is by design — you control who gets access.
 

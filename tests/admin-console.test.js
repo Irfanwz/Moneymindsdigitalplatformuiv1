@@ -101,6 +101,8 @@ describe("Admin console permissions and persistence", () => {
         fullName: "Closed Account",
         email: "closed@example.test",
         password: "Fixture123!",
+        phone: "+923001234567", city: "Lahore", country: "Pakistan",
+        profiles: { investor: { investorType: "Individual", title: "Engineer", investmentThesis: "Early stage companies" } },
         requestedRoles: ["investor"],
       })
       .expect(503);

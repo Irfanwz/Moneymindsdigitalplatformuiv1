@@ -1,3 +1,4 @@
+import { SubmittedApplication } from "@/app/components/registration/RegistrationSummary";
 import { useEffect, useState } from "react";
 import { DashboardLayout } from "@/app/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
@@ -71,6 +72,7 @@ export function AdvisorProfile() {
 
   return (
     <DashboardLayout userRole="advisor" userName={userName}>
+      <SubmittedApplication role="advisor" />
       <div className="p-6 max-w-7xl mx-auto space-y-6">
         {/* Header Card */}
         <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">

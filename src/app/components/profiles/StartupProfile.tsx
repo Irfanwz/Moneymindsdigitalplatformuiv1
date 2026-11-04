@@ -1,3 +1,4 @@
+import { SubmittedApplication } from "@/app/components/registration/RegistrationSummary";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -96,6 +97,7 @@ export function StartupProfile() {
 
   return (
     <DashboardLayout userRole="startup" userName={profile.companyName || user?.fullName || "Startup"}>
+      <SubmittedApplication role="startup" />
       <div className="p-6 max-w-7xl mx-auto space-y-6">
         {errorMessage ? (
           <Alert variant="destructive">

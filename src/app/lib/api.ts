@@ -62,11 +62,24 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return payload as T;
 }
 
-export function registerProfile(payload: ProfileApplicationPayload) {
-  return request<{ message: string; user: AuthUser }>("/api/auth/register-profile", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
+export async function registerProfile(payload: ProfileApplicationPayload) {
+  const { files = [], ...data } = payload;
+  const body = new FormData();
+  body.append("payload", JSON.stringify(data));
+  files.forEach(file => body.append("documents", file));
+  const response = await fetch(`${apiBaseUrl}/api/auth/register-profile`, { method: "POST", credentials: "include", body });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) throw new ApiError(result.message || "The application could not be submitted.", response.status);
+  return result as { message: string; user: AuthUser };
+}
+
+export async function downloadApplicationDocument(documentId: string, name: string, userId?: string) {
+  const path = userId ? `/api/admin/console/users/${encodeURIComponent(userId)}/application-documents/${encodeURIComponent(documentId)}` : `/api/profile-application/documents/${encodeURIComponent(documentId)}`;
+  const response = await fetch(`${apiBaseUrl}${path}`, { credentials: "include" });
+  if (!response.ok) throw new Error("Could not download this document.");
+  const url = URL.createObjectURL(await response.blob());
+  const link = document.createElement("a"); link.href = url; link.download = name;
+  link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 export function login(payload: { email: string; password: string; otp?: string }) {

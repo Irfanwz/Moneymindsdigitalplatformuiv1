@@ -5,6 +5,7 @@ import {
   requirePermission,
 } from "../middleware/auth.js";
 import { sanitizeUser } from "../auth.js";
+import { visibleApplication, sendApplicationDocument } from "../applicationDocuments.js";
 import {
   adminCan,
   ADMIN_ACTION_PERMISSIONS,
@@ -13,6 +14,10 @@ import {
 export function createAdminConsoleRouter(store) {
   const router = Router();
   router.use(createAuthenticate(store), requireAdmin);
+  router.get("/users/:id/application-documents/:documentId", requirePermission("reviews"), async (req, res, next) => {
+    try { await sendApplicationDocument(store, req.params.id, req.params.documentId, res); }
+    catch (error) { next(error); }
+  });
   router.get(
     "/overview",
     requirePermission("overview"),
@@ -117,6 +122,7 @@ export function createAdminConsoleRouter(store) {
         res.json({
           user: sanitizeUser(user),
           profiles: { startup, investor, advisor },
+          application: canReview ? visibleApplication(await store.getProfileApplication(user.id)) : null,
           verification,
           documents,
           review: reviews.find((r) => r.userId === user.id) || null,

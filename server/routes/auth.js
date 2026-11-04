@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import { Router } from "express";
 import { rateLimit } from "express-rate-limit";
-import { authenticator } from 'otplib';
+import { verify as verifyTotp } from 'otplib';
 
 import {
   createToken,
@@ -15,6 +15,8 @@ import { validate, registerSchema, loginSchema, forgotPasswordSchema, resetPassw
 import { config } from "../config.js";
 import { sendPasswordResetEmail, sendWelcomeEmail, sendLoginOtpEmail } from "../email.js";
 import { createAuthenticate } from "../middleware/auth.js";
+import { buildRegistrationProfiles } from "../registration.js";
+import { parseRegistration, validateApplicationFiles, saveApplicationFiles } from "../applicationDocuments.js";
 
 const authLimiter = rateLimit({
   windowMs: 60 * 1000,
@@ -47,7 +49,7 @@ export function createAuthRouter(store) {
   const router = Router();
   const authenticate = createAuthenticate(store);
 
-  router.post("/register-profile", authLimiter, validate(registerSchema), async (req, res, next) => {
+  router.post("/register-profile", authLimiter, parseRegistration, validate(registerSchema), async (req, res, next) => {
     try {
       const settings = await store.getAdminSettings();
       if (!settings.registrationOpen || settings.maintenanceMode) return res.status(503).json({message:'New registrations are temporarily closed. Please try again later.'});
@@ -55,8 +57,8 @@ export function createAuthRouter(store) {
       const email = trimText(req.body?.email).toLowerCase();
       const password = trimText(req.body?.password);
       const phone = trimText(req.body?.phone);
-      const location = trimText(req.body?.location);
-      const bio = trimText(req.body?.bio);
+      const location = `${req.body.city}, ${req.body.country}`;
+      const bio = req.body.profiles.advisor?.bio || req.body.profiles.investor?.investmentThesis || req.body.profiles.startup?.joiningPurpose || "";
       const requestedRoles = normalizeRoles(req.body?.requestedRoles);
 
       if (fullName.length < 2) return res.status(400).json({ message: "Full name is required." });
@@ -64,10 +66,21 @@ export function createAuthRouter(store) {
       if (password.length < 8) return res.status(400).json({ message: "Password must be at least 8 characters long." });
       if (requestedRoles.length === 0) return res.status(400).json({ message: "Select at least one role to request access." });
 
-      const user = await store.createUserProfile({
-        fullName, email, passwordHash: await hashPassword(password),
-        phone, location, bio, requestedRoles,
-      });
+      validateApplicationFiles(req.body, req.files);
+      if (await store.findUserByEmail(email)) return res.status(409).json({ message: "An account with this email already exists." });
+      const id = crypto.randomUUID();
+      const profiles = buildRegistrationProfiles(req.body);
+      const passwordHash = await hashPassword(password);
+      const documents = await saveApplicationFiles(store, id, req.body, req.files);
+      let user;
+      try {
+        user = await store.createProfileApplication({ id, fullName, email, passwordHash, phone, location, bio, requestedRoles }, profiles, {
+          version: 1, city: req.body.city, country: req.body.country, profiles: req.body.profiles, documents,
+        });
+      } catch (error) {
+        await store.deleteApplicationDocuments(documents.map(doc => doc.path)).catch(() => console.error("Could not clean up failed application documents."));
+        throw error;
+      }
 
       try { await sendWelcomeEmail(email, fullName); } catch { /* non-critical */ }
 
@@ -116,7 +129,7 @@ export function createAuthRouter(store) {
         const twofa = await store.getTwoFASecret(user.id);
         if (twofa?.enabled) {
           const code = trimText(req.body?.otp);
-          if (!/^\d{6}$/.test(code) || !authenticator.verify({ token: code, secret: twofa.secret })) {
+          if (!/^\d{6}$/.test(code) || !(await verifyTotp({ token: code, secret: twofa.secret })).valid) {
             return res.status(401).json({ code: "TWO_FACTOR_REQUIRED", message: "Enter the current six-digit code from your authenticator app." });
           }
         }

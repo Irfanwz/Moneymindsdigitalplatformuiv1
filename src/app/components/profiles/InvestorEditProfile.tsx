@@ -437,7 +437,7 @@ export function InvestorEditProfile() {
 
             <div className="space-y-4">
               <div>
-                <Label>Select Industries of Interest *</Label>
+                <Label>Select Industries of Interest (optional)</Label>
                 <p className="text-sm text-muted-foreground mb-4">
                   Choose industries you're interested in investing in
                 </p>

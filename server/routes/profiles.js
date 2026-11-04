@@ -5,6 +5,7 @@ import { buildInvestorProfile, normalizeInvestorProfileInput } from "../investor
 import { buildAdvisorProfile, normalizeAdvisorProfileInput } from "../advisorProfiles.js";
 import { createAuthenticate, requireApprovedRole } from "../middleware/auth.js";
 import { paginate, trimText } from "../utils.js";
+import { visibleApplication, sendApplicationDocument } from "../applicationDocuments.js";
 
 export function createProfilesRouter(store) {
   const router = Router();
@@ -12,6 +13,15 @@ export function createProfilesRouter(store) {
   const requireStartupRole = requireApprovedRole("startup");
   const requireInvestorRole = requireApprovedRole("investor");
   const requireAdvisorRole = requireApprovedRole("advisor");
+
+  router.get("/profile-application", authenticate, async (req, res, next) => {
+    try { res.json({ application: visibleApplication(await store.getProfileApplication(req.auth.userId)) }); }
+    catch (error) { next(error); }
+  });
+  router.get("/profile-application/documents/:documentId", authenticate, async (req, res, next) => {
+    try { await sendApplicationDocument(store, req.auth.userId, req.params.documentId, res); }
+    catch (error) { next(error); }
+  });
 
   // --- Startup Profile ---
   router.get("/startup/profile", authenticate, requireStartupRole, async (req, res, next) => {
@@ -45,7 +55,6 @@ export function createProfilesRouter(store) {
     try {
       const profileInput = normalizeInvestorProfileInput(req.body, req.currentUser);
       if (profileInput.investorType.length < 2) return res.status(400).json({ message: "Investor type is required." });
-      if (profileInput.industries.length === 0) return res.status(400).json({ message: "Select at least one industry of interest." });
       const savedProfile = await store.upsertInvestorProfile(req.auth.userId, profileInput);
       res.json({ message: "Investor profile saved successfully.", profile: buildInvestorProfile(req.currentUser, savedProfile) });
     } catch (error) { next(error); }
@@ -64,7 +73,6 @@ export function createProfilesRouter(store) {
       const profileInput = normalizeAdvisorProfileInput(req.body, req.currentUser);
       if (profileInput.title.length < 2) return res.status(400).json({ message: "Professional title is required." });
       if (profileInput.specialization.length < 2) return res.status(400).json({ message: "Primary specialization is required." });
-      if (profileInput.industries.length === 0) return res.status(400).json({ message: "Select at least one industry." });
       const savedProfile = await store.upsertAdvisorProfile(req.auth.userId, profileInput);
       res.json({ message: "Advisor profile saved successfully.", profile: buildAdvisorProfile(req.currentUser, savedProfile) });
     } catch (error) { next(error); }
@@ -75,8 +83,9 @@ export function createProfilesRouter(store) {
     try {
       const userId = trimText(req.params.userId);
       const user = await store.findUserById(userId);
-      if (!user) return res.status(404).json({ message: "Advisor not found." });
+      if (!user || user.status !== "approved" || user.isSuspended || !user.approvedRoles?.includes("advisor")) return res.status(404).json({ message: "Advisor not found." });
       const profile = await store.findAdvisorProfileByUserId(userId);
+      if (!profile || profile.isPublic === false) return res.status(404).json({ message: "Advisor not found." });
       res.json({ profile: buildAdvisorProfile(user, profile), name: user.fullName, location: user.location, bio: user.bio });
     } catch (error) { next(error); }
   });
@@ -85,8 +94,9 @@ export function createProfilesRouter(store) {
     try {
       const userId = trimText(req.params.userId);
       const user = await store.findUserById(userId);
-      if (!user) return res.status(404).json({ message: "Startup not found." });
+      if (!user || user.status !== "approved" || user.isSuspended || !user.approvedRoles?.includes("startup")) return res.status(404).json({ message: "Startup not found." });
       const profile = await store.findStartupProfileByUserId(userId);
+      if (!profile || profile.isPublic === false) return res.status(404).json({ message: "Startup not found." });
       res.json({ profile: buildStartupProfile(user, profile), name: user.fullName, location: user.location, bio: user.bio });
     } catch (error) { next(error); }
   });

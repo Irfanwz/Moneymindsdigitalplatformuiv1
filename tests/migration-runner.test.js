@@ -32,10 +32,10 @@ describe("Automatic migrations against an isolated Postgres engine", () => {
     const user = (await database.query("INSERT INTO platform_users(full_name,email,password_hash) VALUES ('Keep me','keep@example.test','same-hash') RETURNING id")).rows[0];
     await database.query("INSERT INTO advisor_profiles(user_id,bio,photo_url) VALUES ($1,'Keep bio','https://example.test/photo.jpg')", [user.id]);
     const migrations = await loadMigrations();
-    expect(migrations).toHaveLength(3);
-    expect(await applyMigrations(client, migrations, logger)).toEqual({ applied: 3, existing: 0 });
+    expect(migrations.length).toBeGreaterThanOrEqual(6);
+    expect(await applyMigrations(client, migrations, logger)).toEqual({ applied: migrations.length, existing: 0 });
     const firstHistory = (await database.query("SELECT * FROM moneyminds_internal.schema_migrations ORDER BY version")).rows;
-    expect(await applyMigrations(client, migrations, logger)).toEqual({ applied: 0, existing: 3 });
+    expect(await applyMigrations(client, migrations, logger)).toEqual({ applied: 0, existing: migrations.length });
     expect((await database.query("SELECT * FROM moneyminds_internal.schema_migrations ORDER BY version")).rows).toEqual(firstHistory);
     expect((await database.query("SELECT password_hash FROM platform_users")).rows).toEqual([{ password_hash: "same-hash" }]);
     expect((await database.query("SELECT bio,photo_url FROM advisor_profiles")).rows).toEqual([{ bio: "Keep bio", photo_url: "https://example.test/photo.jpg" }]);

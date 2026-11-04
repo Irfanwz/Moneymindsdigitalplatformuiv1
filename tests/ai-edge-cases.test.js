@@ -150,10 +150,9 @@ describe("Edge: special characters sanitization", () => {
         fullName: "Edge Test User",
         email: "specialbio@edge.local",
         password: "Password123!",
-        phone: "",
-        location: "",
-        bio: '"; DROP TABLE users; -- <script>alert(1)</script> ${process.env}',
-        requestedRoles: ["startup"],
+        phone: "+923001234567", city: "Lahore", country: "Pakistan",
+        profiles: { investor: { investorType: "Individual", title: "Engineer", investmentThesis: '"; DROP TABLE users; -- <script>alert(1)</script> ${process.env}' } },
+        requestedRoles: ["investor"],
       });
     // Should register successfully — bio injection doesn't affect registration
     expect(res.status).toBe(201);
