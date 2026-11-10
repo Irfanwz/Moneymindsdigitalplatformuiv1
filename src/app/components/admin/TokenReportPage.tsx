@@ -22,7 +22,10 @@ import { Badge } from "../ui/badge";
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function fmt(n: number) { return n.toLocaleString(); }
-function fmtCost(n: number) { return n < 0.001 ? "<$0.001" : `$${n.toFixed(3)}`; }
+function fmtCost(n: number | null) {
+  if (n === null) return "Unavailable";
+  return n > 0 && n < 0.001 ? "<$0.001" : `$${n.toFixed(3)}`;
+}
 function fmtDate(iso: string) {
   const [, m, d] = iso.split("-");
   return `${m}/${d}`;
@@ -42,11 +45,11 @@ function downloadCsv(filename: string, rows: Record<string, any>[], columns: { k
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-interface TokenBlock { input: number; output: number; total: number; cost: number; runs: number; }
+interface TokenBlock { input: number; output: number; total: number; cost: number | null; runs: number; }
 interface Summary { allTime: TokenBlock; monthly: TokenBlock; today: TokenBlock; }
-interface AgentRow { agentKey: string; runs: number; input: number; output: number; total: number; cost: number; }
-interface UserRow  { userId: string; name: string; email: string; runs: number; input: number; output: number; total: number; cost: number; }
-interface DayRow   { date: string; input: number; output: number; total: number; cost: number; runs: number; }
+interface AgentRow { agentKey: string; runs: number; input: number; output: number; total: number; cost: number | null; }
+interface UserRow  { userId: string; name: string; email: string; runs: number; input: number; output: number; total: number; cost: number | null; }
+interface DayRow   { date: string; input: number; output: number; total: number; cost: number | null; runs: number; }
 
 // ─── Summary card ────────────────────────────────────────────────────────────
 
@@ -143,6 +146,9 @@ export function TokenReportPage() {
           </h1>
           <p className="text-sm text-muted-foreground mt-2">
             Full audit trail of AI token consumption — per agent, per user, and over time.
+          </p>
+          <p className="text-xs text-muted-foreground mt-2">
+            Daily and monthly periods use UTC. Cost is unavailable when any included model has no known price; token totals still appear.
           </p>
         </div>
         <Button variant="outline" onClick={load} disabled={loading}>

@@ -64,6 +64,19 @@ try {
   await page.waitForFunction(()=>document.body.textContent.includes("Agent check results"));
   text=await page.$eval("body",el=>el.textContent);
   assert(text.includes("No recent run"));assert(text.includes("no automatic AI moderation agent"));
+  const documentRun=await store.createAgentRun({userId:admin.id,agentKey:"document",targetId:"fixture-document"});
+  await store.createAgentRun({userId:admin.id,agentKey:"verification",targetId:"fixture-verification"});
+  await page.goto(origin+"/admin/agents/documents",{waitUntil:"networkidle0"});
+  await page.waitForFunction(()=>document.body.textContent.includes("upload the document again"));
+  assert(!(await page.$eval("body",el=>el.textContent)).includes("Resume queued run"));
+  await page.goto(origin+"/admin/agents/verification",{waitUntil:"networkidle0"});
+  await page.waitForFunction(()=>document.body.textContent.includes("Resume queued run"));
+  await store.updateAgentRun(documentRun.id,{status:"failed",usage:{calls:[{provider:"gemini",model:"unpriced-fixture",startedAt:new Date().toISOString(),inputTokens:9,outputTokens:3,totalTokens:12}]}});
+  await page.goto(origin+"/admin/token-report",{waitUntil:"networkidle0"});
+  await page.waitForFunction(()=>document.body.textContent.includes("Unavailable"));
+  text=await page.$eval("body",el=>el.textContent);
+  assert(text.includes("UTC"));
+  assert(await page.evaluate(()=>[...document.querySelectorAll("tbody tr")].some(row=>row.textContent.includes("12") && row.textContent.includes("Unavailable"))));
   assert.deepEqual(errors,[]);
-  console.log("Browser checks passed: masked keys, routing selection, increase/decrease, no limit, zero, per-agent limit reset, saved key replacement, mobile layout, and agent evidence panel.");
+  console.log("Browser checks passed: masked keys, routing selection, token limits, saved key replacement, mobile layout, agent evidence panel, document re-upload guidance, supported resume action, and failed-run token report with unavailable pricing.");
 } finally {await browser.close();await new Promise(resolve=>server.close(resolve));}

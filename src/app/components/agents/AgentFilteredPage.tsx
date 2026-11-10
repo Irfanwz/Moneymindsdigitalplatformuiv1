@@ -173,7 +173,7 @@ export function AgentFilteredPage({
                 ownerName={users.find((u) => u.id === r.userId)?.fullName}
                 onRetry={retry}
               />
-              {r.status === "queued" && (
+              {r.status === "queued" && r.agentKey !== "document" && (
                 <Button
                   size="sm"
                   variant="ghost"
@@ -185,6 +185,9 @@ export function AgentFilteredPage({
                 >
                   Resume queued run
                 </Button>
+              )}
+              {r.agentKey === "document" && ["queued", "failed"].includes(r.status) && (
+                <p className="mt-2 text-sm text-muted-foreground">To retry verification, upload the document again.</p>
               )}
             </div>
           ))
