@@ -5,6 +5,7 @@ import type { InvestorProfile } from "@/app/types/investor-profile";
 import type { AdvisorSearchResult, StartupSearchResult } from "@/app/types/search";
 import type { StartupProfile } from "@/app/types/startup-profile";
 import type { Training, TrainingEnrollment, CreateTrainingPayload } from "@/app/types/training";
+import type { ProfileLinkCheck } from "@/app/types/profile-links";
 
 const configuredApiBaseUrl = (import.meta.env.VITE_API_BASE_URL ?? "").trim();
 // A local development .env must not make deployed browsers call their own PC.
@@ -39,13 +40,17 @@ export class ApiError extends Error {
 }
 
 export async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const headers = new Headers(init?.headers);
+  if (init?.body instanceof FormData) {
+    // The browser supplies the multipart boundary along with this header.
+    headers.delete("Content-Type");
+  } else if (typeof init?.body === "string" && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
   const response = await fetch(`${apiBaseUrl}${path}`, {
     ...init,
     credentials: "include", // send HttpOnly cookie on every request
-    headers: {
-      "Content-Type": "application/json",
-      ...(init?.headers ?? {}),
-    },
+    headers,
   });
 
   const payload = await response.json().catch(() => ({}));
@@ -168,6 +173,7 @@ export interface AIVerification {
     news_mentions: number;
     red_flags: string[];
     positive_signals: string[];
+    profileLinks?: ProfileLinkCheck[];
   } | null;
   reportMarkdown: string | null;
   sources: { url: string; title: string; relevance: number }[];

@@ -104,7 +104,7 @@ export function InvestorProfile() {
                 <div>
                   <div className="flex items-center gap-3 mb-2">
                     <h1 className="text-3xl font-bold text-slate-900 dark:text-white">{userName}</h1>
-                    <CredibilityBadge type="verified" label="Verified" />
+                    {profile.isVerified && <CredibilityBadge type="verified" label="Verified" />}
                   </div>
                   {(profile.title || profile.firmName) && (
                     <p className="text-lg text-slate-600 dark:text-slate-300 mb-4">

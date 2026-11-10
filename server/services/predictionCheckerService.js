@@ -1,12 +1,12 @@
+import { getAiConfig } from "./aiConfigStore.js";
+import { requestGemini } from "./geminiProvider.js";
 import Anthropic from "@anthropic-ai/sdk";
-import Groq from "groq-sdk";
-import { config } from "../config.js";
+import { getGroqApiKeys } from "../config.js";
 import { parseSignalPrediction } from "./predictionParserService.js";
-import { getStockPrice, getCryptoPrice } from "./marketPriceFetcher.js";
+import { getStockPrice, getCryptoPrice, getHistoricalPrice } from "./marketPriceFetcher.js";
+import { hasPredictionEvidence } from "../store/predictionIntegrity.js";
 import { trackAIRequest } from "./aiUsage.js";
-
-const groqClient = config.groqApiKey ? new Groq({ apiKey: config.groqApiKey, timeout:30000, maxRetries:0 }) : null;
-const anthropicClient = config.anthropicApiKey ? new Anthropic({ apiKey: config.anthropicApiKey, timeout:30000, maxRetries:0 }) : null;
+import { requestGroqCompletion } from "./groqKeyPool.js";
 
 // ─── Accuracy Calculation ─────────────────────────────────────────────────────
 
@@ -84,28 +84,40 @@ Write the explanation now (2 sentences max):`;
 }
 
 async function generateExplanation(params) {
+  const config = await getAiConfig();
   const prompt = buildExplanationPrompt(params);
   let trigger = "initial";
 
-  if (groqClient && (config.aiProvider === "auto" || config.aiProvider === "groq")) {
+  if (getGroqApiKeys(config).length && (config.aiProvider === "auto" || config.aiProvider === "groq")) {
     try {
-      const res = await trackAIRequest({provider:"groq",model:config.groqModel,purpose:"Explain a prediction result using checked market prices",trigger},()=>groqClient.chat.completions.create({
+      const res = await requestGroqCompletion({
         model: config.groqModel,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.3,
         max_tokens: 1500,
-      }));
+      }, {keys:getGroqApiKeys(config),timeout:30000,purpose:"Explain a prediction result using checked market prices",trigger});
       const text = res.choices[0]?.message?.content?.trim();
       if (text && text.length > 0) return text;
     } catch (err) {
-      if(err?.code==="AI_USAGE_SAVE_FAILED") throw err;
+      if(err?.code?.startsWith("AI_")) throw err;
       console.warn("[PredictionChecker] Groq explanation failed:", err.message);
     }
     trigger = "fallback";
   }
 
-  if (anthropicClient && (config.aiProvider === "auto" || config.aiProvider === "anthropic")) {
+  if (config.geminiApiKey && (config.aiProvider === "auto" || config.aiProvider === "gemini")) {
     try {
+      return await requestGemini(config,{parts:[{text:prompt}],maxTokens:1500},{purpose:"Explain a prediction result using checked market prices",trigger});
+    } catch (error) {
+      if (error?.code?.startsWith("AI_")) throw error;
+      console.warn("[PredictionChecker] Gemini explanation failed.");
+    }
+    trigger = "fallback";
+  }
+
+  if (config.anthropicApiKey && (config.aiProvider === "auto" || config.aiProvider === "anthropic")) {
+    try {
+      const anthropicClient = new Anthropic({apiKey:config.anthropicApiKey,timeout:30000,maxRetries:0});
       const res = await trackAIRequest({provider:"anthropic",model:config.anthropicModel,purpose:"Explain a prediction result using checked market prices",trigger},()=>anthropicClient.messages.create({
         model: config.anthropicModel,
         max_tokens: 1500,
@@ -114,7 +126,7 @@ async function generateExplanation(params) {
       const text = res.content[0]?.text?.trim();
       if (text && text.length > 0) return text;
     } catch (err) {
-      if(err?.code==="AI_USAGE_SAVE_FAILED") throw err;
+      if(err?.code?.startsWith("AI_")) throw err;
       console.warn("[PredictionChecker] Claude explanation failed:", err.message);
     }
   }
@@ -137,9 +149,9 @@ async function fetchCurrentPrice(ticker) {
   if (!ticker) return null;
   try {
     const stockPrice = await getStockPrice(ticker);
-    if (stockPrice !== null) return stockPrice;
+    if (stockPrice !== null) return {price:stockPrice, assetType:"stock"};
     const cryptoPrice = await getCryptoPrice(ticker);
-    return cryptoPrice;
+    return cryptoPrice === null ? null : {price:cryptoPrice, assetType:"crypto"};
   } catch (err) {
     console.warn(`[PredictionChecker] Price fetch failed for ${ticker}:`, err.message);
     return null;
@@ -158,24 +170,34 @@ async function fetchCurrentPrice(ticker) {
  */
 export async function scheduleSignalPrediction(signalId, signal, store, {strict=false}={}) {
   try {
-    if(signal.predictionCheckedAt) return {summary:"This prediction has already been evaluated. Its recorded result is preserved.",eligible:false};
+    const current = await store.findSignalById(signalId);
+    if (!current) throw new Error("The signal is no longer available.");
+    if(hasPredictionEvidence(current)) return {summary:"This prediction already has recorded market evidence. Its original terms and result are preserved.",eligible:false};
+    if (current.updatedAt !== signal.updatedAt) throw new Error("The signal changed before extraction. Retry with its current content.");
     const parsed=await parseSignalPrediction(signal,{strict});
     if(!parsed.ticker || parsed.direction==="neutral") {
-      await store.updateSignalPrediction(signalId,{predictionDirection:"neutral",predictionTicker:parsed.ticker || null,predictionCheckDate:null});
+      const saved = await store.updateSignalPrediction(signalId,{predictionDirection:"neutral",predictionTicker:parsed.ticker || null,predictionCheckDate:null},{expectedUpdatedAt:signal.updatedAt});
+      if (!saved) throw new Error("The signal changed during extraction. Retry with its current content.");
       return {summary:"No directional, identifiable asset prediction was found in this post.",eligible:false};
     }
     const created=Date.parse(signal.createdAt || new Date().toISOString());
     const historical=Date.now()-created>60*60*1000 && !signal.baselinePrice;
-    const baselinePrice=signal.baselinePrice || (historical ? null : await fetchCurrentPrice(parsed.ticker));
+    const baseline = historical ? null : await fetchCurrentPrice(parsed.ticker);
+    // Daily-close stock data cannot establish a post-baseline observation for
+    // a one-day horizon. Do not lock such posts into an impossible pending run.
+    const unsupportedHorizon = baseline?.assetType === "stock" && parsed.timeframeDays <= 1;
+    const baselinePrice = unsupportedHorizon ? null : baseline?.price ?? null;
     const now=new Date().toISOString();
     const checkDate=new Date(created+parsed.timeframeDays*86400000).toISOString();
     const updated=await store.updateSignalPrediction(signalId,{
       predictionTicker:parsed.ticker,predictionDirection:parsed.direction,predictionTargetPrice:parsed.targetPrice,
       predictionTimeframe:parsed.timeframe,predictionTimeframeDays:parsed.timeframeDays,
       predictionCheckDate:baselinePrice ? checkDate : null,baselinePrice,
+      predictionAssetType:baselinePrice ? baseline.assetType : null,
       baselineFetchedAt:signal.baselineFetchedAt || (baselinePrice ? now : null),
-    });
+    }, {expectedUpdatedAt:signal.updatedAt});
     if(!updated) throw new Error("The extracted prediction could not be saved.");
+    if (unsupportedHorizon) return {summary:"Prediction extracted but not eligible for scoring: one-day stock predictions require intraday historical data; the configured checker uses completed daily closes. This post remains editable.",ticker:parsed.ticker,eligible:false,checkDate:null};
     return {summary:historical ? "Prediction extracted. Original baseline is unavailable for this historical signal; no accuracy score will be fabricated." : baselinePrice ? `Prediction saved; evaluation is due ${checkDate}.` : "Prediction extracted, but a market price was unavailable. Check the price provider and retry while the signal is fresh.",ticker:parsed.ticker,eligible:!!baselinePrice,checkDate:baselinePrice ? checkDate : null};
   } catch(error) {
     if(strict) throw error;
@@ -186,12 +208,14 @@ export async function scheduleSignalPrediction(signalId, signal, store, {strict=
 
 export async function checkOnePrediction(signal, store) {
   try {
+    if (signal.predictionCheckedAt) return null;
     if(!signal.baselinePrice || signal.baselinePrice<=0 || !signal.predictionCheckDate || Date.parse(signal.predictionCheckDate)>Date.now()) return null;
     if(!["up","down"].includes(signal.predictionDirection)) return null;
     const effectiveTicker=signal.predictionTicker;
     if(!effectiveTicker) return null;
 
-    const actualPrice = await fetchCurrentPrice(effectiveTicker);
+    const evidence = await getHistoricalPrice(effectiveTicker, signal.predictionCheckDate, {after:signal.baselineFetchedAt || signal.createdAt, assetType:signal.predictionAssetType});
+    const actualPrice = evidence?.price ?? null;
     if (actualPrice === null) {
       console.warn(`[PredictionChecker] No price found for signal ${signal.id} (ticker: ${effectiveTicker}) — skipping`);
       return null;
@@ -218,12 +242,14 @@ export async function checkOnePrediction(signal, store) {
       predictionAccuracy: score,
       predictionResult: result,
       predictionCheckedAt: new Date().toISOString(),
-      predictionExplanation: explanation,
-    });
+      predictionExplanation: `${explanation} Price basis: ${evidence.description}.`,
+      predictionPriceEvidence: evidence,
+    }, {uncheckedOnly:true});
 
     console.log(`[PredictionChecker] Checked signal ${signal.id}: ${score}/100 (${result})`);
     return updated;
   } catch (err) {
+    if (err?.code?.startsWith("AI_")) throw err;
     console.error(`[PredictionChecker] checkOnePrediction failed for ${signal.id}:`, err.message);
     return null;
   }

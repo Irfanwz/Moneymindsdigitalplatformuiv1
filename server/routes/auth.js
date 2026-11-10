@@ -12,7 +12,7 @@ import {
 } from "../auth.js";
 import { isEmail, trimText } from "../utils.js";
 import { validate, registerSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema } from "../schemas.js";
-import { config } from "../config.js";
+import { config, shouldSkipRateLimit } from "../config.js";
 import { sendPasswordResetEmail, sendWelcomeEmail, sendLoginOtpEmail } from "../email.js";
 import { createAuthenticate } from "../middleware/auth.js";
 import { buildRegistrationProfiles } from "../registration.js";
@@ -21,6 +21,7 @@ import { parseRegistration, validateApplicationFiles, saveApplicationFiles } fro
 const authLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 10,
+  skip: shouldSkipRateLimit,
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: "Too many requests, please try again later." },
@@ -29,6 +30,8 @@ const authLimiter = rateLimit({
 const otpLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
+  // Password-only sign-ins do not send email OTPs. Keep the normal auth limit.
+  skip: () => shouldSkipRateLimit() || !config.emailOtpEnabled,
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: "Too many OTP requests. Please wait 15 minutes." },

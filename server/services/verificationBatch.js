@@ -1,3 +1,4 @@
+import { getAiConfig } from "./aiConfigStore.js";
 import { config } from "../config.js";
 import { configuredProviders } from "./aiProvider.js";
 import { processVerificationQueue } from "./agentService.js";
@@ -34,7 +35,7 @@ export async function verificationOverview(store,mode="missing") {
 }
 
 export async function requireVerificationSetup(store) {
-  if(!configuredProviders().length || !config.tavilyApiKey) throw Object.assign(new Error("Background checks need GROQ_API_KEY or ANTHROPIC_API_KEY, plus TAVILY_API_KEY, on the server."),{status:503});
+  if(!configuredProviders(await getAiConfig()).length || !config.tavilyApiKey) throw Object.assign(new Error("Background checks need a configured Groq, Gemini or Anthropic provider, plus TAVILY_API_KEY on the server."),{status:503});
   if(!(await store.checkAgentSchema()).every(s=>s.ok)) throw Object.assign(new Error("Agent database setup is incomplete. Open Agent Activity to inspect the missing tables or columns."),{status:503});
 }
 

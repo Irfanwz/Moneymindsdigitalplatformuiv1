@@ -73,7 +73,7 @@ function AdvisorCard({ advisor, onViewProfile, onConnect }: { advisor: AdvisorSe
                 {advisor.credibilityScore !== null ? (
                   <CredibilityBadge score={advisor.credibilityScore} tier={advisor.credibilityTier} />
                 ) : (
-                  <CredibilityBadge type="verified" label="Verified" />
+                  <CredibilityBadge type="pending" label="Not yet rated" />
                 )}
               </div>
               <p className="text-sm text-muted-foreground mb-1">{advisor.title}</p>
@@ -211,7 +211,7 @@ export function FindAdvisorsPage({ userRole }: FindAdvisorsPageProps) {
       <div className="container mx-auto px-6 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-semibold mb-2">Find Financial Advisors</h1>
-          <p className="text-muted-foreground">Connect with verified financial advisors to help grow your business</p>
+          <p className="text-muted-foreground">Explore financial advisors and review their track records</p>
         </div>
 
         <Card className="p-6 mb-8">
@@ -279,8 +279,8 @@ export function FindAdvisorsPage({ userRole }: FindAdvisorsPageProps) {
             {isLoading ? "Searching..." : `Showing ${sortedAdvisors.length} advisor${sortedAdvisors.length !== 1 ? "s" : ""}`}
           </div>
           <div className="flex items-center gap-2">
-            <CredibilityBadge type="verified" label="Verified" />
-            <span className="text-sm text-muted-foreground">All advisors are verified</span>
+            <CredibilityBadge type="pending" label="Track record" />
+            <span className="text-sm text-muted-foreground">Ratings appear when enough predictions have been checked</span>
           </div>
         </div>
 

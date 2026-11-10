@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Badge } from "@/app/components/ui/badge";
+import { ProfileLinkChecks } from "./ProfileLinkChecks";
+import type { ProfileLinkCheck } from "@/app/types/profile-links";
 
 const statuses: Record<string, string> = {
   supported: "Supported by evidence",
@@ -34,6 +36,7 @@ type Report = {
   counts: Record<string, number>;
   limitations: string[];
   sources: Source[];
+  profileLinks?: ProfileLinkCheck[];
   documents: {
     id: string;
     title: string;
@@ -77,6 +80,7 @@ export function DueDiligenceReport({ report }: { report: Report }) {
           ))}
         </ul>
       </div>
+      <ProfileLinkChecks links={report.profileLinks} />
       <label className="flex flex-wrap items-center gap-2">
         Show checks
         <select

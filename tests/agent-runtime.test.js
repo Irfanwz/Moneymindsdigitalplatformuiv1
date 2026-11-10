@@ -11,18 +11,19 @@ import { generateJSON } from "../server/services/aiProvider.js";
 import { searchService } from "../server/services/searchService.js";
 import { marketDataService } from "../server/services/marketDataService.js";
 import { scheduleSignalPrediction, checkOnePrediction } from "../server/services/predictionCheckerService.js";
-import { getStockPrice, getCryptoPrice } from "../server/services/marketPriceFetcher.js";
+import { getStockPrice, getCryptoPrice, getHistoricalPrice } from "../server/services/marketPriceFetcher.js";
 import { recalculateForAdvisor } from "../server/services/credibilityService.js";
 import { runVerification } from "../server/services/profileVerificationService.js";
 
 vi.mock("../server/services/aiProvider.js",()=>({configuredProviders:()=>["test"],generateJSON:vi.fn()}));
-vi.mock("../server/services/marketPriceFetcher.js",()=>({getStockPrice:vi.fn(),getCryptoPrice:vi.fn()}));
+vi.mock("../server/services/marketPriceFetcher.js",()=>({getStockPrice:vi.fn(),getCryptoPrice:vi.fn(),getHistoricalPrice:vi.fn()}));
 let store,app,owner,other,admin,signal;
 const auth=u=>({Cookie:`mm_token=${createToken(u)}`});
 beforeEach(async()=>{
   vi.restoreAllMocks(); vi.clearAllMocks();
   generateJSON.mockRejectedValue(new Error("Provider unavailable"));
   getStockPrice.mockResolvedValue(null); getCryptoPrice.mockResolvedValue(100);
+  getHistoricalPrice.mockResolvedValue({price:100,description:"historical fixture",source:"fixture"});
   store=createMemoryStore();
   async function user(name){
     const u=await store.createUserProfile({fullName:name,email:`${name}@example.test`,passwordHash:"unused",requestedRoles:["advisor","investor"]});
@@ -106,6 +107,14 @@ describe("Signal and research pipelines",()=>{
     expect(result.eligible).toBe(false);expect(result.checkDate).toBeNull();expect(getCryptoPrice).not.toHaveBeenCalled();
     expect((await store.findSignalById(signal.id)).baselinePrice).toBeNull();
   });
+  it("leaves unsupported one-day stock predictions editable instead of permanently pending",async()=>{
+    getStockPrice.mockResolvedValue(100);
+    generateJSON.mockResolvedValue({provider:"test",data:{ticker:"AAPL",direction:"up",targetPrice:110,timeframe:"1 day",timeframeDays:1}});
+    const result=await scheduleSignalPrediction(signal.id,signal,store,{strict:true});
+    expect(result).toMatchObject({eligible:false,checkDate:null});
+    expect(result.summary).toContain("one-day stock");
+    await expect(store.updateSignal(signal.id,{content:"Revised horizon",resetAnalysis:true})).resolves.toMatchObject({content:"Revised horizon"});
+  });
   it("does not score predictions before due or without a saved baseline",async()=>{
     await checkOnePrediction({...signal,predictionTicker:"BTC",predictionDirection:"up",baselinePrice:100,predictionCheckDate:"2099-01-01"},store);
     await checkOnePrediction({...signal,predictionTicker:"BTC",predictionDirection:"up",baselinePrice:null,predictionCheckDate:"2020-01-01"},store);
@@ -127,7 +136,7 @@ describe("Signal and research pipelines",()=>{
     expect(generateJSON).not.toHaveBeenCalled();
   });
   it("keeps an existing credibility score if signal reads fail",async()=>{
-    vi.spyOn(store,"listSignalsByAdvisor").mockRejectedValue(new Error("Database unavailable"));
+    vi.spyOn(store,"listPredictionHistoryByAdvisor").mockRejectedValue(new Error("Database unavailable"));
     const update=vi.spyOn(store,"updateAdvisorCredibility");
     await expect(recalculateForAdvisor(owner.id,store)).rejects.toThrow("Database unavailable");
     expect(update).not.toHaveBeenCalled();
@@ -143,14 +152,16 @@ describe("Signal and research pipelines",()=>{
     expect(result.score).not.toBeNull();expect((await store.getCredibilityHistory(owner.id))).toHaveLength(1);
     expect((await store.findAdvisorProfileByUserId(owner.id)).credibilityScore).toBe(result.score);
   });
-  it("does not verify a mismatching credential even if the model is confident",async()=>{
+  it.each([true,false])("requires administrator review even at 99%% confidence (matches: %s)",async matches=>{
     const pdf=new PDFDocument();const chunks=[];
     const buffer=new Promise(resolve=>{pdf.on("data",chunk=>chunks.push(chunk));pdf.on("end",()=>resolve(Buffer.concat(chunks)));});
     pdf.text("Fixture certificate for a different person");pdf.end();
-    generateJSON.mockResolvedValue({provider:"test",data:{verified:true,confidence:99,reasoning:"Different person",extracted:{matches_claim:false}}});
+    const verify = vi.spyOn(store,"setProfileVerified");
+    generateJSON.mockResolvedValue({provider:"test",data:{verified:true,confidence:99,reasoning:"Document comparison",extracted:{matches_claim:matches}}});
     const record=await store.createProfileVerification({userId:owner.id,docType:"other",docUrl:"local://fixture",claimToVerify:"My certificate",status:"pending"});
     await runVerification({verificationId:record.id,fileBuffer:await buffer,mimeType:"application/pdf",docType:"other",claimToVerify:"My certificate",userProfile:{name:owner.fullName},userId:owner.id,store});
-    expect((await store.getProfileVerification(record.id)).status).toBe("rejected");
+    expect((await store.getProfileVerification(record.id)).status).toBe("manual_review");
+    expect(verify).not.toHaveBeenCalled();
   });
   it("extracts text from a real PDF with the installed pdf-parse version",async()=>{
     const pdf=new PDFDocument(); const chunks=[];

@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 export const agentSchema = {
   ai_verifications: "id,user_id,status,recommendation,confidence,credibility_score,summary,findings,report_markdown,sources,red_flags,search_queries_run,created_at,completed_at",
   profile_verifications: "id,user_id,doc_type,doc_url,claim_to_verify,status,ai_confidence,ai_reasoning,ai_extracted,reviewed_by,reviewed_at,admin_note,created_at,updated_at",
-  advisor_signals: "id,advisor_id,group_id,sentiment,sentiment_confidence,sentiment_reasoning,risk_level,risk_reasoning,actionability,actionability_reasoning,entities,sectors,key_points,analyzed_at,prediction_ticker,prediction_direction,prediction_target_price,prediction_timeframe,prediction_timeframe_days,prediction_check_date,baseline_price,baseline_fetched_at,actual_price,prediction_accuracy,prediction_result,prediction_checked_at,prediction_explanation",
+  advisor_signals: "id,advisor_id,group_id,sentiment,sentiment_confidence,sentiment_reasoning,risk_level,risk_reasoning,actionability,actionability_reasoning,entities,sectors,key_points,analyzed_at,prediction_ticker,prediction_asset_type,prediction_direction,prediction_target_price,prediction_timeframe,prediction_timeframe_days,prediction_check_date,baseline_price,baseline_fetched_at,actual_price,prediction_price_evidence,prediction_accuracy,prediction_result,prediction_checked_at,prediction_explanation",
   advisor_profiles: "user_id,is_verified,verified_at,verification_id,credibility_score,credibility_tier,credibility_updated_at",
   startup_profiles: "user_id,is_verified,verified_at,verification_id",
   investor_profiles: "user_id,is_verified,verified_at,verification_id",
@@ -54,16 +54,17 @@ export function createAgentStore(client = null) {
     async getAgentRun(id) {
       return client ? unwrap(client.from("agent_runs").select("*").eq("id",id).maybeSingle(),true) : structuredClone(rows.get(id) || null);
     },
-    async listAgentRuns({userId,agentKey,targetId,limit=50,status,offset=0,oldestFirst=false} = {}) {
+    async listAgentRuns({userId,agentKey,targetId,limit=50,status,offset=0,oldestFirst=false,updatedSince} = {}) {
       if (client) {
         let q = client.from("agent_runs").select("*").order("created_at",{ascending:oldestFirst}).order("id",{ascending:oldestFirst}).range(offset,offset+Math.min(limit,200)-1);
         if(userId) q=q.eq("user_id",userId);
         if(agentKey) q=q.eq("agent_key",agentKey);
         if(targetId) q=q.eq("target_id",targetId);
         if(status) q=q.eq("status",status);
+        if(updatedSince) q=q.gte("updated_at",updatedSince);
         return unwrap(q);
       }
-      return structuredClone([...rows.values()].filter(r=>(!userId || r.userId===userId)&&(!agentKey || r.agentKey===agentKey)&&(!targetId || r.targetId===targetId)&&(!status || r.status===status)).sort((a,b)=>(oldestFirst ? 1 : -1)*(a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id))).slice(offset,offset+limit));
+      return structuredClone([...rows.values()].filter(r=>(!userId || r.userId===userId)&&(!agentKey || r.agentKey===agentKey)&&(!targetId || r.targetId===targetId)&&(!status || r.status===status)&&(!updatedSince || r.updatedAt>=updatedSince)).sort((a,b)=>(oldestFirst ? 1 : -1)*(a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id))).slice(offset,offset+limit));
     },
     async updateAgentRun(id,patch,expectedStatus) {
       const changes={...patch,updatedAt:new Date().toISOString()};

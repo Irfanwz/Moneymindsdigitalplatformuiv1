@@ -86,7 +86,7 @@ export function CredibilityBadge({ type, label, score, tier }: CredibilityBadgeP
   }
 
   // Fallback to type-based badge
-  const badge = badges[type ?? "verified"] ?? badges.verified;
+  const badge = badges[type ?? "pending"] ?? badges.pending;
   const Icon = badge.icon;
 
   return (

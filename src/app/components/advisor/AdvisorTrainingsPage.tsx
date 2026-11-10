@@ -235,7 +235,6 @@ export function AdvisorTrainingsPage() {
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2 flex-wrap">
                           <h3 className="text-lg font-semibold">{training.title}</h3>
-                          <CredibilityBadge type="verified" label="Verified" />
                           <Badge variant={training.status === "ongoing" ? "default" : "outline"} className={training.status === "ongoing" ? "bg-accent text-accent-foreground" : ""}>
                             {training.status === "ongoing" ? "Live" : training.status === "upcoming" ? "Upcoming" : "Completed"}
                           </Badge>

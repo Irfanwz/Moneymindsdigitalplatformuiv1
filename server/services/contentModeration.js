@@ -11,7 +11,6 @@ export function applyContentModeration(store) {
       "listAllSignals",
       "listSignalsByGroup",
       "listSignalsByAdvisor",
-      "listSignalsDueForCheck",
     ],
     comment: ["findCommentById", "listCommentsBySignal"],
     training: ["findTrainingById", "listTrainings", "listTrainingsByAdvisor"],

@@ -1,5 +1,6 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import { randomUUID } from "node:crypto";
+import { assertTokenBudget } from "./aiTokenLimits.js";
 
 const context = new AsyncLocalStorage();
 const count = (value) =>
@@ -26,6 +27,13 @@ export function normalizeTokenUsage(provider, usage) {
     totalTokens = count(usage.total_tokens);
     cachedInputTokens = count(usage.prompt_tokens_details?.cached_tokens);
     reasoningTokens = count(usage.completion_tokens_details?.reasoning_tokens);
+  } else if (usage && provider === "gemini") {
+    inputTokens = count(usage.promptTokenCount);
+    outputTokens = count(usage.candidatesTokenCount);
+    reasoningTokens = count(usage.thoughtsTokenCount);
+    if (outputTokens !== null) outputTokens += reasoningTokens ?? 0;
+    totalTokens = count(usage.totalTokenCount);
+    cachedInputTokens = count(usage.cachedContentTokenCount);
   } else if (usage && provider === "anthropic") {
     inputTokens = count(usage.input_tokens);
     outputTokens = count(usage.output_tokens);
@@ -89,12 +97,13 @@ export function summarizeTokenUsage(calls) {
   };
 }
 
-export function createUsageTracker(persist) {
+export function createUsageTracker(persist, budgetContext = {}) {
   const state = {
     calls: [],
     inFlight: new Set(),
     pending: Promise.resolve(),
     failure: null,
+    ...budgetContext,
   };
   const snapshot = () => summarizeTokenUsage(state.calls);
   state.publish = () => {
@@ -138,7 +147,10 @@ export async function trackAIRequest(
   request,
 ) {
   const state = context.getStore();
-  if (!state) return request();
+  if (!state) {
+    await assertTokenBudget();
+    return request();
+  }
   const numericDetails = Object.fromEntries(
     ["fieldCount", "sourceCount", "documentCount"]
       .filter((key) => count(details[key]) !== null)
@@ -159,6 +171,7 @@ export async function trackAIRequest(
   state.calls.push(call);
   const work = (async () => {
     try {
+      await assertTokenBudget(state);
       await state.publish();
     } catch (error) {
       // The request has not been sent if its initial durable record failed.

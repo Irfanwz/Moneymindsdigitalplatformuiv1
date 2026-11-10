@@ -48,7 +48,10 @@ import { AIVerificationReport } from "./AIVerificationReport";
 import { BulkBackgroundChecks } from "../agents/BulkBackgroundChecks";
 import { BackgroundCheckCriteria } from "../agents/BackgroundCheckCriteria";
 import { AgentActivityPage } from "../agents/AgentActivityPage";
+import { AgentFilteredPage } from "../agents/AgentFilteredPage";
 import { AdminSecurity } from "./AdminSecurity";
+import { AIConfigPage } from "./AIConfigPage";
+import { TokenReportPage } from "./TokenReportPage";
 
 const base = "/api/admin/console";
 const date = (value?: string) =>
@@ -1853,10 +1856,49 @@ function AccountPage() {
   );
 }
 
+// Agent sub-page definitions — agentKeys map to agent_runs.agent_key values
+const AGENT_SUB_PAGES: Record<string, { title: string; description: string; agentKeys: string[]; showBulkChecks?: boolean }> = {
+  "agents/verification": {
+    title: "Background Checks",
+    description: "User background verification — LinkedIn, company history, fraud checks, and news analysis. Each report recommends Accept, Review, or Reject.",
+    agentKeys: ["verification"],
+    showBulkChecks: true,
+  },
+  "agents/due-diligence": {
+    title: "Due Diligence Reports",
+    description: "Full investor-grade profile analysis — risk flags, financials, investment readiness, and profile quality reviews.",
+    agentKeys: ["due-diligence", "profile-quality"],
+  },
+  "agents/documents": {
+    title: "Document Verification",
+    description: "AI verification of uploaded documents — degrees, certificates, business registrations, and identity documents.",
+    agentKeys: ["document"],
+  },
+  "agents/signals": {
+    title: "Signal Analysis",
+    description: "Market sentiment analysis on advisor signals and automatic extraction of predictions from signal content.",
+    agentKeys: ["signal-sentiment", "signal-prediction"],
+  },
+  "agents/predictions": {
+    title: "Predictions & Credibility",
+    description: "Prediction accuracy evaluation when due dates arrive, and credibility score recalculation based on prediction track records.",
+    agentKeys: ["prediction-check", "credibility"],
+  },
+  "agents/research": {
+    title: "Research Agents",
+    description: "Sector-focused research agents — Crypto, FinTech, HealthTech, CleanTech, AI/ML, and SaaS market intelligence.",
+    agentKeys: ["investor-1", "investor-2", "investor-3", "investor-4", "investor-5", "investor-6"],
+  },
+};
+
 export function AdminConsole({ section = "dashboard" }: { section?: string }) {
   const { user } = useAuth();
-  const required = adminSections.find((s) => s.path === section)?.permission;
+  // For sub-pages like "agents/verification", check the parent "agents" permission
+  const parentSection = section.includes("/") ? section.split("/")[0] : section;
+  const required = adminSections.find((s) => s.path === section || s.path === parentSection)?.permission;
   const allowed = !required || adminCan(user, required);
+  const agentSubPage = AGENT_SUB_PAGES[section];
+
   return (
     <AdminLayout>
       {!allowed ? (
@@ -1869,6 +1911,13 @@ export function AdminConsole({ section = "dashboard" }: { section?: string }) {
             <Link to="/admin/dashboard">Return to overview</Link>
           </Button>
         </>
+      ) : agentSubPage ? (
+        <AgentFilteredPage
+          title={agentSubPage.title}
+          description={agentSubPage.description}
+          agentKeys={agentSubPage.agentKeys}
+          showBulkChecks={agentSubPage.showBulkChecks}
+        />
       ) : section === "users" ? (
         <UsersPage />
       ) : section === "reviews" ? (
@@ -1883,6 +1932,10 @@ export function AdminConsole({ section = "dashboard" }: { section?: string }) {
         <ReportsPage />
       ) : section === "settings" ? (
         <SettingsPage />
+      ) : section === "ai-config" ? (
+        <AIConfigPage />
+      ) : section === "token-report" ? (
+        <TokenReportPage />
       ) : section === "profile" ? (
         <AccountPage />
       ) : (

@@ -17,7 +17,7 @@ const sizes = {
 export function VerifiedBadge({ verifiedAt, size = "md", className }: VerifiedBadgeProps) {
   const label = verifiedAt
     ? `Verified on ${new Date(verifiedAt).toLocaleDateString()}`
-    : "Identity verified by MoneyMinds AI";
+    : "Profile marked verified by MoneyMinds";
 
   return (
     <TooltipProvider>

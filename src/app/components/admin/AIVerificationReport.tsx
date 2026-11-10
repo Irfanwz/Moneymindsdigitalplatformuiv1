@@ -23,6 +23,7 @@ import { Skeleton } from "@/app/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/app/components/ui/tooltip";
 import type { AIVerification } from "@/app/lib/api";
 import { retryVerification } from "@/app/lib/api";
+import { ProfileLinkChecks } from "@/app/components/agents/ProfileLinkChecks";
 
 function isSafeUrl(url: string | null | undefined): url is string {
   if (!url) return false;
@@ -233,6 +234,7 @@ export function AIVerificationReport({ verification, loading, token, onRetryComp
 
       <Separator />
 
+      <ProfileLinkChecks links={verification.findings?.profileLinks} />
       {/* Key Findings */}
       {verification.findings && (
         <div className="space-y-4">
@@ -243,7 +245,7 @@ export function AIVerificationReport({ verification, loading, token, onRetryComp
               <Linkedin className="h-5 w-5 text-blue-600 shrink-0" />
               <div className="min-w-0">
                 <div className="text-sm font-medium">
-                  LinkedIn {verification.findings.linkedin_found ? "Found" : "Not Found"}
+                  LinkedIn evidence {verification.findings.linkedin_found ? "found" : "not confirmed"}
                 </div>
                 {isSafeUrl(verification.findings.linkedin_url) && (
                   <a

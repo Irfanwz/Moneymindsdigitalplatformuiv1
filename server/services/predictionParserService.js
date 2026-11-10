@@ -1,3 +1,4 @@
+import { getAiConfig } from "./aiConfigStore.js";
 import { generateJSON, configuredProviders } from "./aiProvider.js";
 function buildParserPrompt(signal) {
   const title = signal.title || "";
@@ -66,7 +67,7 @@ export async function parseSignalPrediction(signal,{strict=false}={}) {
   const fallback={ticker:null,direction:"neutral",targetPrice:null,timeframe:"1week",timeframeDays:7,hasPricePrediction:false};
   if(`${signal.title || ""} ${signal.content || ""}`.trim().length<5) return fallback;
   try {
-    if(!configuredProviders().length) {
+    if(!configuredProviders(await getAiConfig()).length) {
       if(strict) throw new Error("An AI provider must be configured to extract predictions.");
       const price=Number.parseFloat(String(signal.targetPrice || "").replace(/[$,]/g,""));
       return {...fallback,targetPrice:Number.isFinite(price) ? price : null,hasPricePrediction:Number.isFinite(price)};

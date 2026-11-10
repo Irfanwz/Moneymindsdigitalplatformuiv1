@@ -25,6 +25,8 @@ import { createCredibilityRouter } from "./routes/credibility.js";
 import { startPredictionCron } from "./cron/predictionCron.js";
 import { startCredibilityCron } from "./cron/credibilityCron.js";
 import { createAgentsRouter } from "./routes/agents.js";
+import { createAiConfigRouter } from "./routes/aiConfig.js";
+import { createTokenReportRouter } from "./routes/tokenReport.js";
 import { startVerificationWorker } from "./services/agentService.js";
 import { applyContentModeration } from './services/contentModeration.js';
 
@@ -65,6 +67,8 @@ export function createApp(store, { backgroundJobs = process.env.NODE_ENV !== "te
   app.use("/api/admin/verifications", createAdminVerificationRouter(store));
   app.use("/api/credibility", createCredibilityRouter(store));
   app.use("/api/agents", createAgentsRouter(store));
+  app.use("/api/admin/ai-config", createAiConfigRouter(store));
+  app.use("/api/admin/token-report", createTokenReportRouter(store));
 
   // Start daily prediction accuracy checker (9 AM every day)
   if (backgroundJobs) startPredictionCron(store);

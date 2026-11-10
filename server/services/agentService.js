@@ -1,3 +1,4 @@
+import { getAiConfig } from "./aiConfigStore.js";
 import { z } from "zod";
 import { configuredProviders, generateJSON } from "./aiProvider.js";
 import { AgentSkipped, executeTrackedRun, keepAlive, expireStaleRuns } from "./agentRuntime.js";
@@ -39,7 +40,7 @@ const reportSchema=z.object({
 
 async function investorReport(store,run,progress) {
   const agent=investorAgents.find(a=>`investor-${a.id}`===run.agentKey);
-  if(!configuredProviders().length) throw new Error("An administrator must configure an AI provider before running research.");
+  if(!configuredProviders(await getAiConfig()).length) throw new Error("An administrator must configure an AI provider before running research.");
   await progress("Collecting current source material",20);
   const [snapshot,searches,prefs]=await Promise.all([
     marketDataService.getMarketSnapshot(),
@@ -131,7 +132,7 @@ const verificationWorkers=new WeakMap();
 export function processVerificationQueue(store) {
   if(verificationWorkers.has(store)) return verificationWorkers.get(store);
   const worker=(async()=>{
-    if(!configuredProviders().length || !config.tavilyApiKey) return;
+    if(!configuredProviders(await getAiConfig()).length || !config.tavilyApiKey) return;
     await expireStaleRuns(store);
     do {
       const [run]=await store.listAgentRuns({agentKey:"verification",status:"queued",limit:1,oldestFirst:true});

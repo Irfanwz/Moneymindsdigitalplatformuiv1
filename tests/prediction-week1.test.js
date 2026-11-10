@@ -177,9 +177,8 @@ describe("memoryStore — listSignalsDueForCheck", () => {
   });
 
   it("does NOT return signal that has already been checked", async () => {
-    await store.updateSignalPrediction(signalId, {
-      predictionCheckedAt: new Date().toISOString(),
-    });
+    // The earlier result-write fixture has already checked this signal.
+    expect((await store.findSignalById(signalId)).predictionCheckedAt).toBeTruthy();
     const due = await store.listSignalsDueForCheck();
     const found = due.find((d) => d.id === signalId);
     expect(found).toBeUndefined();

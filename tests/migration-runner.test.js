@@ -43,6 +43,10 @@ describe("Automatic migrations against an isolated Postgres engine", () => {
     expect((await database.query("SELECT to_regclass('public.users') AS obsolete")).rows[0].obsolete).toBeNull();
     const access = (await database.query("SELECT has_schema_privilege('anon','moneyminds_internal','USAGE') AS anon,has_table_privilege('authenticated','moneyminds_internal.schema_migrations','SELECT') AS authenticated,has_table_privilege('service_role','moneyminds_internal.schema_migrations','INSERT') AS api_write")).rows[0];
     expect(access).toEqual({ anon: false, authenticated: false, api_write: false });
+    const keyAccess=(await database.query("SELECT has_table_privilege('anon','public.ai_provider_config','SELECT') AS anon,has_table_privilege('authenticated','public.ai_provider_config','SELECT') AS authenticated,has_table_privilege('service_role','public.ai_provider_config','UPDATE') AS service_write")).rows[0];
+    expect(keyAccess).toEqual({anon:false,authenticated:false,service_write:true});
+    await database.query("INSERT INTO public.ai_provider_config(singleton,active_provider,gemini_key_enc,gemini_key_set,daily_token_limit) VALUES (true,'gemini','encrypted-fixture',true,0)");
+    expect((await database.query("SELECT active_provider,gemini_key_set,daily_token_limit FROM public.ai_provider_config")).rows[0]).toMatchObject({active_provider:"gemini",gemini_key_set:true,daily_token_limit:0});
   }, 60_000);
 
   it("rolls back DDL, data and history on failure, stops later files, and can retry", async () => {

@@ -24,12 +24,18 @@ export const config = {
   stripeSecretKey: process.env.STRIPE_SECRET_KEY ?? "",
   stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET ?? "",
   nodeEnv: process.env.NODE_ENV ?? "development",
+  // Only an explicit false disables HTTP request limits in development/test.
+  rateLimitsEnabled: process.env.RATE_LIMITS_ENABLED?.trim().toLowerCase() !== "false",
   // AI Services
   anthropicApiKey: process.env.ANTHROPIC_API_KEY ?? "",
   openaiApiKey: process.env.OPENAI_API_KEY ?? "",
   groqApiKey: process.env.GROQ_API_KEY ?? "",
+  geminiApiKey: process.env.GEMINI_API_KEY ?? "",
+  geminiModel: process.env.GEMINI_MODEL ?? "gemini-3.8-flash",
+  // Optional comma-separated pool; a non-empty list takes precedence over the single key.
+  groqApiKeys: (process.env.GROQ_API_KEYS ?? "").split(",").map(key => key.trim()).filter(Boolean),
   tavilyApiKey: process.env.TAVILY_API_KEY ?? "",
-  // AI_PROVIDER: "groq" (default if key set), "anthropic", or "auto" (tries groq first, falls back to anthropic)
+  // Auto tries configured providers in order: Groq, Gemini, Anthropic.
   aiProvider: process.env.AI_PROVIDER ?? "auto",
   groqModel: process.env.GROQ_MODEL ?? "openai/gpt-oss-20b",
   anthropicModel: process.env.ANTHROPIC_MODEL ?? "claude-haiku-4-5-20251001",
@@ -45,11 +51,20 @@ export const isSupabaseConfigured =
 
 export const isEmailConfigured = config.sendgridApiKey.length > 0;
 
+export function shouldSkipRateLimit() {
+  return ["development", "test"].includes(config.nodeEnv) && !config.rateLimitsEnabled;
+}
+
 export const isStripeConfigured =
   config.stripeSecretKey.length > 0 && config.stripeWebhookSecret.length > 0;
 
-export const isAIConfigured = config.anthropicApiKey.length > 0 || config.groqApiKey.length > 0;
-export const isGroqConfigured = config.groqApiKey.length > 0;
+export function getGroqApiKeys(settings = config) {
+  const keys = (settings.groqApiKeys ?? []).filter(key => typeof key === "string" && key.trim());
+  return [...new Set((keys.length ? keys : [settings.groqApiKey]).map(key => (key || "").trim()).filter(Boolean))];
+}
+
+export const isAIConfigured = config.anthropicApiKey.length > 0 || getGroqApiKeys().length > 0 || config.geminiApiKey.length > 0;
+export const isGroqConfigured = getGroqApiKeys().length > 0;
 export const isTavilyConfigured = config.tavilyApiKey.length > 0;
 export const isMarketDataConfigured = config.alphaVantageKey.length > 0 || config.finnhubApiKey.length > 0;
 

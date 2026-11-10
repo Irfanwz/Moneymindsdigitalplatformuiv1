@@ -167,9 +167,6 @@ export function InvestorDashboard() {
     name: s.companyName,
     industry: s.industry,
     stage: s.stage,
-    score: Math.floor(70 + Math.random() * 25),
-    verified: true,
-    aiVerified: true,
     description: s.tagline || s.description?.slice(0, 100) || "",
     funding: s.totalRaised || "N/A",
   }));
@@ -182,7 +179,7 @@ export function InvestorDashboard() {
           Investment Dashboard
         </h1>
         <p className="text-slate-600 dark:text-slate-300">
-          Discover verified startups and track your interests
+          Discover startups and track your interests
         </p>
       </div>
 
@@ -251,9 +248,6 @@ export function InvestorDashboard() {
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
                               <h3 className="font-semibold text-slate-900 dark:text-white">{startup.name}</h3>
-                              {startup.verified && (
-                                <CredibilityBadge type="verified" label="Verified" />
-                              )}
                             </div>
                             <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
                               {startup.description}
@@ -272,10 +266,7 @@ export function InvestorDashboard() {
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="text-sm text-slate-600 dark:text-slate-400 mb-1">Match</div>
-                          <div className="text-2xl font-bold bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">
-                            {startup.score}
-                          </div>
+                          <span className="text-xs text-slate-500">Match not assessed</span>
                         </div>
                       </div>
 

@@ -253,7 +253,7 @@ export function StartupEditProfile() {
                 <Building2 className="h-5 w-5 text-accent" />
                 <h2 className="text-xl font-semibold">Company Information</h2>
               </div>
-              <CredibilityBadge type="verified" label="Startup Profile" />
+              {profile?.isVerified && <CredibilityBadge type="verified" label="Verified" />}
             </div>
 
             <div className="space-y-6">

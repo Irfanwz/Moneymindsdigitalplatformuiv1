@@ -1,9 +1,10 @@
 import { Router } from "express";
 import { rateLimit } from "express-rate-limit";
 import { createAuthenticate, requirePermission } from "../middleware/auth.js";
-import { config } from "../config.js";
+import { config, getGroqApiKeys, shouldSkipRateLimit } from "../config.js";
 import { investorAgents, operationalAgents, queueAgent, performAgentWork, processVerificationQueue } from "../services/agentService.js";
 import { configuredProviders } from "../services/aiProvider.js";
+import { getAiConfig } from "../services/aiConfigStore.js";
 import { executeTrackedRun, expireStaleRuns, keepAlive } from "../services/agentRuntime.js";
 import { verificationOverview, queueVerificationBatch, requireVerificationSetup } from "../services/verificationBatch.js";
 import { adminCan } from "../../shared/adminPermissions.js";
@@ -13,8 +14,8 @@ export function createAgentsRouter(store) {
   router.use(createAuthenticate(store));
   const requireAdmin = requirePermission('agents');
   router.use((req,res,next)=>req.currentUser.isAdmin ? requireAdmin(req,res,next) : next());
-  const limiter=rateLimit({windowMs:60000,limit:12,keyGenerator:req=>req.auth.userId,standardHeaders:true,legacyHeaders:false});
-  const processingLimiter=rateLimit({windowMs:60000,limit:20,keyGenerator:req=>req.auth.userId,standardHeaders:true,legacyHeaders:false});
+  const limiter=rateLimit({windowMs:60000,limit:12,skip:shouldSkipRateLimit,keyGenerator:req=>req.auth.userId,standardHeaders:true,legacyHeaders:false});
+  const processingLimiter=rateLimit({windowMs:60000,limit:20,skip:shouldSkipRateLimit,keyGenerator:req=>req.auth.userId,standardHeaders:true,legacyHeaders:false});
   const approved=(req,res,next)=> req.currentUser.isAdmin || req.currentUser.status==="approved" ? next() : res.status(403).json({message:"An approved account is required."});
   router.get("/catalog",approved,async(req,res,next)=>{
     try {res.json({agents:investorAgents,follows:await store.listAgentFollows(req.auth.userId),operationalAgents});}catch(e){next(e);}
@@ -37,7 +38,8 @@ export function createAgentsRouter(store) {
   router.get("/readiness",requireAdmin,async(_req,res,next)=>{
     try {
       const schema=await store.checkAgentSchema();
-      res.json({storage:store.mode,schema,ready:schema.every(s=>s.ok),providers:configuredProviders(),searchConfigured:!!config.tavilyApiKey,stockPricesConfigured:!!config.alphaVantageKey || !!config.finnhubApiKey,documentImagesConfigured:!!config.anthropicApiKey || !!config.groqApiKey});
+      const settings=await getAiConfig();
+      res.json({storage:store.mode,schema,ready:schema.every(s=>s.ok),providers:configuredProviders(settings),groqKeyCount:getGroqApiKeys(settings).length,searchConfigured:!!config.tavilyApiKey,stockPricesConfigured:!!config.alphaVantageKey || !!config.finnhubApiKey,documentImagesConfigured:configuredProviders(settings).length>0});
     }catch(e){next(e);}
   });
   router.get("/verification-batch",requireAdmin,async(req,res,next)=>{

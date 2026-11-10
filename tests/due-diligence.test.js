@@ -22,6 +22,11 @@ import {
 } from "../server/services/aiProvider.js";
 import { readDocument } from "../server/services/documentReaderService.js";
 import { searchService } from "../server/services/searchService.js";
+import { readProvidedProfileLinks } from "../server/services/profileLinkService.js";
+
+vi.mock("../server/services/profileLinkService.js", async importOriginal => ({
+  ...await importOriginal(), readProvidedProfileLinks:vi.fn(),
+}));
 
 vi.mock("../server/services/aiProvider.js", () => ({
   configuredProviders: vi.fn(() => ["test"]),
@@ -206,6 +211,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   config.tavilyApiKey = "test-search-key";
   configuredProviders.mockReturnValue(["test"]);
+  readProvidedProfileLinks.mockResolvedValue({links:[],sources:[]});
   store = createMemoryStore();
   searchService.batchSearch.mockImplementation(async (queries) =>
     queries.map((query) => ({
@@ -372,6 +378,23 @@ describe("Due diligence covers every role and registration field", () => {
 });
 
 describe("Evidence limits and honest failures", () => {
+  it("returns supplied page excerpts and blocks substituting search snippets for an inaccessible profile",async()=>{
+    const {user}=await applicant(["advisor"]);
+    const url=profileFixtures().advisor.linkedin;
+    const link={id:"profile-link:1",providedUrl:url,url,fieldIds:["advisor.linkedin"],roles:["advisor"],origins:["Registration application"],accessStatus:"read",reason:"Public text read"};
+    const page={id:link.id,kind:"profile_link",url,title:"Supplied profile",text:"Example Person works as Advisor at Example Firm.",prefixes:["advisor.","personal."]};
+    readProvidedProfileLinks.mockResolvedValue({links:[link],sources:[page]});
+    modelReply(checks=>checks.map(check=>({...check,status:"supported",evidence:[{sourceId:page.id,quote:page.text}]})));
+    const read=await runDueDiligence(store,user.id);
+    expect(read.profileLinks[0]).toMatchObject({accessStatus:"read",comparisonStatus:"supported"});
+    expect(read.profileLinks[0].comparisons.some(c=>c.fieldId==="personal.fullName")).toBe(true);
+    expect(read.profileLinks[0].comparisons[0].quotes).toContain(page.text);
+    readProvidedProfileLinks.mockResolvedValue({links:[{...link,accessStatus:"login_required",reason:"Login required"}],sources:[]});
+    modelReply((checks,input)=>checks.map(check=>({...check,status:"supported",evidence:input.sources.length ? [{sourceId:input.sources[0].id,quote:input.sources[0].text}] : []})));
+    const blocked=await runDueDiligence(store,user.id);
+    expect(blocked.profileLinks[0]).toMatchObject({accessStatus:"login_required",comparisonStatus:"inconclusive",comparisons:[]});
+    expect(blocked.fieldChecks.find(f=>f.id==="advisor.linkedin").status).toBe("manual_review");
+  });
   it("accepts only retrieved citations with exact excerpts and fills omitted assessments", async () => {
     const { user } = await applicant(["investor"]);
     modelReply((checks, input) =>

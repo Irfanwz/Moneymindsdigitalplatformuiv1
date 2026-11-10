@@ -131,8 +131,7 @@ export function StartupDashboard() {
             {/* Due Diligence Status */}
             <Card className="p-6">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold">Due Diligence Status</h2>
-                {profileCompletion >= 80 && <CredibilityBadge type="ai-verified" />}
+                <h2 className="text-xl font-semibold">Profile Completeness</h2>
               </div>
 
               <div className="space-y-6">
@@ -153,12 +152,12 @@ export function StartupDashboard() {
                       <div>
                         <div className="text-sm font-medium">Company Information</div>
                         <div className="text-xs text-muted-foreground">
-                          {profile?.companyName ? "Verified" : "Incomplete"}
+                          {profile?.companyName ? "Provided" : "Incomplete"}
                         </div>
                       </div>
                     </div>
                     <CredibilityBadge
-                      type={profile?.companyName ? "verified" : "pending"}
+                      type="pending"
                       label={profile?.companyName ? "Complete" : "Pending"}
                     />
                   </div>
@@ -176,7 +175,7 @@ export function StartupDashboard() {
                       </div>
                     </div>
                     <CredibilityBadge
-                      type={profile?.pitch ? "verified" : "pending"}
+                      type="pending"
                       label={profile?.pitch ? "Complete" : "Pending"}
                     />
                   </div>
@@ -196,7 +195,7 @@ export function StartupDashboard() {
                       </div>
                     </div>
                     <CredibilityBadge
-                      type={(profile?.teamMembers?.length ?? 0) > 0 ? "verified" : "pending"}
+                      type="pending"
                       label={(profile?.teamMembers?.length ?? 0) > 0 ? "Complete" : "Pending"}
                     />
                   </div>

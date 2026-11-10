@@ -159,7 +159,6 @@ export function TrainingDetailPage({ userRole }: TrainingDetailPageProps) {
                 ) : (
                   <Badge variant="outline">Free</Badge>
                 )}
-                <CredibilityBadge type="verified" label="Verified" />
               </div>
 
               <h1 className="text-3xl font-semibold mb-3">{training.title}</h1>

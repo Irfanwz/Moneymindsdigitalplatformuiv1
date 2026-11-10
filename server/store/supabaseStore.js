@@ -3,6 +3,7 @@ import { createAgentStore } from "./agentStore.js";
 import { createAdminStore } from "./adminStore.js";
 import { createCheckoutStore } from './checkoutStore.js';
 import { createApplicationStore } from './applicationStore.js';
+import { setAiConfigClient } from "../services/aiConfigStore.js";
 
 const USERS_TABLE = "platform_users";
 const STARTUP_PROFILES_TABLE = "startup_profiles";
@@ -354,6 +355,8 @@ function mapSignalRow(row) {
     baselinePrice: row.baseline_price ?? null,
     baselineFetchedAt: row.baseline_fetched_at ?? null,
     actualPrice: row.actual_price ?? null,
+    predictionPriceEvidence: row.prediction_price_evidence ?? null,
+    predictionAssetType: row.prediction_asset_type ?? null,
     predictionAccuracy: row.prediction_accuracy ?? null,
     predictionResult: row.prediction_result ?? null,
     predictionCheckedAt: row.prediction_checked_at ?? null,
@@ -425,6 +428,10 @@ function toStoreError(error) {
     return null;
   }
 
+  if (error.code === "P0001" && error.message === "PREDICTION_HISTORY_LOCKED") {
+    return Object.assign(new Error("This prediction's recorded evidence must be preserved. Publish a new post for changes."), { code: error.message, status: 409 });
+  }
+
   if (error.code === "23505") {
     const duplicateError = new Error("An account with this email already exists.");
     duplicateError.code = "DUPLICATE_EMAIL";
@@ -441,6 +448,9 @@ export function createSupabaseStore({ supabaseUrl, supabaseServiceRoleKey }) {
       persistSession: false,
     },
   });
+
+  // Wire the Supabase client into the AI config store so it can persist settings
+  setAiConfigClient(client);
 
   return {
     mode: "supabase",
@@ -1202,8 +1212,10 @@ export function createSupabaseStore({ supabaseUrl, supabaseServiceRoleKey }) {
       return row ? mapSignalRow(row) : null;
     },
 
-    async updateSignalPrediction(signalId, data) {
+    async updateSignalPrediction(signalId, data, { expectedUpdatedAt, uncheckedOnly = false } = {}) {
       const payload = {};
+      if (data.predictionPriceEvidence !== undefined) payload.prediction_price_evidence = data.predictionPriceEvidence;
+      if (data.predictionAssetType !== undefined) payload.prediction_asset_type = data.predictionAssetType;
       if (data.predictionTicker !== undefined) payload.prediction_ticker = data.predictionTicker;
       if (data.predictionDirection !== undefined) payload.prediction_direction = data.predictionDirection;
       if (data.predictionTargetPrice !== undefined) payload.prediction_target_price = data.predictionTargetPrice;
@@ -1217,9 +1229,29 @@ export function createSupabaseStore({ supabaseUrl, supabaseServiceRoleKey }) {
       if (data.predictionResult !== undefined) payload.prediction_result = data.predictionResult;
       if (data.predictionCheckedAt !== undefined) payload.prediction_checked_at = data.predictionCheckedAt;
       if (data.predictionExplanation !== undefined) payload.prediction_explanation = data.predictionExplanation;
-      const { data: row, error } = await client.from(ADVISOR_SIGNALS_TABLE).update(payload).eq("id", signalId).select("*").maybeSingle();
+      let query = client.from(ADVISOR_SIGNALS_TABLE).update(payload).eq("id", signalId);
+      if (expectedUpdatedAt !== undefined) query = query.eq("updated_at", expectedUpdatedAt);
+      if (uncheckedOnly) query = query.is("prediction_checked_at", null);
+      const { data: row, error } = await query.select("*").maybeSingle();
       if (error) throw toStoreError(error);
       return row ? mapSignalRow(row) : null;
+    },
+
+    async listPredictionHistoryByAdvisor(advisorId) {
+      const signals = [];
+      // Stable cursor: deleting an ordinary post cannot shift a checked loss
+      // across an OFFSET boundary while this history is being read.
+      let cursor;
+      for (;;) {
+        let query = client.from(ADVISOR_SIGNALS_TABLE).select("*")
+          .eq("advisor_id", advisorId).order("id").limit(500);
+        if (cursor) query = query.gt("id", cursor);
+        const { data, error } = await query;
+        if (error) throw toStoreError(error);
+        if (!data?.length) return signals;
+        signals.push(...(data ?? []).map(mapSignalRow));
+        cursor = data.at(-1).id;
+      }
     },
 
     async listSignalsDueForCheck() {

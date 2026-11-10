@@ -220,7 +220,7 @@ export function validateFeeCap(credibilityScore, joiningFee, monthlyFee) {
  */
 export async function recalculateForAdvisor(advisorId, store) {
   // Get all checked signals for this advisor
-  const allSignals = await store.listSignalsByAdvisor(advisorId);
+  const allSignals = await store.listPredictionHistoryByAdvisor(advisorId);
   const checked = allSignals.filter(
     (s) => s.predictionResult && s.predictionCheckedAt
   );

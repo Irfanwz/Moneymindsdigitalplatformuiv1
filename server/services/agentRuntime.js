@@ -10,7 +10,7 @@ export async function executeTrackedRun(store, run, work) {
   const usage=createUsageTracker(async snapshot=>{
     const saved=await store.updateAgentRun(run.id,{usage:snapshot},"running");
     if(!saved) throw new Error("Run is no longer active.");
-  });
+  }, {store,agentKey:run.agentKey});
   const progress = (stage,value) => {
     events.push({stage,at:new Date().toISOString()});
     return store.updateAgentRun(run.id,{stage,progress:value,events:[...events]},"running");
@@ -27,6 +27,7 @@ export async function executeTrackedRun(store, run, work) {
 }
 
 export function safeAgentError(error) {
+  if (error?.code === "AI_TOKEN_LIMIT") return error.message;
   // Provider errors can include request headers or URLs. Never send those to users.
   if (error?.status===401 || error?.status===403) return "The AI provider rejected the configured credentials. An administrator needs to check the provider key.";
   if (error?.status===429) return "The AI provider rate limit was reached. Please retry shortly.";

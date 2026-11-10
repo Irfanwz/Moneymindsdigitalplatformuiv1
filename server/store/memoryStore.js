@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { hasPredictionEvidence, predictionConflict, assertPredictionUpdate } from "./predictionIntegrity.js";
 import { createAgentStore } from "./agentStore.js";
 import { createAdminStore } from "./adminStore.js";
 import { createCheckoutStore } from './checkoutStore.js';
@@ -443,6 +444,7 @@ export function createMemoryStore() {
     async deleteGroup(groupId) {
       const index = advisorGroups.findIndex((g) => g.id === groupId);
       if (index === -1) return false;
+      if (advisorSignals.some(s => s.groupId === groupId && hasPredictionEvidence(s))) throw predictionConflict();
       advisorGroups.splice(index, 1);
       // Clean up members and signals
       for (let i = advisorGroupMembers.length - 1; i >= 0; i--) {
@@ -555,6 +557,7 @@ export function createMemoryStore() {
       const index = advisorSignals.findIndex((s) => s.id === signalId);
       if (index === -1) return false;
       const signal = advisorSignals[index];
+      if (hasPredictionEvidence(signal)) throw predictionConflict();
       advisorSignals.splice(index, 1);
       const group = advisorGroups.find((g) => g.id === signal.groupId);
       if (group && group.signalCount > 0) group.signalCount--;
@@ -569,6 +572,7 @@ export function createMemoryStore() {
     async updateSignal(signalId, input) {
       const signal = advisorSignals.find((s) => s.id === signalId);
       if (!signal) return null;
+      if (hasPredictionEvidence(signal)) throw predictionConflict();
       if(input.resetAnalysis) Object.assign(signal,{"sentiment": null, "sentimentConfidence": null, "sentimentReasoning": null, "riskLevel": null, "riskReasoning": null, "actionability": null, "actionabilityReasoning": null, "analyzedAt": null, "predictionTicker": null, "predictionDirection": null, "predictionTargetPrice": null, "predictionTimeframe": null, "predictionTimeframeDays": null, "predictionCheckDate": null, "baselinePrice": null, "baselineFetchedAt": null, "actualPrice": null, "predictionAccuracy": null, "predictionResult": null, "predictionCheckedAt": null, "predictionExplanation": null, "entities": [], "sectors": [], "keyPoints": []});
       Object.assign(signal, {
         postType: input.postType ?? signal.postType,
@@ -580,7 +584,7 @@ export function createMemoryStore() {
         confidenceLevel: input.confidenceLevel ?? signal.confidenceLevel,
         tags: Array.isArray(input.tags) ? [...input.tags] : signal.tags,
         notifyMembers: input.notifyMembers ?? signal.notifyMembers,
-        updatedAt: now(),
+        updatedAt: new Date(Math.max(Date.now(), Date.parse(signal.updatedAt) + 1)).toISOString(),
       });
       return { ...signal, tags: [...signal.tags] };
     },
@@ -602,9 +606,14 @@ export function createMemoryStore() {
       return { ...signal };
     },
 
-    async updateSignalPrediction(signalId, data) {
+    async updateSignalPrediction(signalId, data, { expectedUpdatedAt, uncheckedOnly = false } = {}) {
       const signal = advisorSignals.find((s) => s.id === signalId);
       if (!signal) return null;
+      if (expectedUpdatedAt !== undefined && signal.updatedAt !== expectedUpdatedAt) return null;
+      if (uncheckedOnly && signal.predictionCheckedAt) return null;
+      assertPredictionUpdate(signal, data);
+      if (data.predictionPriceEvidence !== undefined) signal.predictionPriceEvidence = structuredClone(data.predictionPriceEvidence);
+      if (data.predictionAssetType !== undefined) signal.predictionAssetType = data.predictionAssetType;
       if (data.predictionTicker !== undefined) signal.predictionTicker = data.predictionTicker;
       if (data.predictionDirection !== undefined) signal.predictionDirection = data.predictionDirection;
       if (data.predictionTargetPrice !== undefined) signal.predictionTargetPrice = data.predictionTargetPrice;
@@ -631,6 +640,11 @@ export function createMemoryStore() {
             s.predictionCheckedAt === null
         )
         .map((s) => ({ ...s, tags: [...s.tags] }));
+    },
+
+    // Internal evidence read: never wrap this in display moderation.
+    async listPredictionHistoryByAdvisor(advisorId) {
+      return structuredClone(advisorSignals.filter(s => s.advisorId === advisorId));
     },
 
     // --- Signal Comments & Reactions ---

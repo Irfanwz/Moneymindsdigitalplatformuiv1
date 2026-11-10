@@ -32,12 +32,15 @@ export function VerificationStatusSection({ isVerified, verifiedAt }: Verificati
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!token) return;
+    if (!session?.user) { setLoading(false); return; }
+    let active = true;
+    setLoading(true);
     getMyVerifications(token)
-      .then((res) => setRecords(res.verifications))
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [token]);
+      .then((res) => { if (active) setRecords(res.verifications); })
+      .catch(() => { if (active) setRecords([]); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [token, session?.user?.id]);
 
   if (loading) return null;
 

@@ -146,46 +146,14 @@ describe("store: listProfileVerifications", () => {
 // Confidence Threshold Logic
 // ─────────────────────────────────────────────────────────────
 
-describe("confidence threshold logic", () => {
-  function outcomeFromConfidence(confidence) {
-    if (confidence >= 90) return "verified";
-    if (confidence >= 60) return "manual_review";
-    return "rejected";
-  }
-
-  it("confidence 90+ → verified (auto-approve)", () => {
-    expect(outcomeFromConfidence(90)).toBe("verified");
-    expect(outcomeFromConfidence(95)).toBe("verified");
-    expect(outcomeFromConfidence(100)).toBe("verified");
-  });
-
-  it("confidence 60-89 → manual_review", () => {
-    expect(outcomeFromConfidence(60)).toBe("manual_review");
-    expect(outcomeFromConfidence(75)).toBe("manual_review");
-    expect(outcomeFromConfidence(89)).toBe("manual_review");
-  });
-
-  it("confidence < 60 → rejected", () => {
-    expect(outcomeFromConfidence(59)).toBe("rejected");
-    expect(outcomeFromConfidence(30)).toBe("rejected");
-    expect(outcomeFromConfidence(0)).toBe("rejected");
-  });
-
-  it("boundary at exactly 90 → verified", () => {
-    expect(outcomeFromConfidence(90)).toBe("verified");
-  });
-
-  it("boundary at exactly 60 → manual_review (not rejected)", () => {
-    expect(outcomeFromConfidence(60)).toBe("manual_review");
-  });
-});
+// Credential decision behavior is exercised through runVerification in agent-runtime.test.js.
 
 // ─────────────────────────────────────────────────────────────
 // setProfileVerified
 // ─────────────────────────────────────────────────────────────
 
 describe("store: setProfileVerified", () => {
-  it("marks profiles as verified after auto-approval", async () => {
+  it("marks profiles as verified after administrator approval", async () => {
     // create advisor profile first
     await store.upsertAdvisorProfile(userId, {
       title: "Financial Advisor",

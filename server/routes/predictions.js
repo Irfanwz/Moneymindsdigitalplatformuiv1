@@ -66,11 +66,7 @@ export function createPredictionsRouter(store) {
       }
 
       // Get all signals by this advisor that have been checked
-      const allSignals = await store.listSignalsByAdvisor(advisorId).catch(() => null);
-
-      if (!allSignals) {
-        return res.json(buildEmptyStats(advisorId));
-      }
+      const allSignals = await store.listPredictionHistoryByAdvisor(advisorId);
 
       const checked = allSignals.filter((s) => s.predictionCheckedAt !== null && s.predictionResult !== null);
       const stats = buildAccuracyStats(advisorId, checked);

@@ -24,6 +24,7 @@ describe("Production agent repair SQL", () => {
       await db.exec(repair);
       await db.query("INSERT INTO agent_runs(user_id,agent_key,status) VALUES ($1,'legacy-fixture','completed')", [user.id]);
       await db.exec(usageMigration);
+      await db.exec(readFileSync(new URL("../supabase/migrations/20261107210009_protect_prediction_history.sql", import.meta.url), "utf8"));
       await db.exec(usageMigration);
       expect((await db.query("SELECT usage FROM agent_runs WHERE agent_key='legacy-fixture'")).rows[0].usage).toBeNull();
       const usage = {version:1,status:"complete",totalTokens:125,calls:[{provider:"groq",inputTokens:100,outputTokens:25}]};

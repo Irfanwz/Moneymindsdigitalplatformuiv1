@@ -8,6 +8,9 @@
     "20261104120000_email_login_otp.sql",
     "20261104130000_advisor_enhanced_profile.sql",
     "20261104130001_profile_registration.sql",
-    "20261104182053_agent_token_usage.sql"
+    "20261104182053_agent_token_usage.sql",
+    "20261107210009_protect_prediction_history.sql",
+    "20261110100000_ai_provider_config.sql",
+    "20261110182915_ai_settings_gemini.sql"
   ]
 }

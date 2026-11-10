@@ -1,9 +1,11 @@
+import { getAiConfig } from "./aiConfigStore.js";
 import { z } from "zod";
 import { config } from "../config.js";
 import { configuredProviders, generateJSON } from "./aiProvider.js";
 import { readDocument } from "./documentReaderService.js";
 import { searchService } from "./searchService.js";
 import { AgentSkipped } from "./agentRuntime.js";
+import { readProvidedProfileLinks, profileLinkComparisons } from "./profileLinkService.js";
 import {
   commonRegistrationFields,
   registrationRoles,
@@ -468,7 +470,7 @@ export async function runDueDiligence(
   userId,
   progress = async () => {},
 ) {
-  if (!configuredProviders().length)
+  if (!configuredProviders(await getAiConfig()).length)
     throw new Error(
       "Configure an AI provider before running profile due diligence.",
     );
@@ -484,13 +486,19 @@ export async function runDueDiligence(
       "This account has no registration snapshot. Available current profile data was reviewed; uncollected fields are shown as not provided.",
     );
   const evidence = await readEvidence(context, store, progress);
+  await progress("Opening the exact profile links supplied by the applicant",25);
+  const profilePages = await readProvidedProfileLinks(context,progress);
+  if (profilePages.links.some(link => link.accessStatus !== "read")) limitations.push(
+    "Some supplied profile links could not be read. Their access results are listed separately; search snippets do not count as visiting those pages.",
+  );
   if (evidence.documents.some((d) => d.truncated))
     limitations.push(
       "Document text is limited to the first 20,000 extracted characters per file. Review the complete originals before deciding.",
     );
   const queries = buildDueDiligenceQueries(context);
-  let sources = [...evidence.sources],
+  let sources = [...evidence.sources, ...profilePages.sources],
     searchCount = 0;
+  const searchUrls = new Set();
   if (config.tavilyApiKey) {
     for (let i = 0; i < queries.length; i += 5) {
       const batch = queries.slice(i, i + 5);
@@ -498,6 +506,7 @@ export async function runDueDiligence(
       for (const item of found) {
         const url = safeUrl(item.url);
         if (!url || !item.content?.trim()) continue;
+        if (!searchUrls.has(url)) { searchUrls.add(url); searchCount++; }
         const prefix =
           batch.find((q) => q.query === item.query)?.prefix || "personal.";
         const existing = sources.find((s) => s.url === url);
@@ -507,7 +516,7 @@ export async function runDueDiligence(
           continue;
         }
         sources.push({
-          id: `web:${++searchCount}`,
+          id: `web:${searchCount}`,
           kind: "web",
           title: String(item.title || url).slice(0, 500),
           url,
@@ -536,6 +545,7 @@ export async function runDueDiligence(
     evidence: refs,
   });
   for (const field of context.fields) {
+    const suppliedLink = profilePages.links.find(link => link.fieldIds.includes(field.id));
     if (blank(field.value))
       checks.set(
         field.id,
@@ -547,6 +557,8 @@ export async function runDueDiligence(
             : "Optional information was not supplied; this is not an adverse finding.",
         ),
       );
+    else if (suppliedLink && suppliedLink.accessStatus !== "read")
+      checks.set(field.id,base(field,"manual_review",suppliedLink.reason));
     else if (field.policy === "manual")
       checks.set(
         field.id,
@@ -636,13 +648,14 @@ export async function runDueDiligence(
             ),
           );
           const { data, provider } = await generateJSON(
-            systemPrompt,
+            `${systemPrompt} Sources of kind profile_link contain text retrieved from an exact URL supplied by the applicant. Compare those pages with the associated claims and cite their excerpts. Access results are authoritative: never claim an inaccessible page was visited. A web-search snippet or another person's profile cannot verify a supplied URL. Public profile text does not prove account ownership.`,
             JSON.stringify({
               applicant: context.fullName,
               roles: context.roles,
               reviewedAt: new Date().toISOString(),
               fields: fields.map(({ policy, ...f }) => f),
               relatedOriginalOrCurrentFields: counterparts,
+              suppliedProfileLinks: profilePages.links.map(({comparisons,...link}) => link),
               sources: supplied,
               limitations,
             }),
@@ -679,6 +692,11 @@ export async function runDueDiligence(
             );
             let status = match.status,
               reasoning = match.reasoning;
+            const suppliedLink = profilePages.links.find(link => link.fieldIds.includes(field.id));
+            if (suppliedLink && ["supported","inconsistent"].includes(status) && !refs.some(ref => ref.sourceId === suppliedLink.id)) {
+              status = "insufficient_evidence";
+              reasoning = "This supplied profile URL was not assessed using an excerpt from that exact page. Search results or another profile are not a substitute.";
+            }
             if (
               ["supported", "inconsistent"].includes(status) &&
               !refs.length
@@ -727,6 +745,7 @@ export async function runDueDiligence(
     version: 1,
     roles: context.roles,
     fieldChecks,
+    profileLinks: profileLinkComparisons(profilePages.links,fieldChecks),
     counts,
     summary: `Reviewed ${context.roles.map((role) => registrationRoles.find((r) => r.id === role).label).join(", ")}: ${fieldChecks.length} field and document checks. ${counts.supported} supported by supplied evidence; ${counts.inconsistent} inconsistencies; ${counts.insufficient_evidence + counts.manual_review} need further evidence or manual review.`,
     limitations,

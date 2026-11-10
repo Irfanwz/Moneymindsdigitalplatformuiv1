@@ -154,6 +154,23 @@ Runs persist real execution steps and timestamps. The UI polls every three secon
 
 Historical signals with no original baseline are analyzed without inventing an accuracy score. Credibility requires at least five checked predictions for an advisor, so four unanalyzed signals cannot produce a genuine credibility score. Signals with recorded prediction schedules/results cannot be rewritten; publish a new signal instead. Research requires available sources, and provider failures produce an error rather than a fabricated report. A provider rate limit gets one bounded retry; avoid starting every research agent simultaneously on a limited provider plan.
 
+### Multiple Groq keys
+
+Set a comma-separated list in the server environment, then restart the backend:
+
+```env
+AI_PROVIDER=groq
+GROQ_API_KEYS=your_first_key,your_second_key,your_third_key
+```
+
+The non-empty list takes precedence over `GROQ_API_KEY`; the original single-key setting still works when the list is empty. Duplicate keys and surrounding whitespace are removed. Repeating `GROQ_API_KEY=` on several lines does not create a pool.
+
+Concurrent text, image-reading and prediction-explanation requests share a pool. Each request uses the least-busy key; ties rotate evenly. Three concurrent requests can therefore use all three keys, without generating three copies of the same answer. Invalid keys (HTTP 401) are skipped until the server restarts or the key list changes. Request attempts remain included in existing token accounting without storing keys. The admin readiness endpoint reports `groqKeyCount`.
+
+Use `AI_PROVIDER=auto` with `ANTHROPIC_API_KEY` to retain cross-provider fallback, including document images. Groq rate-limit responses pause new Groq requests for the provider's `Retry-After` duration; the JSON workflow retains its bounded retry. [Groq rate limits are shared at organization level](https://console.groq.com/docs/rate-limits), so three keys from the same organization do not triple its quota. Routing and cooldown state are per Node process, not a distributed global limit.
+
+Keys distribute requests that are already concurrent; they do not change the background-verification queue's sequential scheduling. Local `.env` settings must also be configured on the production server when deploying.
+
 ## Validation and demo walkthrough
 
 Run `npm ci`, `npm test`, and `npm run build` before deploying. Tests cover SQL repair idempotence/data preservation, cookie authentication, run ownership, duplicate dispatch, failures, actual PDF extraction, signal processing, provider fallback/retry, and prediction-to-credibility persistence. Tests use isolated data and do not load local provider keys.
@@ -193,3 +210,41 @@ Counts follow [Groq's usage response](https://console.groq.com/docs/api-referenc
 Deploy server and frontend together after applying `supabase/migrations/20261104182053_agent_token_usage.sql`, included in the automatic migration manifest. The nullable JSON column preserves historical runs and existing access controls. New measured non-AI runs record zero; old runs retain null. Usage persistence failures stop further requests in that run instead of spending additional tokens without recording them.
 
 Validation includes provider normalization, cache/reasoning accounting, malformed responses, retries/fallback, image reading, concurrency, interrupted runs, storage failures, ownership checks and PostgreSQL migration/JSON round trips. The isolated browser check uses synthetic usage values supplied through mocked provider HTTP responses and checks displayed totals, request purposes, mobile layout, legacy states and failed-run visibility. Live provider billing was not exercised.
+
+### AI settings, automatic switching, and token limits
+
+Super admins can open **Admin > AI Config** (`/admin/ai-config`). The page shows every configured Groq key as a separate masked entry and lists Gemini and Anthropic separately. It never returns saved keys in full. A configured key is not proof that credentials or a model work; use Agent Activity to inspect actual runs.
+
+Apply the checked-in migrations (`npm run db:migrate`) before using database settings, then restart the backend. Environment-only installations can view keys but cannot persist edits from the page. The new migration adds Gemini settings while retaining encryption and service-role-only database access.
+
+```env
+AI_PROVIDER=auto
+GROQ_API_KEYS=first_groq_key,second_groq_key,third_groq_key
+GEMINI_API_KEY=your_gemini_key
+GEMINI_MODEL=gemini-3.8-flash
+```
+
+Do not repeat `GROQ_API_KEY=`: dotenv retains only one value for a repeated name. Saved keys override environment keys for that provider. Removing a saved override restores its environment configuration. Groq replacement replaces the whole pool; enter all keys you want to keep in the new pool.
+
+Auto tries Groq, then Gemini, then Anthropic when configured. Selecting one provider disables cross-provider fallback; Groq's key pool still distributes concurrent calls. JSON assessments, image reading, and prediction explanations use the same saved configuration. Settings refresh immediately in the saving process and within 60 seconds in other processes. In-flight calls may finish using their previous settings. OpenAI settings from older versions remain stored but are not routed by these agents.
+
+Gemini uses the native [generateContent API](https://ai.google.dev/api/generate-content). Its reported thinking tokens are included in output totals; blocked or truncated replies are not accepted as completed assessments. Keep the chosen model available in your provider account. Use a stable `AI_CONFIG_ENCRYPTION_KEY` (64 hex characters or a passphrase of at least 32 characters); otherwise the encryption key derives from `JWT_SECRET`. Changing that encryption secret makes previously saved credentials unreadable.
+
+Daily, monthly, and per-agent limits can be raised or lowered in AI Config:
+- **No limit** saves a null global threshold or removes the agent's override.
+- **0** stops new AI requests for that threshold.
+- Global thresholds count recorded input and output tokens from all tracked runs, including failed and running work. Day and month boundaries use UTC and request start timestamps.
+- Per-agent thresholds count tokens within one tracked run, including retries and provider fallback. They do not affect token-free calculations.
+- Checks run before each provider call. These are usage thresholds, not exact billing caps: requests already in flight, or responses with unreported token counts, may exceed the configured value.
+- With thresholds enabled, untracked AI calls are blocked; launch the action through Agent Activity. A limit or usage-storage error does not trigger another provider to bypass the check.
+- No limit does not remove the provider's own quotas.
+
+**Admin > AI Operations** (`/admin/agents`) includes an agent results table based on the latest 100 runs. It distinguishes completed workflows, failures, skipped work, and no recent evidence, and lets an admin show the corresponding run cards. Review the saved report, source links, extracted document fields, checked prices, and recorded provider responses. Credibility uses deterministic calculations and needs five eligible checked predictions. AI content moderation is not implemented; content controls are manual.
+
+Validate UI behavior with `node scripts/check-ai-settings-browser.mjs` in an isolated source copy after building. It uses synthetic credentials and storage without provider calls.
+
+### Temporarily disable request limits for local testing
+
+Set `RATE_LIMITS_ENABLED=false` in your local `.env` and restart the API. This bypasses the application's login, email OTP request, and agent-trigger request limits only when `NODE_ENV` is `development` or `test`. Production and other environments always enforce them. Set it back to `true` (or remove it) and restart to restore normal limits.
+
+Authentication, OTP verification, AI token budgets, and upstream provider quotas remain separate controls. If the API uses memory storage, restarting discards its temporary records.

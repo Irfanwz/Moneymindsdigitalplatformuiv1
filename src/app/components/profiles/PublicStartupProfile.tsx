@@ -95,7 +95,7 @@ export function PublicStartupProfile() {
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     <h1 className="text-2xl font-semibold">{profile.companyName}</h1>
-                    <CredibilityBadge type="verified" label="Verified" />
+                    {profile.isVerified && <CredibilityBadge type="verified" label="Verified" />}
                   </div>
                   {profile.tagline && (
                     <p className="text-muted-foreground mb-2">{profile.tagline}</p>
