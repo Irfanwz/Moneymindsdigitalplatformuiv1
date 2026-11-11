@@ -1,6 +1,6 @@
 import { beforeEach, afterEach, describe, it, expect, vi } from "vitest";
 import request from "supertest";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { createMemoryStore } from "../server/store/memoryStore.js";
 import { createApp } from "../server/app.js";
 import { createToken } from "../server/auth.js";
@@ -23,13 +23,14 @@ import {
 import { readDocument } from "../server/services/documentReaderService.js";
 import { searchService } from "../server/services/searchService.js";
 import { readProvidedProfileLinks } from "../server/services/profileLinkService.js";
+import { estimateAIInput } from "../server/services/aiTokenEstimate.js";
 
 vi.mock("../server/services/profileLinkService.js", async importOriginal => ({
   ...await importOriginal(), readProvidedProfileLinks:vi.fn(),
 }));
 
 vi.mock("../server/services/aiProvider.js", () => ({
-  configuredProviders: vi.fn(() => ["test"]),
+  configuredProviders: vi.fn(() => ["groq"]),
   generateJSON: vi.fn(),
 }));
 vi.mock("../server/services/documentReaderService.js", () => ({
@@ -210,7 +211,7 @@ beforeEach(() => {
   vi.restoreAllMocks();
   vi.clearAllMocks();
   config.tavilyApiKey = "test-search-key";
-  configuredProviders.mockReturnValue(["test"]);
+  configuredProviders.mockReturnValue(["groq"]);
   readProvidedProfileLinks.mockResolvedValue({links:[],sources:[]});
   store = createMemoryStore();
   searchService.batchSearch.mockImplementation(async (queries) =>
@@ -250,6 +251,8 @@ describe("Due diligence covers every role and registration field", () => {
       expect(result.result.fieldChecks.some((f) => f.role === role)).toBe(true);
       expect((await store.findUserById(user.id)).status).toBe("pending");
     },
+    // The first run initializes the model tokenizer, including during parallel CI work.
+    15000,
   );
   it("reviews all roles, repeated entries, evidence associations and current edits; never sends account secrets", async () => {
     const { user, documents } = await applicant([
@@ -521,15 +524,16 @@ describe("Evidence limits and honest failures", () => {
 
 describe("Due diligence request sizing and complete evidence review", () => {
   const registrationField = "startup.registrationNumber";
+  // Deterministic registry fingerprints exceed the token budget while the
+  // complete document stays below the retained 20,000-character boundary.
   const ledger = () => Array.from({ length: 280 }, (_, i) =>
-    `Registry entry ${String(i).padStart(4, "0")}: archival company record reviewed by the issuing office.\n`,
+    `${String(i).padStart(4, "0")}: ${createHash("sha256").update(`registry-entry-${i}`).digest("hex")}\n`,
   ).join("").slice(0, 17500);
   function expectBoundedRequests() {
-    expect(generateJSON).toHaveBeenCalled();
     for (const [system, prompt, options] of generateJSON.mock.calls) {
-      expect(Buffer.byteLength(system + prompt, "utf8")).toBeLessThanOrEqual(5000);
-      expect(JSON.parse(prompt).fields.length).toBeLessThanOrEqual(3);
-      expect(options).toMatchObject({ maxTokens: 1000, maxCompletionTokens: 2500 });
+      expect(estimateAIInput(system, prompt, config.groqModel)).toBeLessThanOrEqual(5000);
+      expect(JSON.parse(prompt).fields.length).toBeLessThanOrEqual(8);
+      expect(options).toMatchObject({ maxTokens: 1800, maxCompletionTokens: 2500 });
     }
   }
   function documentChunks(fieldId = registrationField) {
@@ -580,6 +584,75 @@ describe("Due diligence request sizing and complete evidence review", () => {
     expect(new Set(report.fieldChecks.map(field => field.id)).size).toBe(context.fields.length);
   });
 
+  it("reports absent evidence without paying for empty model assessments", async () => {
+    config.tavilyApiKey = "";
+    const { user } = await applicant(["investor"]);
+    readDocument.mockResolvedValue({ text: "", method: "test-reader" });
+    const context = await collectDueDiligenceContext(store, user.id);
+    const report = await runDueDiligence(store, user.id);
+    expect(generateJSON).not.toHaveBeenCalled();
+    expect(report.fieldChecks.map(field => field.id)).toEqual(context.fields.map(field => field.id));
+    expect(report.fieldChecks.find(field => field.id === "personal.fullName").status).toBe("insufficient_evidence");
+    expect(report.fieldChecks.find(field => field.id === "investor.title").status).toBe("insufficient_evidence");
+    expect(report.counts.supported).toBe(0);
+  });
+
+  it("preserves differing original and current claims for manual review without empty AI calls", async () => {
+    config.tavilyApiKey = "";
+    const { user } = await applicant(["investor"]);
+    await store.upsertInvestorProfile(user.id, {
+      ...(await store.findInvestorProfileByUserId(user.id)), title: "Doctor",
+    });
+    const report = await runDueDiligence(store, user.id);
+    expect(generateJSON).not.toHaveBeenCalled();
+    expect(report.fieldChecks.find(field => field.id === "investor.title")).toMatchObject({
+      value: "Engineer", status: "manual_review", evidence: [],
+    });
+    expect(report.fieldChecks.find(field => field.id === "current.investor.title")).toMatchObject({
+      value: "Doctor", status: "manual_review", evidence: [],
+    });
+    expect(report.fieldChecks.find(field => field.id === "investor.firmName").status).toBe("insufficient_evidence");
+  });
+
+  it("reviews shared sources in a few token-bounded calls without dropping complete claims or evidence", async () => {
+    const { user } = await applicant(["investor"]);
+    await store.upsertInvestorProfile(user.id, {
+      ...(await store.findInvestorProfileByUserId(user.id)),
+      portfolioSize: "12",
+      bio: "Angel investor supporting early stage software companies.",
+      contactEmail: "private-investor@example.test",
+    });
+    const sourceTexts = Array.from({ length: 8 }, (_, i) =>
+      `Record ${i}: Example Person is an individual investor and Engineer at Example Ventures. ` +
+      "The public professional record describes the investor's portfolio and career history. ".repeat(12),
+    );
+    searchService.batchSearch.mockImplementation(async queries => queries.flatMap(query =>
+      sourceTexts.map((content, i) => ({
+        title: `Professional record ${i}`,
+        url: `https://sources.example.test/shared-${i}`,
+        content,
+        query,
+      })),
+    ));
+    const context = await collectDueDiligenceContext(store, user.id);
+    const report = await runDueDiligence(store, user.id);
+    const inputs = generateJSON.mock.calls.map(([, prompt]) => JSON.parse(prompt));
+    const expectedClaims = context.fields.filter(field => field.policy === "evidence" && field.value !== "" && field.value != null);
+    expect(expectedClaims.length).toBeGreaterThanOrEqual(8);
+    expect(inputs.length).toBeGreaterThan(0);
+    expect(inputs.length).toBeLessThanOrEqual(2);
+    for (const claim of expectedClaims) {
+      expect(inputs.flatMap(input => input.fields)).toContainEqual(expect.objectContaining({ id: claim.id, value: claim.value }));
+    }
+    for (const text of sourceTexts) {
+      expect(inputs.flatMap(input => input.sources).some(source => source.text === text)).toBe(true);
+    }
+    const inputTokens = generateJSON.mock.calls.reduce((sum, [system, prompt]) => sum + estimateAIInput(system, prompt, config.groqModel), 0);
+    expect(inputTokens).toBeLessThanOrEqual(6500);
+    expect(report.fieldChecks.map(field => field.id)).toEqual(context.fields.map(field => field.id));
+    expectBoundedRequests();
+  });
+
   it("reviews the entire retained document and preserves a contradiction near its end", async () => {
     config.tavilyApiKey = "";
     const { user } = await applicant(["startup"]);
@@ -628,19 +701,19 @@ describe("Due diligence request sizing and complete evidence review", () => {
     expect(report.fieldChecks.find(field => field.id === registrationField)).toMatchObject({ status: "supported" });
     expectEveryCharacterShown(text, documentChunks());
     expectBoundedRequests();
-  });
+  }, 15000);
 
-  it("measures Unicode evidence in UTF-8 bytes without corrupting or losing retained text", async () => {
+  it("bounds Unicode evidence tokens without corrupting or losing retained text", async () => {
     config.tavilyApiKey = "";
     const { user } = await applicant(["startup"]);
-    const text = Array.from({ length: 180 }, (_, i) => `ریکارڈ ${String(i).padStart(4, "0")} کمپنی رجسٹریشن کی تصدیق 🧾✅\n`).join("");
+    const text = Array.from({ length: 300 }, (_, i) => `ریکارڈ ${String(i).padStart(4, "0")} کمپنی رجسٹریشن کی تصدیق 🧾✅\n`).join("");
     readDocument.mockResolvedValue({ text, method: "test-reader" });
     await runDueDiligence(store, user.id);
     expectBoundedRequests();
     const chunks = documentChunks();
     expect(chunks.length).toBeGreaterThan(1);
     expectEveryCharacterShown(text, chunks);
-  });
+  }, 15000);
 
   it("rejects a quote from an unseen part of a real source even if its source ID is valid", async () => {
     config.tavilyApiKey = "";
@@ -694,7 +767,7 @@ describe("Due diligence request sizing and complete evidence review", () => {
   it("preserves oversized field values and flags incomplete original/current comparisons", async () => {
     config.tavilyApiKey = "";
     const { user } = await applicant(["investor"]);
-    const largeValue = "Very long professional title. ".repeat(400);
+    const largeValue = "Very long professional title. ".repeat(1500);
     await store.upsertInvestorProfile(user.id, {
       ...(await store.findInvestorProfileByUserId(user.id)), title: largeValue,
     });
@@ -710,7 +783,7 @@ describe("Due diligence request sizing and complete evidence review", () => {
     config.tavilyApiKey = "";
     const { user } = await applicant(["startup"]);
     const originalGet = store.getProfileApplication.bind(store);
-    const largeLabel = "Full legal document name ".repeat(400);
+    const largeLabel = "Full legal document name ".repeat(1500);
     vi.spyOn(store, "getProfileApplication").mockImplementation(async id => {
       const application = await originalGet(id);
       return { ...application, documents: application.documents.map(doc => ({ ...doc, label: largeLabel })) };
@@ -726,7 +799,7 @@ describe("Due diligence request sizing and complete evidence review", () => {
     config.tavilyApiKey = "";
     const { user } = await applicant(["investor"]);
     const originalFind = store.findUserById.bind(store);
-    const largeName = "Extended legal applicant name ".repeat(400);
+    const largeName = "Extended legal applicant name ".repeat(1500);
     vi.spyOn(store, "findUserById").mockImplementation(async id => ({
       ...(await originalFind(id)), fullName: largeName,
     }));

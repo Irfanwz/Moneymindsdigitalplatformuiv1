@@ -1,23 +1,23 @@
-// Bound the entire serialized input, including instructions and metadata.
-// UTF-8 bytes are a conservative text-token allowance for Groq's byte-based
-// tokenizer. 5,000 input bytes + 2,500 completion tokens leave room for chat
-// framing under an 8,000-token request allowance; this is not a user quota.
-export const DUE_DILIGENCE_INPUT_BYTES = 5000;
-export const DUE_DILIGENCE_COMPLETION_TOKENS = 2500;
-export const DUE_DILIGENCE_FIELDS_PER_REQUEST = 3;
+import { countTextTokens, CHAT_TOKEN_RESERVE } from "./aiTokenEstimate.js";
 
-const inputSize = (system, prompt) => Buffer.byteLength(system, "utf8") + Buffer.byteLength(prompt, "utf8");
+// Bound the complete serialized input, including instructions, metadata and
+// chat framing. GPT-OSS uses its text tokenizer; unknown models use UTF-8 bytes
+// conservatively. Input + completion allowance stays below 8,000 tokens.
+export const DUE_DILIGENCE_INPUT_TOKENS = 5000;
+export const DUE_DILIGENCE_COMPLETION_TOKENS = 2500;
+export const DUE_DILIGENCE_FIELDS_PER_REQUEST = 8;
 
 /**
  * Pack all available evidence into bounded requests. Large sources overlap,
  * retain their original IDs, and contain exact substrings for quote checking.
  * null means the indivisible claim/context/metadata needs manual review.
  */
-export function planEvidenceRequests(system, sources, makeInput) {
+export function planEvidenceRequests(system, sources, makeInput, { model } = {}) {
   const requests = [];
   let packed = [];
+  const fixedTokens = countTextTokens(system, model) + CHAT_TOKEN_RESERVE;
   const promptFor = (items) => JSON.stringify(makeInput(items));
-  const fits = (items) => inputSize(system, promptFor(items)) <= DUE_DILIGENCE_INPUT_BYTES;
+  const fits = (items) => fixedTokens + countTextTokens(promptFor(items), model) <= DUE_DILIGENCE_INPUT_TOKENS;
   const flush = () => {
     requests.push({ sources: packed, prompt: promptFor(packed) });
     packed = [];
@@ -48,6 +48,12 @@ export function planEvidenceRequests(system, sources, makeInput) {
       let end = low;
       // Do not split a Unicode surrogate pair.
       if (end < text.length && /[\uD800-\uDBFF]/.test(text[end - 1] || "")) end--;
+      // Removing a character can change BPE merges. Recheck the exact excerpt
+      // after the Unicode adjustment rather than assuming token monotonicity.
+      while (end > start && !fits([excerpt(end)])) {
+        end--;
+        if (/[\uD800-\uDBFF]/.test(text[end - 1] || "")) end--;
+      }
       if (end <= start || (end < text.length && end - start < 256)) return null;
       packed = [excerpt(end)];
       if (end === text.length) break;

@@ -5,6 +5,7 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import puppeteer from "puppeteer";
 import PDFDocument from "pdfkit";
+import { estimateAIInput } from "../server/services/aiTokenEstimate.js";
 process.env.NODE_ENV = "test";
 process.env.EMAIL_OTP_ENABLED = "false";
 for (const key of Object.keys(process.env))
@@ -15,6 +16,7 @@ const [
   { createToken },
   { config },
   { registrationSchema, buildRegistrationProfiles },
+  { readDocument },
   express,
 ] = await Promise.all([
   import("../server/app.js"),
@@ -22,13 +24,16 @@ const [
   import("../server/auth.js"),
   import("../server/config.js"),
   import("../server/registration.js"),
+  import("../server/services/documentReaderService.js"),
   import("express"),
 ]);
 config.groqApiKey = "isolated-fixture";
+config.groqModel = "openai/gpt-oss-20b";
 config.anthropicApiKey = "";
 config.aiProvider = "groq";
 config.tavilyApiKey = "isolated-fixture";
-let modelRequests = 0, excerptRequests = 0;
+let modelRequests = 0, excerptRequests = 0, maxEstimatedInputTokens = 0;
+const deliveredDocuments = [];
 globalThis.fetch = async (input, init) => {
   const url = typeof input === "string" ? input : input.url;
   const body = JSON.parse(init?.body || (await input.text()));
@@ -45,12 +50,14 @@ globalThis.fetch = async (input, init) => {
     });
   if (url === "https://api.groq.com/openai/v1/chat/completions") {
     modelRequests++;
-    const inputBytes = body.messages.reduce((sum, message) => sum + Buffer.byteLength(message.content, "utf8"), 0);
-    assert.ok(inputBytes <= 5000, "Complete provider input stays within the byte budget");
+    const inputTokens = estimateAIInput(body.messages[0].content, body.messages[1].content, body.model);
+    maxEstimatedInputTokens = Math.max(maxEstimatedInputTokens, inputTokens);
+    assert.ok(inputTokens <= 5000, "Complete provider input, including chat reserve, stays within the token budget");
     assert.equal(body.max_completion_tokens, 2500, "Groq receives the explicit completion cap");
-    assert.ok(inputBytes + body.max_completion_tokens < 8000, "Input and completion allowance leave room for chat framing");
+    assert.ok(inputTokens + body.max_completion_tokens < 8000, "Estimated input and completion allowance stay below 8,000 tokens");
     const prompt = JSON.parse(body.messages[1].content);
     if (prompt.sources.some(source => source.excerptStart !== undefined)) excerptRequests++;
+    deliveredDocuments.push(...prompt.sources.filter(source => source.kind === "document"));
     const checks = prompt.fields.map((f) => ({
       fieldId: f.id,
       status: "insufficient_evidence",
@@ -248,7 +255,21 @@ try {
   assert.equal(report.result.documents[0].status, "read");
   assert.equal((await store.findUserById(pending.id)).status, "pending");
   assert.ok(modelRequests > 0);
-  assert.ok(excerptRequests > 0, "A real parsed long PDF uses bounded evidence excerpts");
+  const parsedPdf = (await readDocument(await pdfBuffer, "application/pdf")).text.slice(0, 20000);
+  const pdfSources = deliveredDocuments.filter(source => source.id === report.result.documents[0].id);
+  assert.ok(pdfSources.length > 0, "The real parsed PDF reaches the provider");
+  const intervals = pdfSources.map(source => {
+    const start = source.excerptStart ?? 0;
+    const end = source.excerptEnd ?? parsedPdf.length;
+    assert.equal(source.text, parsedPdf.slice(start, end), "PDF excerpts preserve exact original text");
+    return { start, end };
+  }).sort((a, b) => a.start - b.start);
+  let coveredUntil = 0;
+  for (const interval of intervals) {
+    assert.ok(interval.start <= coveredUntil, "PDF evidence coverage contains no gaps");
+    coveredUntil = Math.max(coveredUntil, interval.end);
+  }
+  assert.equal(coveredUntil, parsedPdf.length, "Every retained PDF character reaches a bounded provider request");
   assert.equal(report.usage.status, "complete");
   assert.equal(report.usage.totalTokens, report.usage.requestCount * 120);
   assert.equal(report.usage.inputTokens, report.usage.requestCount * 100);
@@ -268,7 +289,7 @@ try {
   checked.push(
     "Token totals match all provider responses and each field batch has a visible purpose/model breakdown",
   );
-  checked.push("Long PDF evidence is split into bounded requests with the actual Groq completion cap checked at HTTP dispatch");
+  checked.push("All parsed PDF evidence reaches bounded requests, with model token estimates and the Groq completion cap checked at HTTP dispatch");
   await page.select(
     'select[aria-label="Filter due diligence checks"]',
     "manual_review",
@@ -359,7 +380,7 @@ try {
   assert.deepEqual(errors, []);
   console.log(
     JSON.stringify(
-      { ok: true, checked, mockedModelRequests: modelRequests, output },
+      { ok: true, checked, mockedModelRequests: modelRequests, excerptRequests, maxEstimatedInputTokens, output },
       null,
       2,
     ),
