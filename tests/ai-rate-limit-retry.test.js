@@ -14,6 +14,35 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers());
 
 describe("bounded AI rate-limit recovery", () => {
+  it.each([23, { reason: "provider quota" }, []].map(code => [code]))("keeps 429 recovery bounded when code is non-string %j", async (code) => {
+    const onRetry = vi.fn();
+    const retry = createRateLimitRetry({ maxRetries: 1, maxWaitMs: 5000, onRetry });
+    // Attach the rejection handler immediately so a regression is a normal
+    // assertion failure rather than an unhandled rejection while time advances.
+    const pending = retry(limited(2, { code })).then(value => ({ value }), error => ({ error }));
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(await pending).toEqual({ value: true });
+    expect(onRetry).toHaveBeenCalledExactlyOnceWith(2);
+    await expect(retry(limited(2, { code }))).resolves.toBe(false);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("declines native numeric-code timeouts without starting a quota wait", async () => {
+    const error = new DOMException("Timed out", "TimeoutError");
+    expect(error.code).toBe(23);
+    const onRetry = vi.fn();
+    await expect(createRateLimitRetry({ onRetry })(error)).resolves.toBe(false);
+    expect(onRetry).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it.each(["AI_TOKEN_LIMIT", "AI_USAGE_SAVE_FAILED"])("never retries fail-closed %s errors even with HTTP429", async (code) => {
+    const onRetry = vi.fn();
+    await expect(createRateLimitRetry({ onRetry })(limited(2, { code }))).resolves.toBe(false);
+    expect(onRetry).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
   it("keeps the default to one retry and honors the complete provider delay", async () => {
     const onRetry = vi.fn();
     const retry = createRateLimitRetry({ onRetry });

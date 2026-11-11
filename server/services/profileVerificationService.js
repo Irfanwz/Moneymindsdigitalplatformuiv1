@@ -107,7 +107,7 @@ export async function runVerification({
       readMethod = result.method;
       console.log(`[ProfileVerification] Extracted ${docText.length} chars via ${readMethod}`);
     } catch (readErr) {
-      if (readErr?.code?.startsWith("AI_")) throw readErr;
+      if (typeof readErr?.code === "string" && readErr.code.startsWith("AI_")) throw readErr;
       console.warn(`[ProfileVerification] Document read failed: ${readErr.message}`);
       // Continue with empty text — AI will return low confidence
     }

@@ -29,6 +29,7 @@ export async function executeTrackedRun(store, run, work) {
 
 export function safeAgentError(error) {
   if (error?.code === "AI_TOKEN_LIMIT") return error.message;
+  if (error?.name === "TimeoutError") return "The AI provider did not respond before the request timed out. Please retry shortly.";
   // These messages are fixed translations; raw provider bodies are never stored.
   if (error instanceof GeminiProviderError) return error.message;
   // Provider errors can include request headers or URLs. Never send those to users.

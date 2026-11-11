@@ -119,7 +119,7 @@ export async function requestGroqCompletion(payload, {
         });
     } catch (error) {
       responseHeaders ||= error?.headers;
-      if (error?.code?.startsWith("AI_")) throw error;
+      if (typeof error?.code === "string" && error.code.startsWith("AI_")) throw error;
       if (error?.status === 401) {
         entry.rejected = true;
       }

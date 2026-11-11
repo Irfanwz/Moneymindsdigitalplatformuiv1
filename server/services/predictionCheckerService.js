@@ -99,7 +99,7 @@ async function generateExplanation(params) {
       const text = res.choices[0]?.message?.content?.trim();
       if (text && text.length > 0) return text;
     } catch (err) {
-      if(err?.code?.startsWith("AI_")) throw err;
+      if(typeof err?.code === "string" && err.code.startsWith("AI_")) throw err;
       console.warn("[PredictionChecker] Groq explanation failed:", err.message);
     }
     trigger = "fallback";
@@ -109,7 +109,7 @@ async function generateExplanation(params) {
     try {
       return await requestGemini(config,{parts:[{text:prompt}],maxTokens:1500},{purpose:"Explain a prediction result using checked market prices",trigger});
     } catch (error) {
-      if (error?.code?.startsWith("AI_")) throw error;
+      if (typeof error?.code === "string" && error.code.startsWith("AI_")) throw error;
       console.warn("[PredictionChecker] Gemini explanation failed.");
     }
     trigger = "fallback";
@@ -126,7 +126,7 @@ async function generateExplanation(params) {
       const text = res.content[0]?.text?.trim();
       if (text && text.length > 0) return text;
     } catch (err) {
-      if(err?.code?.startsWith("AI_")) throw err;
+      if(typeof err?.code === "string" && err.code.startsWith("AI_")) throw err;
       console.warn("[PredictionChecker] Claude explanation failed:", err.message);
     }
   }
@@ -249,7 +249,7 @@ export async function checkOnePrediction(signal, store) {
     console.log(`[PredictionChecker] Checked signal ${signal.id}: ${score}/100 (${result})`);
     return updated;
   } catch (err) {
-    if (err?.code?.startsWith("AI_")) throw err;
+    if (typeof err?.code === "string" && err.code.startsWith("AI_")) throw err;
     console.error(`[PredictionChecker] checkOnePrediction failed for ${signal.id}:`, err.message);
     return null;
   }

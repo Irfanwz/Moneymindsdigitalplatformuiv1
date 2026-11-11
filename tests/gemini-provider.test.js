@@ -12,6 +12,7 @@ import { config } from "../server/config.js";
 import { setAiConfigClient } from "../server/services/aiConfigStore.js";
 import { generateJSON } from "../server/services/aiProvider.js";
 import { requestGemini } from "../server/services/geminiProvider.js";
+import { readDocument } from "../server/services/documentReaderService.js";
 import { createUsageTracker } from "../server/services/aiUsage.js";
 import { executeTrackedRun, safeAgentError } from "../server/services/agentRuntime.js";
 import { createMemoryStore } from "../server/store/memoryStore.js";
@@ -241,5 +242,95 @@ describe("Gemini error integration and usage", () => {
     expect(JSON.stringify(persisted)).not.toContain(fixtureKey);
     expect(JSON.stringify(persisted)).not.toContain(privateText);
     expect(fetch).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("Native timeout errors with numeric codes", () => {
+  const timeoutMessage = "The AI provider did not respond before the request timed out. Please retry shortly.";
+  function failWithTimeout(phase) {
+    const error = new DOMException(`${privateText} ${fixtureKey}`, "TimeoutError");
+    expect(error.code).toBe(23);
+    if (phase === "fetch") fetch.mockRejectedValueOnce(error);
+    else {
+      const body = new ReadableStream({ start(controller) { controller.error(error); } });
+      fetch.mockResolvedValueOnce(new Response(body, { status: 200 }));
+    }
+    return error;
+  }
+
+  it.each(["fetch", "body"])("preserves a Gemini-only %s timeout and renders a safe explanation", async (phase) => {
+    const timeout = failWithTimeout(phase);
+    const tracker = createUsageTracker(async () => {});
+    const onRetry = vi.fn();
+    const error = await captureError(() => tracker.run(() => generateJSON("JSON only", privateText, { onRetry })));
+    expect(error).toBe(timeout);
+    expect(safeAgentError(error)).toBe(timeoutMessage);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(onRetry).not.toHaveBeenCalled();
+    expect(mocks.anthropic).not.toHaveBeenCalled();
+    expect(tracker.snapshot()).toMatchObject({
+      requestCount: 1, reportedRequests: 0, unreportedRequests: 1, totalTokens: null,
+      calls: [{ provider: "gemini", status: "failed", trigger: "initial", inputTokens: null, outputTokens: null, totalTokens: null }],
+    });
+    expect(JSON.stringify(tracker.snapshot())).not.toContain(privateText);
+    expect(JSON.stringify(tracker.snapshot())).not.toContain(fixtureKey);
+  });
+
+  it.each(["fetch", "body"])("falls back exactly once after a Gemini %s timeout with accurate usage", async (phase) => {
+    Object.assign(config, { aiProvider: "auto", anthropicApiKey: "fixture-anthropic" });
+    failWithTimeout(phase);
+    mocks.anthropic.mockResolvedValue({ content: [{ type: "text", text: '{"ok":true}' }], usage: { input_tokens: 6, output_tokens: 4 } });
+    const tracker = createUsageTracker(async () => {});
+    const onRetry = vi.fn();
+    await expect(tracker.run(() => generateJSON("JSON only", privateText, { onRetry }))).resolves.toEqual({ data: { ok: true }, provider: "anthropic" });
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(mocks.anthropic).toHaveBeenCalledTimes(1);
+    expect(onRetry).not.toHaveBeenCalled();
+    expect(tracker.snapshot()).toMatchObject({
+      requestCount: 2, reportedRequests: 1, unreportedRequests: 1, totalTokens: 10,
+      calls: [
+        { provider: "gemini", status: "failed", trigger: "initial", totalTokens: null },
+        { provider: "anthropic", status: "response_received", trigger: "fallback", totalTokens: 10 },
+      ],
+    });
+  });
+
+  it.each(["fetch", "body"])("keeps image-provider fallback working after a Gemini %s timeout", async (phase) => {
+    Object.assign(config, { aiProvider: "auto", anthropicApiKey: "fixture-anthropic" });
+    failWithTimeout(phase);
+    mocks.anthropic.mockResolvedValue({ content: [{ type: "text", text: "Fallback document text" }], usage: { input_tokens: 6, output_tokens: 4 } });
+    const tracker = createUsageTracker(async () => {});
+    await expect(tracker.run(() => readDocument(Buffer.from("fixture image"), "image/png"))).resolves.toEqual({ text: "Fallback document text", method: "claude-vision" });
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(mocks.anthropic).toHaveBeenCalledTimes(1);
+    expect(tracker.snapshot().calls).toMatchObject([
+      { provider: "gemini", status: "failed", trigger: "initial", totalTokens: null },
+      { provider: "anthropic", status: "response_received", trigger: "fallback", totalTokens: 10 },
+    ]);
+  });
+
+  it("stores a safe timeout diagnostic in the failed agent run", async () => {
+    const store = createMemoryStore();
+    const user = await store.createUserProfile({ fullName: "Timeout Fixture", email: "timeout@example.test", passwordHash: "unused", requestedRoles: ["investor"] });
+    const entry = await store.createAgentRun({ userId: user.id, agentKey: "profile-quality", targetId: user.id });
+    failWithTimeout("fetch");
+    const result = await executeTrackedRun(store, entry, () => generateJSON("JSON only", privateText));
+    expect(result).toMatchObject({ status: "failed", error: timeoutMessage });
+    expect(result.usage).toMatchObject({ requestCount: 1, unreportedRequests: 1, totalTokens: null });
+    expect(JSON.stringify(await store.getAgentRun(entry.id))).not.toContain(privateText);
+    expect(JSON.stringify(await store.getAgentRun(entry.id))).not.toContain(fixtureKey);
+  });
+
+  it.each(["AI_TOKEN_LIMIT", "AI_USAGE_SAVE_FAILED"])("preserves fail-closed %s errors for JSON and document calls", async (code) => {
+    Object.assign(config, { aiProvider: "auto", anthropicApiKey: "fixture-anthropic" });
+    const error = Object.assign(new Error("Application guard blocked the request"), { code, status: 429 });
+    const onRetry = vi.fn();
+    fetch.mockRejectedValueOnce(error);
+    await expect(generateJSON("JSON only", privateText, { onRetry })).rejects.toBe(error);
+    fetch.mockRejectedValueOnce(error);
+    await expect(readDocument(Buffer.from("fixture image"), "image/png")).rejects.toBe(error);
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(onRetry).not.toHaveBeenCalled();
+    expect(mocks.anthropic).not.toHaveBeenCalled();
   });
 });

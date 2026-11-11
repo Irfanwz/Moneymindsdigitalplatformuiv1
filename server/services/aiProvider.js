@@ -42,7 +42,7 @@ export async function generateJSON(system,prompt,{maxTokens=1800,maxCompletionTo
       if(!data || typeof data!=="object" || Array.isArray(data)) throw new Error("The AI provider returned an invalid report. Please retry.");
       return {data:validate ? validate(data) : data,provider};
     } catch(error) {
-      if(error?.code?.startsWith("AI_")) throw error;
+      if(typeof error?.code === "string" && error.code.startsWith("AI_")) throw error;
       lastError=error;
       if(await retry(error)) {
         if(error?.code!=="GROQ_QUOTA_WAIT") trigger="retry";
@@ -53,6 +53,8 @@ export async function generateJSON(system,prompt,{maxTokens=1800,maxCompletionTo
     }
     trigger="fallback";
   }
-  if(lastError?.status) throw lastError;
+  // Native fetch timeouts are DOMExceptions with a numeric code, not HTTP errors.
+  // Preserve them so the run reports a timeout instead of an invalid response.
+  if(lastError?.status || lastError?.name === "TimeoutError") throw lastError;
   throw new Error("The AI provider returned an invalid or incomplete response. Please retry.");
 }

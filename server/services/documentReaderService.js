@@ -64,7 +64,7 @@ async function extractFromImage(buffer, mimeType) {
       if (!text.trim()) throw new Error("No readable text was returned from the document image.");
       return {text:text.trim().slice(0,30000),method:provider === "anthropic" ? "claude-vision" : `${provider}-vision`};
     } catch (error) {
-      if (error?.code?.startsWith("AI_")) throw error;
+      if (typeof error?.code === "string" && error.code.startsWith("AI_")) throw error;
       lastError = error;
     }
   }

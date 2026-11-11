@@ -70,6 +70,25 @@ it("rotates sequential requests evenly", async () => {
   expect(mocks.groq.mock.calls.map(([key]) => key)).toEqual([...config.groqApiKeys,...config.groqApiKeys]);
 });
 
+it.each([23, { reason: "provider quota" }])("rotates after HTTP429 with non-string code %j", async (code) => {
+  mocks.groq.mockRejectedValueOnce(Object.assign(new Error("Provider quota reached"), { status: 429, code, headers: new Headers({ "retry-after": "2" }) }));
+  const tracker = createUsageTracker(async () => {});
+  await expect(tracker.run(() => requestGroqCompletion(payload()))).resolves.toEqual(reply());
+  expect(mocks.groq.mock.calls.map(([key]) => key)).toEqual(config.groqApiKeys.slice(0, 2));
+  expect(tracker.snapshot().calls).toMatchObject([
+    { provider: "groq", status: "failed", trigger: "initial", totalTokens: null },
+    { provider: "groq", status: "response_received", trigger: "retry", totalTokens: 15 },
+  ]);
+});
+
+it("preserves an unclassified native timeout instead of masking it with a string-method error", async () => {
+  const error = new DOMException("Timed out", "TimeoutError");
+  expect(error.code).toBe(23);
+  mocks.groq.mockRejectedValueOnce(error);
+  await expect(requestGroqCompletion(payload())).rejects.toBe(error);
+  expect(mocks.groq).toHaveBeenCalledTimes(1);
+});
+
 it("reuses the free key while other keys still have requests in flight", async () => {
   const pending = [];
   mocks.groq.mockImplementation(key => new Promise(resolve => pending.push({key,resolve})));

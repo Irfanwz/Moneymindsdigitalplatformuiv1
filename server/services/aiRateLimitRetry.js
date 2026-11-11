@@ -16,7 +16,7 @@ export function createRateLimitRetry({ maxRetries = 1, maxWaitMs = 60000, onRetr
   let deadline;
 
   return async function retry(error) {
-    if (error?.status !== 429 || error?.code?.startsWith("AI_")) return false;
+    if (error?.status !== 429 || (typeof error?.code === "string" && error.code.startsWith("AI_"))) return false;
     // Waiting before a request is sent consumes time, not an HTTP retry. A
     // concurrent request may keep its quota reservation longer than one poll.
     const quotaPacing = error?.code === "GROQ_QUOTA_WAIT";
