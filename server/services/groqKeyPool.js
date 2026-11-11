@@ -1,9 +1,10 @@
 import Groq from "groq-sdk";
 import { getGroqApiKeys } from "../config.js";
 import { trackAIRequest } from "./aiUsage.js";
+import { createGroqQuotaState, reserveGroqQuota, finishGroqQuota } from "./groqQuota.js";
 
 // Process-local routing. No credentials are included in results, usage or logs.
-let pool = { entries: [], cursor: 0 };
+let pool = { entries: [], cursor: 0, quota: createGroqQuotaState() };
 
 export function retryAfterSeconds(error) {
   const value = error?.headers?.get?.("retry-after") ?? error?.headers?.["retry-after"];
@@ -18,7 +19,7 @@ export function retryAfterSeconds(error) {
 
 function currentPool(keys) {
   if (keys.length !== pool.entries.length || keys.some((key, i) => pool.entries[i].key !== key)) {
-    pool = { entries: keys.map(key => ({ key, active: 0, rejected: false, cooldownUntil: 0 })), cursor: 0 };
+    pool = { entries: keys.map(key => ({ key, active: 0, rejected: false, cooldownUntil: 0 })), cursor: 0, quota: createGroqQuotaState() };
   }
   return pool;
 }
@@ -73,8 +74,21 @@ export async function requestGroqCompletion(payload, {
   const deadline = Date.now() + timeout;
   for (;;) {
     // Selection/reservation happens synchronously before the first await.
+    const previousCursor = state.cursor;
     const entry = selectKey(state, attempted);
+    let reservation;
+    try {
+      // A new logical request respects learned quota before usage is recorded.
+      // Continue to try other ready keys within an existing failover sequence.
+      reservation = reserveGroqQuota(state.quota, payload, { bypassWait: attempted.size > 0 });
+    } catch (error) {
+      state.cursor = previousCursor;
+      entry.active--;
+      throw error;
+    }
     attempted.add(entry);
+    let responseHeaders;
+    let sent = false;
     try {
       return await trackAIRequest({ provider: "groq", model: payload.model, purpose, trigger, details },
         async () => {
@@ -88,7 +102,14 @@ export async function requestGroqCompletion(payload, {
           // Keep the deadline active through response-body parsing, not just headers.
           const timer = setTimeout(() => controller.abort(), attemptTimeout);
           try {
-            return await client.chat.completions.create(payload, { signal: controller.signal });
+            sent = true;
+            const pending = client.chat.completions.create(payload, { signal: controller.signal });
+            if (typeof pending.withResponse === "function") {
+              const { data, response } = await pending.withResponse();
+              responseHeaders = response.headers;
+              return data;
+            }
+            return await pending;
           } catch (error) {
             if (controller.signal.aborted) throw timeoutError();
             throw error;
@@ -97,6 +118,7 @@ export async function requestGroqCompletion(payload, {
           }
         });
     } catch (error) {
+      responseHeaders ||= error?.headers;
       if (error?.code?.startsWith("AI_")) throw error;
       if (error?.status === 401) {
         entry.rejected = true;
@@ -120,6 +142,7 @@ export async function requestGroqCompletion(payload, {
       // the last real rejection; rotating keys never guarantees more quota.
       throw error;
     } finally {
+      finishGroqQuota(reservation, responseHeaders, { sent });
       entry.active--;
     }
   }

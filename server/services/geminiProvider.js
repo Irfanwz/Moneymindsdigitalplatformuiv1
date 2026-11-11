@@ -1,17 +1,21 @@
 import { trackAIRequest } from "./aiUsage.js";
+import { geminiResponseError } from "./geminiErrors.js";
 
 /** Native Gemini REST API. Credentials stay in headers, never URLs or errors. */
 export async function requestGemini(settings, {system,parts,maxTokens=1800,json=false}, usage={}) {
-  const response = await trackAIRequest({provider:"gemini",model:settings.geminiModel,...usage},async()=>{
-    const result = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(settings.geminiModel)}:generateContent`,{
+  // Google model listings return resource names such as models/gemini-... .
+  // Accept those as well as the bare model IDs shown in Admin > AI Config.
+  const model = settings.geminiModel.trim().replace(/^models\//, "");
+  const response = await trackAIRequest({provider:"gemini",model,...usage},async()=>{
+    const result = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,{
       method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":settings.geminiApiKey},
       signal:AbortSignal.timeout(45000),
       body:JSON.stringify({...(system ? {systemInstruction:{parts:[{text:system}]}} : {}),
         contents:[{role:"user",parts}],generationConfig:{maxOutputTokens:maxTokens+2500,...(json ? {responseMimeType:"application/json"} : {})}}),
     });
-    if (!result.ok) throw Object.assign(new Error(`Gemini request failed (HTTP ${result.status}). Check the provider key, model and quota.`),{status:result.status,headers:new Headers({"retry-after":result.headers.get("retry-after") || "30"})});
+    if (!result.ok) throw await geminiResponseError(result);
     const data = await result.json();
-    return {...data,usage:data.usageMetadata,model:data.modelVersion || settings.geminiModel};
+    return {...data,usage:data.usageMetadata,model:data.modelVersion || model};
   });
   const candidate = response.candidates?.[0];
   if (candidate?.finishReason !== "STOP") throw new Error("Gemini returned a blocked or incomplete response. Please retry or check the model settings.");

@@ -1,5 +1,6 @@
 import { waitUntil } from "@vercel/functions";
 import { createUsageTracker } from "./aiUsage.js";
+import { GeminiProviderError } from "./geminiErrors.js";
 
 export class AgentSkipped extends Error {}
 
@@ -28,6 +29,8 @@ export async function executeTrackedRun(store, run, work) {
 
 export function safeAgentError(error) {
   if (error?.code === "AI_TOKEN_LIMIT") return error.message;
+  // These messages are fixed translations; raw provider bodies are never stored.
+  if (error instanceof GeminiProviderError) return error.message;
   // Provider errors can include request headers or URLs. Never send those to users.
   if (error?.status===401 || error?.status===403) return "The AI provider rejected the configured credentials. An administrator needs to check the provider key.";
   if (error?.status===413) return "The AI request is too large for the provider's token or request-size limit. Shorten the source content, or use Auto with another configured provider or model that supports a larger request.";

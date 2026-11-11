@@ -703,11 +703,12 @@ export async function runDueDiligence(
         {
           maxTokens: 1800,
           maxCompletionTokens: DUE_DILIGENCE_COMPLETION_TOKENS,
+          rateLimitRetry: { maxRetries: 3, maxWaitMs: 180000 },
           purpose: `Profile due diligence: assess ${fields.length} fields, evidence batch ${index + 1}/${requests.length}`,
           usageDetails: {fieldCount:fields.length,sourceCount:request.sources.length,documentCount:request.sources.filter(source=>source.kind==="document").length},
           validate: (data) => reportSchema.parse(data),
           onRetry: (delay) =>
-            progress(`Provider busy; retrying in ${delay} seconds`, reviewProgress()),
+            progress(`Waiting for provider quota; continuing this batch in ${delay} seconds`, reviewProgress()),
         },
       );
       providers.add(provider);

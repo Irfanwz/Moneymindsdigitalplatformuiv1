@@ -533,7 +533,7 @@ describe("Due diligence request sizing and complete evidence review", () => {
     for (const [system, prompt, options] of generateJSON.mock.calls) {
       expect(estimateAIInput(system, prompt, config.groqModel)).toBeLessThanOrEqual(5000);
       expect(JSON.parse(prompt).fields.length).toBeLessThanOrEqual(8);
-      expect(options).toMatchObject({ maxTokens: 1800, maxCompletionTokens: 2500 });
+      expect(options).toMatchObject({ maxTokens: 1800, maxCompletionTokens: 2500, rateLimitRetry: { maxRetries: 3, maxWaitMs: 180000 } });
     }
   }
   function documentChunks(fieldId = registrationField) {

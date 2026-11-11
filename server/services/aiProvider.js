@@ -1,7 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { config, getGroqApiKeys } from "../config.js";
 import { trackAIRequest } from "./aiUsage.js";
-import { requestGroqCompletion, retryAfterSeconds } from "./groqKeyPool.js";
+import { requestGroqCompletion } from "./groqKeyPool.js";
+import { createRateLimitRetry } from "./aiRateLimitRetry.js";
 import { getAiConfig } from "./aiConfigStore.js";
 import { requestGemini } from "./geminiProvider.js";
 
@@ -9,18 +10,22 @@ export function configuredProviders(settings = config) {
   const available = {groq:getGroqApiKeys(settings).length>0,gemini:!!settings.geminiApiKey,anthropic:!!settings.anthropicApiKey};
   return ["groq","gemini","anthropic"].filter(provider=>available[provider] && (settings.aiProvider==="auto" || settings.aiProvider===provider));
 }
-export async function generateJSON(system,prompt,{maxTokens=1800,maxCompletionTokens,validate,onRetry,purpose="Generate a structured AI assessment",usageDetails={}}={}) {
+export async function generateJSON(system,prompt,{maxTokens=1800,maxCompletionTokens,validate,onRetry,rateLimitRetry,purpose="Generate a structured AI assessment",usageDetails={}}={}) {
   if(maxCompletionTokens!==undefined && (!Number.isSafeInteger(maxCompletionTokens) || maxCompletionTokens<=0)) {
     throw new TypeError("maxCompletionTokens must be a positive safe integer.");
   }
   const groqCompletionTokens=maxCompletionTokens ?? maxTokens+2500;
+  // Long reviews opt into one shared wait budget across provider fallbacks.
+  // Other consumers retain one bounded retry per provider.
+  const sharedRetry = createRateLimitRetry({ ...rateLimitRetry, onRetry });
   const settings=await getAiConfig();
   const providers=configuredProviders(settings);
   if(!providers.length) throw new Error("No AI provider is configured. An administrator must configure Groq, Gemini or Anthropic.");
   let lastError;
   let trigger="initial";
   for(const provider of providers) {
-    for(let attempt=0;attempt<2;attempt++) {
+    const retry = rateLimitRetry ? sharedRetry : createRateLimitRetry({ onRetry });
+    for(;;) {
     try {
       let text;
       if(provider==="groq") {
@@ -39,12 +44,8 @@ export async function generateJSON(system,prompt,{maxTokens=1800,maxCompletionTo
     } catch(error) {
       if(error?.code?.startsWith("AI_")) throw error;
       lastError=error;
-      const seconds=retryAfterSeconds(error);
-      if(error?.status===429 && attempt===0 && Number.isFinite(seconds) && seconds<=60) {
-        const delay=Math.max(1,Math.ceil(seconds));
-        await onRetry?.(delay);
-        await new Promise(resolve=>setTimeout(resolve,delay*1000));
-        trigger="retry";
+      if(await retry(error)) {
+        if(error?.code!=="GROQ_QUOTA_WAIT") trigger="retry";
         continue;
       }
       break;
