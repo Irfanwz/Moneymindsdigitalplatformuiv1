@@ -7,6 +7,12 @@ import { searchService } from "./searchService.js";
 import { AgentSkipped } from "./agentRuntime.js";
 import { readProvidedProfileLinks, profileLinkComparisons } from "./profileLinkService.js";
 import {
+  planEvidenceRequests,
+  mergeEvidenceChecks,
+  DUE_DILIGENCE_FIELDS_PER_REQUEST,
+  DUE_DILIGENCE_COMPLETION_TOKENS,
+} from "./dueDiligenceBatches.js";
+import {
   commonRegistrationFields,
   registrationRoles,
   registrationSections,
@@ -605,130 +611,152 @@ export async function runDueDiligence(
       );
     else reviewFields.push(field);
   }
-  let omitted = 0;
+  let omitted = 0, oversized = 0, requestCount = 0, assessedFields = 0;
   const providers = new Set();
-  // Small batches guarantee a result slot for every field without an oversized response.
-  for (let i = 0; i < reviewFields.length; i += 24) {
-    await Promise.all(
-      [reviewFields.slice(i, i + 12), reviewFields.slice(i + 12, i + 24)]
-        .filter((b) => b.length)
-        .map(async (fields) => {
-          const relevant = sources.filter((source) =>
-            source.kind === "document"
-              ? fields.some(
-                  (f) =>
-                    f.documentKey === source.key ||
-                    (f.documentKey &&
-                      source.key.startsWith(`${f.documentKey}.`)) ||
-                    (source.key === "startup.pitchDeck" &&
-                      f.role === "startup"),
-                )
-              : source.prefixes.some(
-                  (prefix) =>
-                    prefix === "personal." ||
-                    fields.some(
-                      (f) =>
-                        f.id.startsWith(prefix) ||
-                        f.id.startsWith(`current.${prefix}`) ||
-                        prefix.startsWith(`${f.id}.`) ||
-                        (f.id.startsWith("current.") &&
-                          prefix.startsWith(`${f.id.slice(8)}.`)),
-                    ),
-                ),
-          );
-          const supplied = relevant.map(({ prefixes, ...s }) => s);
-          const counterparts = context.fields.filter((f) =>
-            fields.some(
-              (item) =>
-                item.role === f.role &&
-                (item.id === `current.${f.id}` ||
-                  f.id === `current.${item.id}` ||
-                  (item.id.startsWith("current.") &&
-                    f.id.startsWith(`${item.id.slice(8)}.`))),
+  const reviewedAt = new Date().toISOString();
+  const reviewProgress = () => 50 + Math.round(assessedFields / Math.max(1, reviewFields.length) * 40);
+  const reviewSystemPrompt = `${systemPrompt} Sources of kind profile_link are from the exact supplied URL; another page or search snippet cannot verify that URL. Access results are authoritative and page text does not prove ownership. Evidence may arrive in overlapping excerpts, with original source IDs preserved. Assess only the excerpts in THIS request. Use insufficient_evidence when this excerpt does not address a claim; reserve manual_review for a concrete ambiguity. Keep each reasoning under 200 characters and cite at most two short exact quotes of up to 160 characters.`;
+  const promptField = ({ id, role, label, value, origin, documentKey }) => ({ id, role, label, value, origin, documentKey });
+  async function assessFields(fields) {
+    const relevant = sources.filter((source) =>
+      source.kind === "document"
+        ? fields.some(
+            (f) =>
+              f.documentKey === source.key ||
+              (f.documentKey &&
+                source.key.startsWith(`${f.documentKey}.`)) ||
+              (source.key === "startup.pitchDeck" &&
+                f.role === "startup"),
+          )
+        : source.prefixes.some(
+            (prefix) =>
+              prefix === "personal." ||
+              fields.some(
+                (f) =>
+                  f.id.startsWith(prefix) ||
+                  f.id.startsWith(`current.${prefix}`) ||
+                  prefix.startsWith(`${f.id}.`) ||
+                  (f.id.startsWith("current.") &&
+                    prefix.startsWith(`${f.id.slice(8)}.`)),
+              ),
+          ),
+    );
+    const supplied = relevant.map(({ id, kind, key, url, title, text }) => ({ id, kind, key, url, title, text }));
+    const counterparts = context.fields.filter((f) =>
+      fields.some(
+        (item) =>
+          item.role === f.role &&
+          (item.id === `current.${f.id}` ||
+            f.id === `current.${item.id}` ||
+            (item.id.startsWith("current.") &&
+              f.id.startsWith(`${item.id.slice(8)}.`))),
+      ),
+    );
+    const requests = planEvidenceRequests(reviewSystemPrompt, supplied, (chunkSources) => ({
+        applicant: context.fullName,
+        roles: context.roles,
+        reviewedAt,
+        fields: fields.map(promptField),
+        relatedOriginalOrCurrentFields: counterparts.map(promptField),
+        suppliedProfileLinks: profilePages.links
+          .filter(link => fields.some(field => link.fieldIds.includes(field.id)) || chunkSources.some(source => source.id === link.id))
+          .map(({id,url,accessStatus}) => ({id,url,accessStatus})),
+        sources: chunkSources,
+      }));
+    if (!requests) {
+      if (fields.length > 1) {
+        const middle = Math.ceil(fields.length / 2);
+        await assessFields(fields.slice(0, middle));
+        await assessFields(fields.slice(middle));
+      } else {
+        oversized++;
+        checks.set(fields[0].id, base(fields[0], "manual_review",
+          "This claim, its related profile context or evidence metadata exceeds the automatic review request size. Review the complete original information manually; it was not shortened or verified."));
+      }
+      return;
+    }
+    const partials = new Map(fields.map(field => [field.id, []]));
+    for (const [index, request] of requests.entries()) {
+      requestCount++;
+      await progress(`Checking ${fields.length} fields: evidence batch ${index + 1} of ${requests.length}`, reviewProgress());
+      const { data, provider } = await generateJSON(
+        reviewSystemPrompt,
+        request.prompt,
+        {
+          maxTokens: 1000,
+          maxCompletionTokens: DUE_DILIGENCE_COMPLETION_TOKENS,
+          purpose: `Profile due diligence: assess ${fields.length} fields, evidence batch ${index + 1}/${requests.length}`,
+          usageDetails: {fieldCount:fields.length,sourceCount:request.sources.length,documentCount:request.sources.filter(source=>source.kind==="document").length},
+          validate: (data) => reportSchema.parse(data),
+          onRetry: (delay) =>
+            progress(`Provider busy; retrying in ${delay} seconds`, reviewProgress()),
+        },
+      );
+      providers.add(provider);
+      // Validate again at this boundary so alternate providers cannot bypass the report contract.
+      const report = reportSchema.parse(data);
+      for (const field of fields) {
+        const match = report.checks.find((c) => c.fieldId === field.id);
+        if (!match) {
+          omitted++;
+          partials.get(field.id).push(
+            base(
+              field,
+              "manual_review",
+              "The model did not return an assessment for this evidence batch. Manual review is required.",
             ),
           );
-          const { data, provider } = await generateJSON(
-            `${systemPrompt} Sources of kind profile_link contain text retrieved from an exact URL supplied by the applicant. Compare those pages with the associated claims and cite their excerpts. Access results are authoritative: never claim an inaccessible page was visited. A web-search snippet or another person's profile cannot verify a supplied URL. Public profile text does not prove account ownership.`,
-            JSON.stringify({
-              applicant: context.fullName,
-              roles: context.roles,
-              reviewedAt: new Date().toISOString(),
-              fields: fields.map(({ policy, ...f }) => f),
-              relatedOriginalOrCurrentFields: counterparts,
-              suppliedProfileLinks: profilePages.links.map(({comparisons,...link}) => link),
-              sources: supplied,
-              limitations,
-            }),
-            {
-              maxTokens: 4200,
-              purpose: `Profile due diligence: assess ${fields.length} fields against supplied evidence`,
-              usageDetails: {fieldCount:fields.length,sourceCount:supplied.length,documentCount:supplied.filter(source=>source.kind==="document").length},
-              validate: (data) => reportSchema.parse(data),
-              onRetry: (delay) =>
-                progress(`Provider busy; retrying in ${delay} seconds`, 55),
-            },
-          );
-          providers.add(provider);
-          // Validate again at this boundary so alternate providers cannot bypass the report contract.
-          const report = reportSchema.parse(data);
-          for (const field of fields) {
-            const match = report.checks.find((c) => c.fieldId === field.id);
-            if (!match) {
-              omitted++;
-              checks.set(
-                field.id,
-                base(
-                  field,
-                  "insufficient_evidence",
-                  "The model did not return a field assessment. Manual review is required.",
-                ),
-              );
-              continue;
-            }
-            const refs = match.evidence.filter((ref) =>
-              supplied.some(
-                (s) => s.id === ref.sourceId && s.text.includes(ref.quote),
-              ),
-            );
-            let status = match.status,
-              reasoning = match.reasoning;
-            const suppliedLink = profilePages.links.find(link => link.fieldIds.includes(field.id));
-            if (suppliedLink && ["supported","inconsistent"].includes(status) && !refs.some(ref => ref.sourceId === suppliedLink.id)) {
-              status = "insufficient_evidence";
-              reasoning = "This supplied profile URL was not assessed using an excerpt from that exact page. Search results or another profile are not a substitute.";
-            }
-            if (
-              ["supported", "inconsistent"].includes(status) &&
-              !refs.length
-            ) {
-              status = "insufficient_evidence";
-              reasoning =
-                "The assessment did not cite a matching excerpt from the supplied evidence. Manual review is required.";
-            }
-            // Extraction is useful evidence, never authentication of an uploaded file.
-            if (field.id.startsWith("document.") && status === "supported") {
-              status = "manual_review";
-              reasoning +=
-                " Text was read, but document authenticity requires independent confirmation.";
-            }
-            checks.set(field.id, base(field, status, reasoning, refs));
-          }
-        }),
-    );
+          continue;
+        }
+        const refs = match.evidence.filter((ref) =>
+          request.sources.some(
+            (s) => s.id === ref.sourceId && s.text.includes(ref.quote),
+          ),
+        );
+        let status = match.status,
+          reasoning = match.reasoning;
+        const suppliedLink = profilePages.links.find(link => link.fieldIds.includes(field.id));
+        if (suppliedLink && ["supported","inconsistent"].includes(status) && !refs.some(ref => ref.sourceId === suppliedLink.id)) {
+          status = "insufficient_evidence";
+          reasoning = "This supplied profile URL was not assessed using an excerpt from that exact page. Search results or another profile are not a substitute.";
+        }
+        if (
+          ["supported", "inconsistent"].includes(status) &&
+          !refs.length
+        ) {
+          status = "insufficient_evidence";
+          reasoning =
+            "The assessment did not cite a matching excerpt from the supplied evidence. Manual review is required.";
+        }
+        // Extraction is useful evidence, never authentication of an uploaded file.
+        if (field.id.startsWith("document.") && status === "supported") {
+          status = "manual_review";
+          reasoning +=
+            " Text was read, but document authenticity requires independent confirmation.";
+        }
+        partials.get(field.id).push(base(field, status, reasoning, refs));
+      }
+    }
+    for (const field of fields) {
+      checks.set(field.id, { ...field, ...mergeEvidenceChecks(partials.get(field.id)) });
+    }
+  }
+  // Sequential calls avoid launching multiple large requests against a shared
+  // provider quota. Every retained evidence excerpt is assessed before merging.
+  for (let i = 0; i < reviewFields.length; i += DUE_DILIGENCE_FIELDS_PER_REQUEST) {
+    await assessFields(reviewFields.slice(i, i + DUE_DILIGENCE_FIELDS_PER_REQUEST));
+    assessedFields = Math.min(i + DUE_DILIGENCE_FIELDS_PER_REQUEST, reviewFields.length);
     await progress(
-      `Assessed ${Math.min(i + 24, reviewFields.length)} of ${reviewFields.length} evidence-based fields`,
-      50 +
-        Math.round(
-          (Math.min(i + 24, reviewFields.length) /
-            Math.max(1, reviewFields.length)) *
-            40,
-        ),
+      `Assessed ${assessedFields} of ${reviewFields.length} evidence-based fields`,
+      reviewProgress(),
     );
   }
   if (omitted)
     limitations.push(
-      `${omitted} field assessment(s) were omitted by the model and are explicitly marked as insufficient evidence.`,
+      `${omitted} evidence-batch assessment(s) were omitted by the model. Affected fields require manual review unless a cited inconsistency was found.`,
     );
+  if (oversized) limitations.push(`${oversized} field(s) could not fit the bounded review requests with their full context and evidence metadata. Their original values are preserved for manual review.`);
+  if (requestCount) limitations.push("Evidence was reviewed in small, sequential requests with overlapping excerpts. This adds requests and may take longer on a limited provider plan; source IDs and exact cited excerpts are preserved.");
   const fieldChecks = context.fields.map((f) => checks.get(f.id));
   const counts = Object.fromEntries(
     [

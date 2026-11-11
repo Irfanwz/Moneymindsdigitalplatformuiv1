@@ -61,6 +61,49 @@ it("encrypts a deduplicated pool, and saved keys/models reach the runtime immedi
   expect((await getAiConfigForAdmin()).keySources.groq).toBe("saved settings");
 });
 
+it("preserves the default Groq reasoning allowance and accepts an explicit total completion budget",async()=>{
+  await generateJSON("JSON only","Default fixture");
+  await generateJSON("JSON only","Custom output fixture",{maxTokens:1000});
+  const tracker=createUsageTracker(async()=>{});
+  const result=await tracker.run(()=>generateJSON("JSON only","Due diligence fixture",{maxTokens:1000,maxCompletionTokens:2500}));
+  expect(mocks.groq.mock.calls.map(call=>call[1].max_completion_tokens)).toEqual([4300,3500,2500]);
+  expect(result).toEqual({data:{ok:true},provider:"groq"});
+  expect(tracker.snapshot().calls).toHaveLength(1);
+  expect(tracker.snapshot().calls[0]).toMatchObject({trigger:"initial",inputTokens:7,outputTokens:3,totalTokens:10});
+  expect(fetch).not.toHaveBeenCalled();expect(mocks.anthropic).not.toHaveBeenCalled();
+});
+
+it.each([0,-1,1.5,"2500",null,NaN,Infinity,Number.MAX_SAFE_INTEGER+1,{}])("rejects an invalid explicit completion budget %j before any provider or configuration request",async(maxCompletionTokens)=>{
+  db.from.mockClear();
+  await expect(generateJSON("JSON only","Fixture",{maxCompletionTokens})).rejects.toThrow("maxCompletionTokens must be a positive safe integer");
+  expect(db.from).not.toHaveBeenCalled();expect(mocks.groq).not.toHaveBeenCalled();
+  expect(fetch).not.toHaveBeenCalled();expect(mocks.anthropic).not.toHaveBeenCalled();
+});
+
+it("preserves Gemini output limits and usage after Groq budget overrides fail over",async()=>{
+  mocks.groq.mockRejectedValue(Object.assign(new Error("Too large"),{status:413}));
+  const tracker=createUsageTracker(async()=>{});
+  expect((await tracker.run(()=>generateJSON("JSON only","Fixture",{maxTokens:1000,maxCompletionTokens:2500}))).provider).toBe("gemini");
+  expect(mocks.groq).toHaveBeenCalledTimes(3);
+  expect(mocks.groq.mock.calls.every(call=>call[1].max_completion_tokens===2500)).toBe(true);
+  expect(JSON.parse(fetch.mock.calls[0][1].body).generationConfig.maxOutputTokens).toBe(3500);
+  expect(tracker.snapshot().calls.map(call=>call.trigger)).toEqual(["initial","retry","retry","fallback"]);
+  expect(tracker.snapshot().calls.at(-1)).toMatchObject({inputTokens:10,outputTokens:10,totalTokens:20,reasoningTokens:6});
+});
+
+it("preserves Anthropic output limits and usage after a Groq completion budget override",async()=>{
+  Object.assign(config,{geminiApiKey:"",anthropicApiKey:"fixture-anthropic"});
+  mocks.groq.mockRejectedValue(Object.assign(new Error("Too large"),{status:413}));
+  mocks.anthropic.mockResolvedValue({content:[{type:"text",text:'{"ok":true}'}],usage:{input_tokens:6,output_tokens:4}});
+  const tracker=createUsageTracker(async()=>{});
+  expect((await tracker.run(()=>generateJSON("JSON only","Fixture",{maxTokens:1000,maxCompletionTokens:2500}))).provider).toBe("anthropic");
+  expect(mocks.anthropic.mock.calls[0][0].max_tokens).toBe(1000);
+  expect(mocks.anthropic.mock.calls[0][0]).not.toHaveProperty("max_completion_tokens");
+  expect(tracker.snapshot().calls.map(call=>call.trigger)).toEqual(["initial","retry","retry","fallback"]);
+  expect(tracker.snapshot().calls.at(-1)).toMatchObject({inputTokens:6,outputTokens:4,totalTokens:10});
+  expect(fetch).not.toHaveBeenCalled();
+});
+
 it("retains legacy encrypted keys and restores env keys only on explicit reset",async()=>{
   row={groq_key_enc:encryptKey("legacy-saved-key"),active_provider:"groq"};invalidateAiConfig();
   expect((await getAiConfig()).groqApiKeys).toEqual(["legacy-saved-key"]);

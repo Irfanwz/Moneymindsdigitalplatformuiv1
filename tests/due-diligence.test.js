@@ -519,6 +519,233 @@ describe("Evidence limits and honest failures", () => {
   });
 });
 
+describe("Due diligence request sizing and complete evidence review", () => {
+  const registrationField = "startup.registrationNumber";
+  const ledger = () => Array.from({ length: 280 }, (_, i) =>
+    `Registry entry ${String(i).padStart(4, "0")}: archival company record reviewed by the issuing office.\n`,
+  ).join("").slice(0, 17500);
+  function expectBoundedRequests() {
+    expect(generateJSON).toHaveBeenCalled();
+    for (const [system, prompt, options] of generateJSON.mock.calls) {
+      expect(Buffer.byteLength(system + prompt, "utf8")).toBeLessThanOrEqual(5000);
+      expect(JSON.parse(prompt).fields.length).toBeLessThanOrEqual(3);
+      expect(options).toMatchObject({ maxTokens: 1000, maxCompletionTokens: 2500 });
+    }
+  }
+  function documentChunks(fieldId = registrationField) {
+    return generateJSON.mock.calls.flatMap(([, prompt]) => {
+      const input = JSON.parse(prompt);
+      return input.fields.some(field => field.id === fieldId)
+        ? input.sources.filter(source => source.kind === "document")
+        : [];
+    });
+  }
+  function expectEveryCharacterShown(text, chunks) {
+    const covered = new Uint8Array(text.length);
+    for (const chunk of chunks) {
+      const offset = text.indexOf(chunk.text);
+      expect(offset).toBeGreaterThanOrEqual(0);
+      expect(Buffer.from(chunk.text, "utf8").toString("utf8")).toBe(chunk.text);
+      covered.fill(1, offset, offset + chunk.text.length);
+    }
+    expect(covered.every(value => value === 1)).toBe(true);
+  }
+
+  it("uses sequential bounded requests and produces exactly one result for every collected field", async () => {
+    const { user } = await applicant(["startup", "investor", "advisor"]);
+    const context = await collectDueDiligenceContext(store, user.id);
+    let active = 0;
+    let peak = 0;
+    generateJSON.mockImplementation(async (_system, prompt, options) => {
+      active++;
+      peak = Math.max(peak, active);
+      try {
+        await Promise.resolve();
+        const input = JSON.parse(prompt);
+        return {
+          data: options.validate({ checks: input.fields.map(field => ({
+            fieldId: field.id, status: "insufficient_evidence",
+            reasoning: "The supplied records do not establish this claim.", evidence: [],
+          })) }),
+          provider: "test",
+        };
+      } finally {
+        active--;
+      }
+    });
+    const report = await runDueDiligence(store, user.id);
+    expect(peak).toBe(1);
+    expectBoundedRequests();
+    expect(report.fieldChecks.map(field => field.id).sort()).toEqual(context.fields.map(field => field.id).sort());
+    expect(new Set(report.fieldChecks.map(field => field.id)).size).toBe(context.fields.length);
+  });
+
+  it("reviews the entire retained document and preserves a contradiction near its end", async () => {
+    config.tavilyApiKey = "";
+    const { user } = await applicant(["startup"]);
+    const initial = "REG-123 is recorded as active.";
+    const correction = "Correction: registration REG-123 was revoked by the issuing registry.";
+    const text = initial + "\n" + ledger() + "\n" + correction;
+    readDocument.mockResolvedValue({ text, method: "test-reader" });
+    modelReply((checks, input) => checks.map(check => {
+      const source = input.sources.find(source => source.kind === "document");
+      if (!source) return check;
+      const quote = source.text.includes(correction) ? correction : source.text.includes(initial) ? initial : null;
+      return quote ? { ...check, status: quote === correction ? "inconsistent" : "supported", evidence: [{ sourceId: source.id, quote }] } : check;
+    }));
+    const report = await runDueDiligence(store, user.id);
+    const chunks = documentChunks();
+    expect(chunks.length).toBeGreaterThan(1);
+    expect(new Set(chunks.map(chunk => chunk.id)).size).toBe(1);
+    expectEveryCharacterShown(text, chunks);
+    expect(report.fieldChecks.find(field => field.id === registrationField)).toMatchObject({
+      status: "inconsistent",
+      evidence: expect.arrayContaining([expect.objectContaining({ quote: correction })]),
+    });
+    expectBoundedRequests();
+  });
+
+  it("retains short quotes that cross an evidence chunk boundary", async () => {
+    config.tavilyApiKey = "";
+    const { user } = await applicant(["startup"]);
+    const original = ledger();
+    readDocument.mockResolvedValue({ text: original, method: "test-reader" });
+    await runDueDiligence(store, user.id);
+    const firstChunk = documentChunks()[0];
+    expect(firstChunk.text.length).toBeLessThan(original.length);
+    const quote = "Registry confirms that REG-123 belongs to Example Labs.";
+    const boundary = original.indexOf(firstChunk.text) + firstChunk.text.length;
+    const start = boundary - 12;
+    const text = original.slice(0, start) + quote + original.slice(start + quote.length);
+    generateJSON.mockClear();
+    readDocument.mockResolvedValue({ text, method: "test-reader" });
+    modelReply((checks, input) => checks.map(check => {
+      const source = input.sources.find(source => source.text.includes(quote));
+      return source ? { ...check, status: "supported", evidence: [{ sourceId: source.id, quote }] } : check;
+    }));
+    const report = await runDueDiligence(store, user.id);
+    expect(documentChunks().some(chunk => chunk.text.includes(quote))).toBe(true);
+    expect(report.fieldChecks.find(field => field.id === registrationField)).toMatchObject({ status: "supported" });
+    expectEveryCharacterShown(text, documentChunks());
+    expectBoundedRequests();
+  });
+
+  it("measures Unicode evidence in UTF-8 bytes without corrupting or losing retained text", async () => {
+    config.tavilyApiKey = "";
+    const { user } = await applicant(["startup"]);
+    const text = Array.from({ length: 180 }, (_, i) => `ریکارڈ ${String(i).padStart(4, "0")} کمپنی رجسٹریشن کی تصدیق 🧾✅\n`).join("");
+    readDocument.mockResolvedValue({ text, method: "test-reader" });
+    await runDueDiligence(store, user.id);
+    expectBoundedRequests();
+    const chunks = documentChunks();
+    expect(chunks.length).toBeGreaterThan(1);
+    expectEveryCharacterShown(text, chunks);
+  });
+
+  it("rejects a quote from an unseen part of a real source even if its source ID is valid", async () => {
+    config.tavilyApiKey = "";
+    const { user } = await applicant(["startup"]);
+    const hiddenQuote = "The company has an independently confirmed active registration.";
+    const text = ledger() + "\n" + hiddenQuote;
+    readDocument.mockResolvedValue({ text, method: "test-reader" });
+    let unshownQuotes = 0;
+    modelReply((checks, input) => checks.map(check => {
+      const source = input.sources.find(source => source.kind === "document");
+      if (!source || source.text.includes(hiddenQuote)) return check;
+      if (check.fieldId === registrationField) unshownQuotes++;
+      return { ...check, status: "supported", evidence: [{ sourceId: source.id, quote: hiddenQuote }] };
+    }));
+    const report = await runDueDiligence(store, user.id);
+    expect(unshownQuotes).toBeGreaterThan(0);
+    expect(report.fieldChecks.find(field => field.id === registrationField)).toMatchObject({ status: "insufficient_evidence", evidence: [] });
+  });
+
+  it("keeps ambiguous identity for manual review even after an earlier supporting excerpt", async () => {
+    config.tavilyApiKey = "";
+    const { user } = await applicant(["startup"]);
+    const support = "REG-123 is assigned to Example Labs.";
+    const ambiguity = "Two companies share this name; the identity cannot be resolved from this record.";
+    readDocument.mockResolvedValue({ text: support + "\n" + ledger() + "\n" + ambiguity, method: "test-reader" });
+    modelReply((checks, input) => checks.map(check => {
+      const source = input.sources.find(source => source.kind === "document");
+      if (source?.text.includes(ambiguity)) return { ...check, status: "manual_review", reasoning: ambiguity, evidence: [{ sourceId: source.id, quote: ambiguity }] };
+      if (source?.text.includes(support)) return { ...check, status: "supported", evidence: [{ sourceId: source.id, quote: support }] };
+      return check;
+    }));
+    const report = await runDueDiligence(store, user.id);
+    expect(report.fieldChecks.find(field => field.id === registrationField)).toMatchObject({ status: "manual_review" });
+  });
+
+  it("does not declare a field supported when the model omits an assessment for a later chunk", async () => {
+    config.tavilyApiKey = "";
+    const { user } = await applicant(["startup"]);
+    const end = "END OF REGISTRY EVIDENCE";
+    readDocument.mockResolvedValue({ text: ledger() + "\n" + end, method: "test-reader" });
+    modelReply((checks, input) => {
+      const source = input.sources.find(source => source.kind === "document");
+      if (source?.text.includes(end)) return checks.filter(check => check.fieldId !== registrationField);
+      return checks.map(check => source ? { ...check, status: "supported", evidence: [{ sourceId: source.id, quote: source.text.slice(0, 45) }] } : check);
+    });
+    const report = await runDueDiligence(store, user.id);
+    expect(["manual_review", "insufficient_evidence"]).toContain(report.fieldChecks.find(field => field.id === registrationField).status);
+    expect(report.limitations.join(" ")).toContain("omitted by the model");
+  });
+
+  it("preserves oversized field values and flags incomplete original/current comparisons", async () => {
+    config.tavilyApiKey = "";
+    const { user } = await applicant(["investor"]);
+    const largeValue = "Very long professional title. ".repeat(400);
+    await store.upsertInvestorProfile(user.id, {
+      ...(await store.findInvestorProfileByUserId(user.id)), title: largeValue,
+    });
+    const report = await runDueDiligence(store, user.id);
+    expect(report.fieldChecks.find(field => field.id === "current.investor.title")).toMatchObject({ value: largeValue, status: "manual_review" });
+    expect(report.fieldChecks.find(field => field.id === "investor.title").status).toBe("manual_review");
+    expect(report.limitations.join(" ")).toMatch(/size|large|budget|fit/i);
+    expect(JSON.stringify(generateJSON.mock.calls)).not.toContain(largeValue);
+    expectBoundedRequests();
+  });
+
+  it("flags oversized source metadata without sending an oversized request or inventing a review", async () => {
+    config.tavilyApiKey = "";
+    const { user } = await applicant(["startup"]);
+    const originalGet = store.getProfileApplication.bind(store);
+    const largeLabel = "Full legal document name ".repeat(400);
+    vi.spyOn(store, "getProfileApplication").mockImplementation(async id => {
+      const application = await originalGet(id);
+      return { ...application, documents: application.documents.map(doc => ({ ...doc, label: largeLabel })) };
+    });
+    const report = await runDueDiligence(store, user.id);
+    expect(report.fieldChecks.find(field => field.id === registrationField)).toMatchObject({ value: "REG-123", status: "manual_review" });
+    expect(report.limitations.join(" ")).toMatch(/size|large|budget|fit/i);
+    expect(JSON.stringify(generateJSON.mock.calls)).not.toContain(largeLabel);
+    expectBoundedRequests();
+  });
+
+  it("makes no AI calls when indivisible shared applicant context cannot fit", async () => {
+    config.tavilyApiKey = "";
+    const { user } = await applicant(["investor"]);
+    const originalFind = store.findUserById.bind(store);
+    const largeName = "Extended legal applicant name ".repeat(400);
+    vi.spyOn(store, "findUserById").mockImplementation(async id => ({
+      ...(await originalFind(id)), fullName: largeName,
+    }));
+    const report = await runDueDiligence(store, user.id);
+    expect(generateJSON).not.toHaveBeenCalled();
+    expect(report.fieldChecks.find(field => field.id === "personal.fullName")).toMatchObject({ value: largeName, status: "manual_review" });
+    expect(report.fieldChecks.find(field => field.id === "investor.title").status).toBe("manual_review");
+    expect(report.limitations.join(" ")).toMatch(/size|large|budget|fit/i);
+  });
+
+  it.each(["AI_BUDGET_EXCEEDED", "AI_USAGE_STORAGE_FAILED"])("propagates %s instead of turning it into a partial success", async code => {
+    const { user } = await applicant(["startup"]);
+    const error = Object.assign(new Error("AI operation cannot proceed"), { code });
+    generateJSON.mockRejectedValue(error);
+    await expect(runDueDiligence(store, user.id)).rejects.toBe(error);
+    expect(generateJSON).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("Due diligence access and persistence", () => {
   it.each(["startup", "investor", "advisor"])(
     "lets an approved %s run and retrieve their own full report",

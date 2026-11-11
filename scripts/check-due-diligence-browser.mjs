@@ -28,7 +28,7 @@ config.groqApiKey = "isolated-fixture";
 config.anthropicApiKey = "";
 config.aiProvider = "groq";
 config.tavilyApiKey = "isolated-fixture";
-let modelRequests = 0;
+let modelRequests = 0, excerptRequests = 0;
 globalThis.fetch = async (input, init) => {
   const url = typeof input === "string" ? input : input.url;
   const body = JSON.parse(init?.body || (await input.text()));
@@ -45,7 +45,12 @@ globalThis.fetch = async (input, init) => {
     });
   if (url === "https://api.groq.com/openai/v1/chat/completions") {
     modelRequests++;
+    const inputBytes = body.messages.reduce((sum, message) => sum + Buffer.byteLength(message.content, "utf8"), 0);
+    assert.ok(inputBytes <= 5000, "Complete provider input stays within the byte budget");
+    assert.equal(body.max_completion_tokens, 2500, "Groq receives the explicit completion cap");
+    assert.ok(inputBytes + body.max_completion_tokens < 8000, "Input and completion allowance leave room for chat framing");
     const prompt = JSON.parse(body.messages[1].content);
+    if (prompt.sources.some(source => source.excerptStart !== undefined)) excerptRequests++;
     const checks = prompt.fields.map((f) => ({
       fieldId: f.id,
       status: "insufficient_evidence",
@@ -118,7 +123,7 @@ const pdfBuffer = new Promise((resolve) => {
   pdf.on("end", () => resolve(Buffer.concat(chunks)));
 });
 pdf.text(
-  "Synthetic test evidence: Browser Applicant, Finance degree, Browser University, 2020.",
+  "Synthetic test evidence: Browser Applicant, Finance degree, Browser University, 2020. ".repeat(100),
 );
 pdf.end();
 async function applicant(roles, approved = false) {
@@ -243,6 +248,7 @@ try {
   assert.equal(report.result.documents[0].status, "read");
   assert.equal((await store.findUserById(pending.id)).status, "pending");
   assert.ok(modelRequests > 0);
+  assert.ok(excerptRequests > 0, "A real parsed long PDF uses bounded evidence excerpts");
   assert.equal(report.usage.status, "complete");
   assert.equal(report.usage.totalTokens, report.usage.requestCount * 120);
   assert.equal(report.usage.inputTokens, report.usage.requestCount * 100);
@@ -262,6 +268,7 @@ try {
   checked.push(
     "Token totals match all provider responses and each field batch has a visible purpose/model breakdown",
   );
+  checked.push("Long PDF evidence is split into bounded requests with the actual Groq completion cap checked at HTTP dispatch");
   await page.select(
     'select[aria-label="Filter due diligence checks"]',
     "manual_review",

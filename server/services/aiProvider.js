@@ -9,7 +9,11 @@ export function configuredProviders(settings = config) {
   const available = {groq:getGroqApiKeys(settings).length>0,gemini:!!settings.geminiApiKey,anthropic:!!settings.anthropicApiKey};
   return ["groq","gemini","anthropic"].filter(provider=>available[provider] && (settings.aiProvider==="auto" || settings.aiProvider===provider));
 }
-export async function generateJSON(system,prompt,{maxTokens=1800,validate,onRetry,purpose="Generate a structured AI assessment",usageDetails={}}={}) {
+export async function generateJSON(system,prompt,{maxTokens=1800,maxCompletionTokens,validate,onRetry,purpose="Generate a structured AI assessment",usageDetails={}}={}) {
+  if(maxCompletionTokens!==undefined && (!Number.isSafeInteger(maxCompletionTokens) || maxCompletionTokens<=0)) {
+    throw new TypeError("maxCompletionTokens must be a positive safe integer.");
+  }
+  const groqCompletionTokens=maxCompletionTokens ?? maxTokens+2500;
   const settings=await getAiConfig();
   const providers=configuredProviders(settings);
   if(!providers.length) throw new Error("No AI provider is configured. An administrator must configure Groq, Gemini or Anthropic.");
@@ -20,7 +24,7 @@ export async function generateJSON(system,prompt,{maxTokens=1800,validate,onRetr
     try {
       let text;
       if(provider==="groq") {
-        const response=await requestGroqCompletion({model:settings.groqModel,messages:[{role:"system",content:system},{role:"user",content:prompt}],response_format:{type:"json_object"},temperature:0.1,max_completion_tokens:maxTokens+2500,...(settings.groqModel.startsWith("openai/gpt-oss") ? {reasoning_effort:"low"} : {})},{purpose,trigger,details:usageDetails,keys:getGroqApiKeys(settings)});
+        const response=await requestGroqCompletion({model:settings.groqModel,messages:[{role:"system",content:system},{role:"user",content:prompt}],response_format:{type:"json_object"},temperature:0.1,max_completion_tokens:groqCompletionTokens,...(settings.groqModel.startsWith("openai/gpt-oss") ? {reasoning_effort:"low"} : {})},{purpose,trigger,details:usageDetails,keys:getGroqApiKeys(settings)});
         text=response.choices[0]?.message?.content;
       } else if(provider==="gemini") {
         text=await requestGemini(settings,{system,parts:[{text:prompt}],maxTokens,json:true},{purpose,trigger,details:usageDetails});
