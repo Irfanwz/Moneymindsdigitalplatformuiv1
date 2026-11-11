@@ -30,6 +30,7 @@ export function safeAgentError(error) {
   if (error?.code === "AI_TOKEN_LIMIT") return error.message;
   // Provider errors can include request headers or URLs. Never send those to users.
   if (error?.status===401 || error?.status===403) return "The AI provider rejected the configured credentials. An administrator needs to check the provider key.";
+  if (error?.status===413) return "The AI request is too large for the provider's token or request-size limit. Shorten the source content, or use Auto with another configured provider or model that supports a larger request.";
   if (error?.status===429) return "The AI provider rate limit was reached. Please retry shortly.";
   return String(error?.message || "The agent could not finish. Please retry.").replace(/(?:sk-|gsk_|tvly-)[\w-]+/g,"[redacted]").slice(0,500);
 }

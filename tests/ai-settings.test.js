@@ -99,8 +99,8 @@ it("falls back to Gemini and accounts for thinking tokens without exposing keys"
   mocks.groq.mockRejectedValue(Object.assign(new Error("Down"),{status:503}));
   const tracker=createUsageTracker(async()=>{});
   expect((await tracker.run(()=>generateJSON("JSON only","fixture"))).provider).toBe("gemini");
-  expect(tracker.snapshot().calls.map(call=>call.trigger)).toEqual(["initial","fallback"]);
-  expect(tracker.snapshot().calls[1]).toMatchObject({inputTokens:10,outputTokens:10,totalTokens:20,reasoningTokens:6});
+  expect(tracker.snapshot().calls.map(call=>call.trigger)).toEqual(["initial","retry","retry","fallback"]);
+  expect(tracker.snapshot().calls.at(-1)).toMatchObject({inputTokens:10,outputTokens:10,totalTokens:20,reasoningTokens:6});
   const [url,options]=fetch.mock.calls[0];
   expect(url).not.toContain(config.geminiApiKey);expect(options.headers["x-goog-api-key"]).toBe(config.geminiApiKey);
   expect(JSON.parse(options.body).generationConfig.responseMimeType).toBe("application/json");

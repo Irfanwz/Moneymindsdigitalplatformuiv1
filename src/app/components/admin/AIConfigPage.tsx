@@ -115,7 +115,7 @@ export function AIConfigPage() {
           </button>)}
         </div>
         {!["auto","groq","gemini","anthropic"].includes(cfg.activeProvider) && <p role="alert" className="text-sm text-amber-700">The saved provider is unsupported by the agent runtime. Select a supported provider and save.</p>}
-        <p className="text-sm">Groq key rotation is automatic: concurrent requests use the least busy keys; ties rotate. Invalid keys are skipped. A Groq rate limit pauses the pool before retry or provider fallback.</p>
+        <p className="text-sm">Groq uses the least busy ready key and rotates ties. Authentication, permission, connection, size (413), rate-limit (429) or temporary server failures trigger the next ready key, once per key per sequence. Rate-limited keys wait before reuse. If every key fails, Auto can try another configured provider.</p>
       </Card>
       {(["groq","gemini","anthropic"] as const).map(provider=><Card key={provider} className="p-6 space-y-4">
         <h2 className="font-semibold capitalize">{provider}{provider==="groq" ? " key pool" : ""}</h2>
