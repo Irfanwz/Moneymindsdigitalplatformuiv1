@@ -503,11 +503,40 @@ export async function runDueDiligence(
     limitations.push(
       "Document text is limited to the first 20,000 extracted characters per file. Review the complete originals before deciding.",
     );
-  const queries = buildDueDiligenceQueries(context);
+  const allQueries = buildDueDiligenceQueries(context);
   let sources = [...evidence.sources, ...profilePages.sources],
     searchCount = 0;
   const searchUrls = new Set();
-  if (config.tavilyApiKey) {
+
+  // ── Optimization: skip redundant web searches when profile links were read ──
+  // If we successfully read LinkedIn/GitHub/website, those pages already contain
+  // the person's name, role, company, education etc. No need to web-search for
+  // "Zahoor Pakistan professional background LinkedIn" — we already HAVE their
+  // LinkedIn. Only keep queries for things NOT covered by profile links:
+  // company registration, regulatory license, education institution, etc.
+  const readLinkPrefixes = new Set();
+  for (const link of profilePages.links) {
+    if (link.accessStatus === "read") {
+      for (const role of link.roles) readLinkPrefixes.add(`${role}.`);
+      readLinkPrefixes.add("personal.");
+    }
+  }
+  const queries = readLinkPrefixes.size > 0
+    ? allQueries.filter((q) => {
+        // Keep queries for specific verifications (company reg, education, license)
+        const isSpecificVerification =
+          /company registration|funding|founders/i.test(q.query) ||
+          /education|university|degree/i.test(q.query) ||
+          /license|registration|regulatory/i.test(q.query) ||
+          /investor portfolio investments/i.test(q.query);
+        if (isSpecificVerification) return true;
+        // Skip general "name + background" queries when profile link covers that prefix
+        return !readLinkPrefixes.has(q.prefix);
+      })
+    : allQueries;
+  const skippedQueries = allQueries.length - queries.length;
+
+  if (config.tavilyApiKey && queries.length) {
     for (let i = 0; i < queries.length; i += 5) {
       const batch = queries.slice(i, i + 5);
       const found = await searchService.batchSearch(batch.map((q) => q.query));
@@ -533,17 +562,78 @@ export async function runDueDiligence(
         });
       }
       await progress(
-        `Searched ${Math.min(i + 5, queries.length)} of ${queries.length} professional evidence queries`,
+        `Searched ${Math.min(i + 5, queries.length)} of ${queries.length} professional evidence queries${skippedQueries ? ` (${skippedQueries} skipped — covered by profile links)` : ""}`,
         35,
       );
     }
   }
-  if (!searchCount)
+  if (skippedQueries)
+    limitations.push(
+      `${skippedQueries} web search queries were skipped because the applicant's profile links were read directly. Claims are verified against actual profile page content.`,
+    );
+  if (!searchCount && !skippedQueries)
     limitations.push(
       config.tavilyApiKey
         ? "No usable web evidence was returned. Search may be unavailable or have no matching results; external verification remains incomplete."
         : "Web search is not configured. External verification remains incomplete.",
     );
+  // ── Identity verification: compare provided profile links against claims ──
+  const identityResults = [];
+  const readLinks = profilePages.links.filter(link => link.accessStatus === "read");
+  if (readLinks.length) {
+    await progress("Verifying identity against provided profile links", 42);
+    for (const link of readLinks) {
+      const source = profilePages.sources.find(s => s.id === link.id);
+      if (!source?.text) continue;
+      const claimedFields = context.fields
+        .filter(f => !blank(f.value) && f.policy === "evidence" &&
+          (link.roles.includes(f.role) || f.role === "personal"))
+        .slice(0, 20) // cap to keep prompt small
+        .map(f => ({ id: f.id, label: f.label, value: display(f.value) }));
+      if (!claimedFields.length) continue;
+      try {
+        const { data, provider } = await generateJSON(
+          `Compare the applicant's claimed profile information against the ACTUAL content from their provided profile link. Determine if this is the SAME person. Return JSON: {"match":"match"|"mismatch"|"inconclusive","confidence":0-100,"nameMatch":true|false,"roleMatch":true|false,"companyMatch":true|false,"summary":"one paragraph explaining your verdict","matchedFields":[{"fieldId":"id","found":true|false,"pageValue":"what the page says","claimedValue":"what they claimed"}]}. Only compare against the page content provided. A match means the page clearly belongs to this person. A mismatch means the page belongs to a different person or contradicts key claims.`,
+          JSON.stringify({
+            applicantName: context.fullName,
+            profileUrl: link.url,
+            pageTitle: source.title,
+            pageContent: source.text.slice(0, 8000),
+            claimedFields,
+          }),
+          {
+            maxTokens: 1200,
+            purpose: `Identity verification: ${link.url}`,
+            usageDetails: { fieldCount: claimedFields.length, sourceCount: 1 },
+          },
+        );
+        // Normalize the match value — AI may return variations
+        const rawMatch = String(data.match || "").toLowerCase().trim();
+        const normalizedMatch = rawMatch === "yes" || rawMatch === "true" || rawMatch === "match" ? "match"
+          : rawMatch === "no" || rawMatch === "false" || rawMatch === "mismatch" ? "mismatch"
+          : "inconclusive";
+        identityResults.push({
+          ...data,
+          match: normalizedMatch,
+          confidence: Math.min(100, Math.max(0, Number(data.confidence) || 0)),
+          matchedFields: Array.isArray(data.matchedFields) ? data.matchedFields.slice(0, 20) : [],
+          summary: String(data.summary || "No summary provided.").slice(0, 1000),
+          url: link.url,
+          linkId: link.id,
+          provider,
+        });
+      } catch {
+        identityResults.push({
+          url: link.url,
+          linkId: link.id,
+          match: "inconclusive",
+          confidence: 0,
+          summary: "Identity verification could not be completed for this link.",
+        });
+      }
+    }
+  }
+
   const checks = new Map(),
     reviewFields = [];
   const base = (field, status, reasoning, refs = []) => ({
@@ -796,14 +886,32 @@ export async function runDueDiligence(
       "self_reported",
     ].map((s) => [s, fieldChecks.filter((f) => f.status === s).length]),
   );
+  // Build identity verification summary for the report
+  const identityVerification = identityResults.length ? {
+    status: identityResults.some(r => r.match === "mismatch") ? "mismatch"
+      : identityResults.every(r => r.match === "match") ? "match"
+      : "inconclusive",
+    checks: identityResults.map(({ url, match, confidence, nameMatch, roleMatch, companyMatch, summary, matchedFields }) => ({
+      url, match, confidence, nameMatch, roleMatch, companyMatch, summary, matchedFields,
+    })),
+    summary: identityResults.map(r =>
+      `${r.url}: ${r.match === "match" ? "✓ MATCH" : r.match === "mismatch" ? "✗ MISMATCH" : "? INCONCLUSIVE"} (${r.confidence}% confidence) — ${r.summary}`
+    ).join("\n"),
+  } : null;
+
+  const identitySummary = identityVerification
+    ? ` Identity: ${identityVerification.status === "match" ? "✓ verified" : identityVerification.status === "mismatch" ? "✗ mismatch detected" : "inconclusive"} from ${identityResults.length} profile link(s).`
+    : "";
+
   return {
     reportType: "profile-due-diligence",
     version: 1,
     roles: context.roles,
     fieldChecks,
+    identityVerification,
     profileLinks: profileLinkComparisons(profilePages.links,fieldChecks),
     counts,
-    summary: `Reviewed ${context.roles.map((role) => registrationRoles.find((r) => r.id === role).label).join(", ")}: ${fieldChecks.length} field and document checks. ${counts.supported} supported by supplied evidence; ${counts.inconsistent} inconsistencies; ${counts.insufficient_evidence + counts.manual_review} need further evidence or manual review.`,
+    summary: `Reviewed ${context.roles.map((role) => registrationRoles.find((r) => r.id === role).label).join(", ")}: ${fieldChecks.length} field and document checks. ${counts.supported} supported by supplied evidence; ${counts.inconsistent} inconsistencies; ${counts.insufficient_evidence + counts.manual_review} need further evidence or manual review.${identitySummary}`,
     limitations,
     documents: evidence.documents,
     sources: sources.map(
@@ -816,6 +924,7 @@ export async function runDueDiligence(
           ? "no_results"
           : "not_configured",
       queries: config.tavilyApiKey ? queries.length : 0,
+      skippedQueries,
     },
     provider: [...providers].join(", ") || "No model assessment needed",
     generatedAt: new Date().toISOString(),
