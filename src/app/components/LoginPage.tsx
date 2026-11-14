@@ -1,6 +1,6 @@
 import { useState, useRef, type FormEvent, type KeyboardEvent } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { LockKeyhole, Mail, ShieldCheck, UserCog } from "lucide-react";
+import { Eye, EyeOff, LockKeyhole, Mail, ShieldCheck, UserCog } from "lucide-react";
 
 import { useAuth } from "@/app/contexts/AuthContext";
 import { ApiError } from "@/app/lib/api";
@@ -23,6 +23,7 @@ export function LoginPage() {
   const [step, setStep] = useState<LoginStep>("credentials");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   // Email OTP — 4 separate digit inputs
   const [otpDigits, setOtpDigits] = useState(["", "", "", ""]);
   const otpRef0 = useRef<HTMLInputElement>(null);
@@ -213,14 +214,29 @@ export function LoginPage() {
                     Forgot password?
                   </Link>
                 </div>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  placeholder="Enter your password"
-                  required
-                />
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    placeholder="Enter your password"
+                    autoComplete="current-password"
+                    className="pr-12"
+                    required
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-0 top-0 text-muted-foreground"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    aria-controls="password"
+                    onClick={() => setShowPassword((visible) => !visible)}
+                  >
+                    {showPassword ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
+                  </Button>
+                </div>
               </div>
               {step === "totp" && (
                 <div className="space-y-2">
