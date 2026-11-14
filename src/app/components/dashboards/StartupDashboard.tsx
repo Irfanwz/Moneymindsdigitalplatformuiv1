@@ -146,8 +146,8 @@ export function StartupDashboard() {
                 <div className="grid gap-3">
                   <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                     <div className="flex items-center gap-3">
-                      <div className={`h-8 w-8 rounded-full ${profile?.companyName ? "bg-green-100" : "bg-amber-100"} flex items-center justify-center`}>
-                        <FileCheck className={`h-4 w-4 ${profile?.companyName ? "text-green-600" : "text-amber-600"}`} />
+                      <div className={`h-8 w-8 rounded-full ${profile?.companyName ? "bg-green-100 dark:bg-green-950/50" : "bg-amber-100 dark:bg-amber-950/50"} flex items-center justify-center`}>
+                        <FileCheck className={`h-4 w-4 ${profile?.companyName ? "text-green-600 dark:text-green-400" : "text-amber-600 dark:text-amber-400"}`} />
                       </div>
                       <div>
                         <div className="text-sm font-medium">Company Information</div>
@@ -164,8 +164,8 @@ export function StartupDashboard() {
 
                   <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                     <div className="flex items-center gap-3">
-                      <div className={`h-8 w-8 rounded-full ${profile?.pitch ? "bg-green-100" : "bg-amber-100"} flex items-center justify-center`}>
-                        <Sparkles className={`h-4 w-4 ${profile?.pitch ? "text-green-600" : "text-amber-600"}`} />
+                      <div className={`h-8 w-8 rounded-full ${profile?.pitch ? "bg-green-100 dark:bg-green-950/50" : "bg-amber-100 dark:bg-amber-950/50"} flex items-center justify-center`}>
+                        <Sparkles className={`h-4 w-4 ${profile?.pitch ? "text-green-600 dark:text-green-400" : "text-amber-600 dark:text-amber-400"}`} />
                       </div>
                       <div>
                         <div className="text-sm font-medium">Investment Pitch</div>
@@ -182,8 +182,8 @@ export function StartupDashboard() {
 
                   <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                     <div className="flex items-center gap-3">
-                      <div className={`h-8 w-8 rounded-full ${(profile?.teamMembers?.length ?? 0) > 0 ? "bg-green-100" : "bg-amber-100"} flex items-center justify-center`}>
-                        <Building2 className={`h-4 w-4 ${(profile?.teamMembers?.length ?? 0) > 0 ? "text-green-600" : "text-amber-600"}`} />
+                      <div className={`h-8 w-8 rounded-full ${(profile?.teamMembers?.length ?? 0) > 0 ? "bg-green-100 dark:bg-green-950/50" : "bg-amber-100 dark:bg-amber-950/50"} flex items-center justify-center`}>
+                        <Building2 className={`h-4 w-4 ${(profile?.teamMembers?.length ?? 0) > 0 ? "text-green-600 dark:text-green-400" : "text-amber-600 dark:text-amber-400"}`} />
                       </div>
                       <div>
                         <div className="text-sm font-medium">Team Members</div>

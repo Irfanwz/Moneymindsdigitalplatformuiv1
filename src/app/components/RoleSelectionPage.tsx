@@ -17,22 +17,22 @@ const roleMeta: Record<AppRole, {
     title: "Startup",
     description: "Build credibility and find investors",
     icon: Building2,
-    accent: "bg-blue-100 text-blue-700",
-    buttonClassName: "bg-slate-900 hover:bg-slate-800 text-white",
+    accent: "bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300",
+    buttonClassName: "bg-primary hover:bg-primary/90 text-primary-foreground",
   },
   investor: {
     title: "Investor",
     description: "Discover verified startups",
     icon: TrendingUp,
-    accent: "bg-slate-100 text-slate-800",
-    buttonClassName: "bg-slate-900 hover:bg-slate-800 text-white",
+    accent: "bg-muted text-foreground",
+    buttonClassName: "bg-primary hover:bg-primary/90 text-primary-foreground",
   },
   advisor: {
     title: "Financial Advisor",
     description: "Share expertise and build reputation",
     icon: Users,
-    accent: "bg-fuchsia-100 text-fuchsia-700",
-    buttonClassName: "bg-slate-900 hover:bg-slate-800 text-white",
+    accent: "bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-950/50 dark:text-fuchsia-300",
+    buttonClassName: "bg-primary hover:bg-primary/90 text-primary-foreground",
   },
 };
 

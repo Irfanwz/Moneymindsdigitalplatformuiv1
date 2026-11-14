@@ -47,9 +47,9 @@ const AVAILABILITY_LABELS: Record<string, string> = {
 
 function getAvailabilityColor(availability: string) {
   switch (availability) {
-    case "available": return "bg-green-100 text-green-700";
-    case "limited": return "bg-amber-100 text-amber-700";
-    case "waitlist": return "bg-slate-100 text-slate-700";
+    case "available": return "bg-green-100 text-green-700 dark:bg-green-950/50 dark:text-green-300";
+    case "limited": return "bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300";
+    case "waitlist": return "bg-slate-100 text-slate-700 dark:bg-slate-950/50 dark:text-slate-300";
     default: return "bg-muted text-muted-foreground";
   }
 }

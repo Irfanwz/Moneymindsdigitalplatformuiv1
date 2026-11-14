@@ -15,12 +15,12 @@ import { getMyCredibility, getCredibilityTiers, recalculateCredibility, type Cre
 import { CredibilityHistoryChart } from "@/app/components/credibility/CredibilityHistoryChart";
 
 const TIER_COLORS: Record<string, string> = {
-  elite: "bg-purple-100 text-purple-700 border-purple-200",
-  expert: "bg-green-100 text-green-700 border-green-200",
-  reliable: "bg-blue-100 text-blue-700 border-blue-200",
-  developing: "bg-yellow-100 text-yellow-700 border-yellow-200",
-  inconsistent: "bg-orange-100 text-orange-700 border-orange-200",
-  poor: "bg-red-100 text-red-700 border-red-200",
+  elite: "bg-purple-100 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800",
+  expert: "bg-green-100 dark:bg-green-950/50 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800",
+  reliable: "bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800",
+  developing: "bg-yellow-100 dark:bg-yellow-950/50 text-yellow-700 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800",
+  inconsistent: "bg-orange-100 dark:bg-orange-950/50 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-800",
+  poor: "bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800",
 };
 
 const SCORE_RING_COLORS: Record<string, string> = {
@@ -120,7 +120,7 @@ export function CredibilityScorePage() {
             <CardContent className="pt-6 pb-6 text-center">
               {score !== null ? (
                 <>
-                  <div className={`text-6xl font-bold mb-2 ${SCORE_RING_COLORS[color] ?? "text-slate-900"}`}>
+                  <div className={`text-6xl font-bold mb-2 ${SCORE_RING_COLORS[color] ?? "text-foreground"}`}>
                     {score}
                   </div>
                   <div className="text-sm text-muted-foreground mb-3">out of 100</div>
@@ -185,19 +185,19 @@ export function CredibilityScorePage() {
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex items-start gap-2">
-                <div className="h-5 w-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">1</div>
+                <div className="h-5 w-5 rounded-full bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">1</div>
                 <p className="text-sm text-muted-foreground">Post signals with price predictions</p>
               </div>
               <div className="flex items-start gap-2">
-                <div className="h-5 w-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">2</div>
+                <div className="h-5 w-5 rounded-full bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">2</div>
                 <p className="text-sm text-muted-foreground">System checks predictions against real market prices daily at 9 AM</p>
               </div>
               <div className="flex items-start gap-2">
-                <div className="h-5 w-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">3</div>
+                <div className="h-5 w-5 rounded-full bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">3</div>
                 <p className="text-sm text-muted-foreground">Score recalculates daily at 9:30 AM based on accuracy</p>
               </div>
               <div className="flex items-start gap-2">
-                <div className="h-5 w-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">4</div>
+                <div className="h-5 w-5 rounded-full bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">4</div>
                 <p className="text-sm text-muted-foreground">Higher score = higher fee caps for your groups</p>
               </div>
             </CardContent>
@@ -289,7 +289,7 @@ export function CredibilityScorePage() {
                               {t.label}
                             </Badge>
                             {isCurrentTier && (
-                              <span className="text-xs font-medium text-emerald-600">← You</span>
+                              <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">← You</span>
                             )}
                           </div>
                         </td>

@@ -183,7 +183,7 @@ export function AdvisorProfile() {
                     <div key={index}>
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-sm font-medium text-slate-900 dark:text-white">{expertise.area}</span>
-                        <span className="text-xs text-slate-500">{expertise.level}%</span>
+                        <span className="text-xs text-muted-foreground">{expertise.level}%</span>
                       </div>
                       <Progress value={expertise.level} className="h-2" />
                     </div>

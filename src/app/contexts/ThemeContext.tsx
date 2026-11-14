@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useLayoutEffect, ReactNode } from "react";
 
 type Theme = "dark" | "light";
 
@@ -8,21 +8,37 @@ interface ThemeContextType {
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+const THEME_KEY = "moneyminds-theme";
+const resolveTheme = (value: string | null): Theme => value === "light" ? "light" : "dark";
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => {
-    const savedTheme = localStorage.getItem("moneyminds-theme") as Theme;
-    return savedTheme || "dark";
+    try {
+      return resolveTheme(localStorage.getItem(THEME_KEY));
+    } catch {
+      return "dark";
+    }
   });
 
-  useEffect(() => {
-    localStorage.setItem("moneyminds-theme", theme);
-    if (theme === "dark") {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
+  useLayoutEffect(() => {
+    document.documentElement.classList.toggle("dark", theme === "dark");
+    document.documentElement.style.colorScheme = theme;
+    try {
+      localStorage.setItem(THEME_KEY, theme);
+    } catch {
+      // Switching still works when browser storage is unavailable.
     }
   }, [theme]);
+
+  useEffect(() => {
+    const syncTheme = (event: StorageEvent) => {
+      if (event.key === THEME_KEY || event.key === null) {
+        setTheme(resolveTheme(event.newValue));
+      }
+    };
+    window.addEventListener("storage", syncTheme);
+    return () => window.removeEventListener("storage", syncTheme);
+  }, []);
 
   const toggleTheme = () => {
     setTheme((prev) => (prev === "dark" ? "light" : "dark"));

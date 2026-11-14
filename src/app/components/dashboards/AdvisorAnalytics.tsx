@@ -1,3 +1,5 @@
+import { chartTooltipTheme } from "@/app/components/ui/chart-theme";
+import { Tooltip } from "recharts";
 import { useEffect, useState } from "react";
 import { Header } from "@/app/components/Header";
 import { Card } from "@/app/components/ui/card";
@@ -21,7 +23,6 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
   ResponsiveContainer,
   PieChart,
   Pie,
@@ -246,7 +247,7 @@ export function AdvisorAnalytics() {
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                   <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                   <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-                  <Tooltip />
+                  <Tooltip {...chartTooltipTheme} />
                   <Legend />
                   <Bar dataKey="members" fill="#8b5cf6" radius={[4, 4, 0, 0]} name="Members" />
                   <Bar dataKey="signals" fill="#06b6d4" radius={[4, 4, 0, 0]} name="Signals" />
@@ -285,7 +286,7 @@ export function AdvisorAnalytics() {
                         <Cell key={index} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(value: number) => `$${value.toLocaleString()}`} />
+                    <Tooltip {...chartTooltipTheme} formatter={(value: number) => `$${value.toLocaleString()}`} />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="flex-1 space-y-4">
@@ -323,7 +324,7 @@ export function AdvisorAnalytics() {
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                   <XAxis dataKey="date" tick={{ fontSize: 12 }} />
                   <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-                  <Tooltip />
+                  <Tooltip {...chartTooltipTheme} />
                   <Area type="monotone" dataKey="posts" stroke="#ec4899" fill="#ec4899" fillOpacity={0.2} />
                 </AreaChart>
               </ResponsiveContainer>
@@ -356,7 +357,7 @@ export function AdvisorAnalytics() {
                         <Cell key={index} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip />
+                    <Tooltip {...chartTooltipTheme} />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="flex-1 space-y-2">
@@ -398,7 +399,7 @@ export function AdvisorAnalytics() {
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                 <XAxis dataKey="date" tick={{ fontSize: 11 }} />
                 <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} />
-                <Tooltip formatter={(value: number, _name: string) => [`${value}/100`, "Score"]} />
+                <Tooltip {...chartTooltipTheme} formatter={(value: number, _name: string) => [`${value}/100`, "Score"]} />
                 <ReferenceLine y={90} stroke="#8b5cf6" strokeDasharray="4 2" label={{ value: "Elite", fontSize: 10, fill: "#8b5cf6" }} />
                 <ReferenceLine y={75} stroke="#10b981" strokeDasharray="4 2" label={{ value: "Expert", fontSize: 10, fill: "#10b981" }} />
                 <Line
@@ -433,10 +434,10 @@ export function AdvisorAnalytics() {
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                 <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-                <Tooltip />
+                <Tooltip {...chartTooltipTheme} />
                 <Legend />
                 <Bar dataKey="enrolled" fill="#10b981" radius={[4, 4, 0, 0]} name="Enrolled" />
-                <Bar dataKey="capacity" fill="#e5e7eb" radius={[4, 4, 0, 0]} name="Capacity" />
+                <Bar dataKey="capacity" fill="var(--muted)" radius={[4, 4, 0, 0]} name="Capacity" />
               </BarChart>
             </ResponsiveContainer>
           </Card>
@@ -455,7 +456,7 @@ export function AdvisorAnalytics() {
                         <Cell key={index} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip />
+                    <Tooltip {...chartTooltipTheme} />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="flex-1 space-y-3">
@@ -479,7 +480,7 @@ export function AdvisorAnalytics() {
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                   <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 12 }} />
                   <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 11 }} />
-                  <Tooltip />
+                  <Tooltip {...chartTooltipTheme} />
                   <Bar dataKey="level" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>

@@ -99,7 +99,7 @@ export function AIConfigPage() {
         <p className="mt-2 text-sm text-muted-foreground">View configured keys, select automatic switching, and adjust token limits.</p></div>
       <Button variant="outline" onClick={load} disabled={saving}><RefreshCw className="h-4 w-4 mr-2" />Refresh</Button>
     </div>
-    {cfg.memoryMode && <p className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+    {cfg.memoryMode && <p className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-200">
       Environment settings are shown below. Connect database storage to save changes here; environment changes require a server restart.
     </p>}
     <fieldset disabled={cfg.memoryMode || saving} className="space-y-6">
@@ -110,7 +110,7 @@ export function AIConfigPage() {
           {["auto","groq","gemini","anthropic"].map(provider=><button type="button" key={provider}
             aria-pressed={cfg.activeProvider===provider}
             onClick={()=>setCfg({...cfg,activeProvider:provider})}
-            className={"rounded-lg border px-3 py-3 capitalize text-sm "+(cfg.activeProvider===provider ? "border-indigo-600 bg-indigo-50 text-indigo-700" : "hover:bg-muted")}>
+            className={"rounded-lg border px-3 py-3 capitalize text-sm "+(cfg.activeProvider===provider ? "border-indigo-600 bg-indigo-50 text-indigo-700 dark:border-indigo-400 dark:bg-indigo-950/50 dark:text-indigo-300" : "hover:bg-muted")}>
             {provider==="auto" ? "Auto" : provider}
           </button>)}
         </div>

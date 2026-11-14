@@ -1,3 +1,5 @@
+import { chartTooltipTheme } from "@/app/components/ui/chart-theme";
+import { Tooltip } from "recharts";
 import { useEffect, useState } from "react";
 import { Card } from "@/app/components/ui/card";
 import { Button } from "@/app/components/ui/button";
@@ -20,7 +22,6 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
   ResponsiveContainer,
   PieChart,
   Pie,
@@ -203,7 +204,7 @@ export function InvestorAnalytics() {
                       <Cell key={index} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip {...chartTooltipTheme} />
                 </PieChart>
               </ResponsiveContainer>
               <div className="flex-1 space-y-2">
@@ -235,7 +236,7 @@ export function InvestorAnalytics() {
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                 <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-                <Tooltip />
+                <Tooltip {...chartTooltipTheme} />
                 <Bar dataKey="value" fill="#8b5cf6" radius={[4, 4, 0, 0]} name="Startups" />
               </BarChart>
             </ResponsiveContainer>
@@ -260,7 +261,7 @@ export function InvestorAnalytics() {
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                 <XAxis dataKey="name" tick={{ fontSize: 12 }} />
                 <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} />
-                <Tooltip />
+                <Tooltip {...chartTooltipTheme} />
                 <Bar dataKey="progress" fill="#10b981" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -287,7 +288,7 @@ export function InvestorAnalytics() {
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                 <XAxis dataKey="date" tick={{ fontSize: 12 }} />
                 <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-                <Tooltip />
+                <Tooltip {...chartTooltipTheme} />
                 <Area type="monotone" dataKey="enrollments" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.2} />
               </AreaChart>
             </ResponsiveContainer>
@@ -312,9 +313,9 @@ export function InvestorAnalytics() {
                 <PieChart>
                   <Pie data={bookmarkData} cx="50%" cy="50%" innerRadius={30} outerRadius={60} dataKey="value">
                     <Cell fill="#8b5cf6" />
-                    <Cell fill="#e5e7eb" />
+                    <Cell fill="var(--muted)" />
                   </Pie>
-                  <Tooltip />
+                  <Tooltip {...chartTooltipTheme} />
                 </PieChart>
               </ResponsiveContainer>
               <div className="flex-1 space-y-3">

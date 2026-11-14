@@ -56,11 +56,11 @@ export function VerificationStatusSection({ isVerified, verifiedAt }: Verificati
         </h3>
 
         {summary === "verified" && (
-          <div className="flex items-center gap-3 p-3 rounded-lg bg-blue-50 border border-blue-200">
+          <div className="flex items-center gap-3 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800">
             <VerifiedBadge verifiedAt={verifiedAt} size="lg" />
             <div>
-              <p className="text-sm font-medium text-blue-900">Profile Verified</p>
-              <p className="text-xs text-blue-700">
+              <p className="text-sm font-medium text-blue-900 dark:text-blue-200">Profile Verified</p>
+              <p className="text-xs text-blue-700 dark:text-blue-300">
                 Your credentials have been verified. A verified badge is visible on your profile.
               </p>
             </div>
@@ -68,31 +68,31 @@ export function VerificationStatusSection({ isVerified, verifiedAt }: Verificati
         )}
 
         {summary === "analyzing" && (
-          <div className="flex items-center gap-3 p-3 rounded-lg bg-blue-50 border border-blue-200">
+          <div className="flex items-center gap-3 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800">
             <Clock className="h-5 w-5 text-blue-500 shrink-0 animate-pulse" />
             <div>
-              <p className="text-sm font-medium text-blue-900">AI Review in Progress</p>
-              <p className="text-xs text-blue-700">Your document is being analyzed. Usually takes under a minute.</p>
+              <p className="text-sm font-medium text-blue-900 dark:text-blue-200">AI Review in Progress</p>
+              <p className="text-xs text-blue-700 dark:text-blue-300">Your document is being analyzed. Usually takes under a minute.</p>
             </div>
           </div>
         )}
 
         {summary === "pending" && (
-          <div className="flex items-center gap-3 p-3 rounded-lg bg-yellow-50 border border-yellow-200">
-            <Clock className="h-5 w-5 text-yellow-600 shrink-0" />
+          <div className="flex items-center gap-3 p-3 rounded-lg bg-yellow-50 dark:bg-yellow-950/50 border border-yellow-200 dark:border-yellow-800">
+            <Clock className="h-5 w-5 text-yellow-600 dark:text-yellow-400 shrink-0" />
             <div>
-              <p className="text-sm font-medium text-yellow-900">Verification Pending</p>
-              <p className="text-xs text-yellow-700">Your document is queued for AI review.</p>
+              <p className="text-sm font-medium text-yellow-900 dark:text-yellow-200">Verification Pending</p>
+              <p className="text-xs text-yellow-700 dark:text-yellow-300">Your document is queued for AI review.</p>
             </div>
           </div>
         )}
 
         {summary === "manual_review" && (
-          <div className="flex items-center gap-3 p-3 rounded-lg bg-orange-50 border border-orange-200">
+          <div className="flex items-center gap-3 p-3 rounded-lg bg-orange-50 dark:bg-orange-950/50 border border-orange-200 dark:border-orange-800">
             <AlertCircle className="h-5 w-5 text-orange-500 shrink-0" />
             <div>
-              <p className="text-sm font-medium text-orange-900">Under Admin Review</p>
-              <p className="text-xs text-orange-700">Our team is manually reviewing your document.</p>
+              <p className="text-sm font-medium text-orange-900 dark:text-orange-200">Under Admin Review</p>
+              <p className="text-xs text-orange-700 dark:text-orange-300">Our team is manually reviewing your document.</p>
             </div>
           </div>
         )}

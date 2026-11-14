@@ -29,26 +29,26 @@ function fmt(iso: string) {
 }
 
 function resultConfig(result: PredictionResult | null) {
-  if (result === "correct")   return { color: "bg-emerald-50 text-emerald-700 border-emerald-200", icon: CheckCircle2,  label: "Correct" };
-  if (result === "partial")   return { color: "bg-amber-50 text-amber-700 border-amber-200",     icon: AlertCircle,   label: "Partial" };
-  if (result === "incorrect") return { color: "bg-red-50 text-red-700 border-red-200",           icon: XCircle,       label: "Incorrect" };
-  return                             { color: "bg-blue-50 text-blue-700 border-blue-200",        icon: Clock,         label: "Pending" };
+  if (result === "correct")   return { color: "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800", icon: CheckCircle2,  label: "Correct" };
+  if (result === "partial")   return { color: "bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800",     icon: AlertCircle,   label: "Partial" };
+  if (result === "incorrect") return { color: "bg-red-50 dark:bg-red-950/50 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800",           icon: XCircle,       label: "Incorrect" };
+  return                             { color: "bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800",        icon: Clock,         label: "Pending" };
 }
 
 type CredibilityClass = { label: string; color: string; points: string };
 
 function credibilityClass(result: PredictionResult | null, accuracy: number | null): CredibilityClass | null {
   if (!result || result === null) return null;
-  if (result === "incorrect") return { label: "Incorrect", color: "bg-red-100 text-red-700 border-red-300", points: "-5 pts" };
+  if (result === "incorrect") return { label: "Incorrect", color: "bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-300 border-red-300 dark:border-red-700", points: "-5 pts" };
   const acc = accuracy ?? 0;
-  if (acc >= 90) return { label: "Perfect Match", color: "bg-emerald-100 text-emerald-700 border-emerald-300", points: "+10 pts" };
-  if (acc >= 70) return { label: "Late Match",    color: "bg-blue-100 text-blue-700 border-blue-300",         points: "+6 pts"  };
-  if (acc >= 50) return { label: "Date Only",     color: "bg-yellow-100 text-yellow-700 border-yellow-300",   points: "+3 pts"  };
-  return               { label: "Incorrect",      color: "bg-red-100 text-red-700 border-red-300",            points: "-5 pts"  };
+  if (acc >= 90) return { label: "Perfect Match", color: "bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700", points: "+10 pts" };
+  if (acc >= 70) return { label: "Late Match",    color: "bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700",         points: "+6 pts"  };
+  if (acc >= 50) return { label: "Date Only",     color: "bg-yellow-100 dark:bg-yellow-950/50 text-yellow-700 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700",   points: "+3 pts"  };
+  return               { label: "Incorrect",      color: "bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-300 border-red-300 dark:border-red-700",            points: "-5 pts"  };
 }
 
 function DirectionIcon({ dir }: { dir: GroupPredictionSummary["direction"] }) {
-  if (dir === "up")   return <TrendingUp   className="h-3.5 w-3.5 text-green-600" />;
+  if (dir === "up")   return <TrendingUp   className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />;
   if (dir === "down") return <TrendingDown className="h-3.5 w-3.5 text-red-500" />;
   return                     <Minus        className="h-3.5 w-3.5 text-muted-foreground" />;
 }
@@ -197,7 +197,7 @@ export function PredictionHistoryPage({ groupId }: PredictionHistoryPageProps) {
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
-          <BarChart2 className="h-4 w-4 text-blue-600" />
+          <BarChart2 className="h-4 w-4 text-blue-600 dark:text-blue-400" />
           Prediction History
           <span className="ml-auto text-sm font-normal text-muted-foreground">
             {all.length} total

@@ -21,11 +21,11 @@ const DOC_TYPES = [
 ];
 
 const STATUS_CONFIG = {
-  pending:       { icon: Clock,        color: "text-yellow-500", bg: "bg-yellow-50",  label: "Pending",       desc: "Waiting for AI analysis" },
-  analyzing:     { icon: Clock,        color: "text-blue-500",   bg: "bg-blue-50",    label: "Analyzing",     desc: "AI is reviewing your document" },
-  verified:      { icon: CheckCircle2, color: "text-green-600",  bg: "bg-green-50",   label: "Verified",      desc: "Successfully verified" },
-  manual_review: { icon: AlertCircle,  color: "text-orange-500", bg: "bg-orange-50",  label: "Under Review",  desc: "Admin is reviewing your document" },
-  rejected:      { icon: XCircle,      color: "text-red-500",    bg: "bg-red-50",     label: "Not Verified",  desc: "Document could not be verified" },
+  pending:       { icon: Clock,        color: "text-yellow-500", bg: "bg-yellow-50 dark:bg-yellow-950/50",  label: "Pending",       desc: "Waiting for AI analysis" },
+  analyzing:     { icon: Clock,        color: "text-blue-500",   bg: "bg-blue-50 dark:bg-blue-950/50",    label: "Analyzing",     desc: "AI is reviewing your document" },
+  verified:      { icon: CheckCircle2, color: "text-green-600 dark:text-green-400",  bg: "bg-green-50 dark:bg-green-950/50",   label: "Verified",      desc: "Successfully verified" },
+  manual_review: { icon: AlertCircle,  color: "text-orange-500", bg: "bg-orange-50 dark:bg-orange-950/50",  label: "Under Review",  desc: "Admin is reviewing your document" },
+  rejected:      { icon: XCircle,      color: "text-red-500",    bg: "bg-red-50 dark:bg-red-950/50",     label: "Not Verified",  desc: "Document could not be verified" },
 };
 
 function VerificationRecord({ record }: { record: ProfileVerification }) {
@@ -143,8 +143,8 @@ function VerificationUploadForm() {
               key={type.value}
               onClick={() => { setDocType(type.value); setStep("upload"); }}
               className={cn(
-                "flex items-center justify-between p-4 rounded-lg border text-left transition-colors hover:border-blue-400 hover:bg-blue-50/50",
-                docType === type.value ? "border-blue-500 bg-blue-50" : "border-border"
+                "flex items-center justify-between p-4 rounded-lg border text-left transition-colors hover:border-blue-400 hover:bg-blue-50/50 dark:hover:bg-blue-950/50",
+                docType === type.value ? "border-blue-500 bg-blue-50 dark:bg-blue-950/50" : "border-border"
               )}
             >
               <div>
@@ -178,7 +178,7 @@ function VerificationUploadForm() {
           onClick={() => fileInputRef.current?.click()}
           className={cn(
             "border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-colors",
-            dragging ? "border-blue-500 bg-blue-50" : "border-border hover:border-blue-400 hover:bg-muted/30"
+            dragging ? "border-blue-500 bg-blue-50 dark:bg-blue-950/50" : "border-border hover:border-blue-400 hover:bg-muted/30"
           )}
         >
           <input
@@ -254,12 +254,12 @@ function VerificationUploadForm() {
   // ── Step 4: Done + history ────────────────────────────────────
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      {file && <Card className="border-green-200 bg-green-50">
+      {file && <Card className="border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/50">
         <CardContent className="flex items-center gap-4 pt-6">
-          <CheckCircle2 className="h-10 w-10 text-green-600 shrink-0" />
+          <CheckCircle2 className="h-10 w-10 text-green-600 dark:text-green-400 shrink-0" />
           <div>
-            <p className="font-semibold text-green-900">Document submitted successfully</p>
-            <p className="text-sm text-green-700 mt-0.5">
+            <p className="font-semibold text-green-900 dark:text-green-200">Document submitted successfully</p>
+            <p className="text-sm text-green-700 dark:text-green-300 mt-0.5">
               The status and processing steps below update automatically while your document is reviewed.
             </p>
           </div>

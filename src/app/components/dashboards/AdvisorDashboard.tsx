@@ -425,8 +425,8 @@ export function AdvisorDashboard() {
                         <div className="text-right">
                           <div className={`text-sm px-2 py-1 rounded ${
                             signal.postType === "signal"
-                              ? "bg-green-100 text-green-700"
-                              : "bg-blue-100 text-blue-700"
+                              ? "bg-green-100 dark:bg-green-950/50 text-green-700 dark:text-green-300"
+                              : "bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300"
                           }`}>
                             {signal.signalType || signal.postType}
                           </div>

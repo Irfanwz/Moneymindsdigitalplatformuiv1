@@ -1,10 +1,12 @@
+import { chartTooltipTheme } from "@/app/components/ui/chart-theme";
+import { Tooltip } from "recharts";
 /**
  * CredibilityHistoryChart — line chart showing score over time using recharts.
  */
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
 import { Loader2, TrendingUp } from "lucide-react";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, ReferenceLine } from "recharts";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { getCredibilityHistory, type CredibilityHistoryEntry } from "@/app/lib/api";
 
@@ -81,11 +83,11 @@ export function CredibilityHistoryChart({ className }: CredibilityHistoryChartPr
                     <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="#94a3b8" />
-                <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} stroke="#94a3b8" />
-                <Tooltip
-                  contentStyle={{ borderRadius: 8, fontSize: 13 }}
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="var(--muted-foreground)" />
+                <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} stroke="var(--muted-foreground)" />
+                <Tooltip {...chartTooltipTheme}
+                  contentStyle={{ ...chartTooltipTheme.contentStyle, fontSize: 13 }}
                   formatter={(value: number, _name: string, props: { payload: { tier: string; predictions: number } }) => [
                     `${value} (${props.payload.tier}) — ${props.payload.predictions} predictions`,
                     "Score",

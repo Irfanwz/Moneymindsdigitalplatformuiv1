@@ -238,7 +238,7 @@ export function AdvisorTrainingsPage() {
                           <Badge variant={training.status === "ongoing" ? "default" : "outline"} className={training.status === "ongoing" ? "bg-accent text-accent-foreground" : ""}>
                             {training.status === "ongoing" ? "Live" : training.status === "upcoming" ? "Upcoming" : "Completed"}
                           </Badge>
-                          {training.type === "paid" ? <Badge variant="outline" className="bg-green-50"><DollarSign className="mr-1 h-3 w-3" />${training.price}</Badge> : <Badge variant="outline">Free</Badge>}
+                          {training.type === "paid" ? <Badge variant="outline" className="bg-green-50 text-green-700 dark:bg-green-950/50 dark:text-green-300"><DollarSign className="mr-1 h-3 w-3" />${training.price}</Badge> : <Badge variant="outline">Free</Badge>}
                         </div>
                         <p className="text-sm text-muted-foreground mb-3">{training.description}</p>
                         <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground mb-3">

@@ -24,19 +24,19 @@ function daysUntil(iso: string) {
 
 function scoreConfig(score: number, result: PredictionResult) {
   if (result === "incorrect" || score < 50) {
-    return { color: "bg-red-50 text-red-700 border-red-200", icon: XCircle, label: "Incorrect" };
+    return { color: "bg-red-50 dark:bg-red-950/50 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800", icon: XCircle, label: "Incorrect" };
   }
   if (score >= 90) {
-    return { color: "bg-emerald-50 text-emerald-700 border-emerald-200", icon: CheckCircle2, label: "Perfect" };
+    return { color: "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800", icon: CheckCircle2, label: "Perfect" };
   }
   if (score >= 70) {
-    return { color: "bg-green-50 text-green-700 border-green-200", icon: CheckCircle2, label: "Good" };
+    return { color: "bg-green-50 dark:bg-green-950/50 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800", icon: CheckCircle2, label: "Good" };
   }
-  return { color: "bg-amber-50 text-amber-700 border-amber-200", icon: AlertCircle, label: "Partial" };
+  return { color: "bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800", icon: AlertCircle, label: "Partial" };
 }
 
 function directionIcon(direction: string | null | undefined) {
-  if (direction === "up") return <TrendingUp className="h-3 w-3 text-green-600" />;
+  if (direction === "up") return <TrendingUp className="h-3 w-3 text-green-600 dark:text-green-400" />;
   if (direction === "down") return <TrendingDown className="h-3 w-3 text-red-500" />;
   return <Minus className="h-3 w-3 text-muted-foreground" />;
 }
@@ -107,7 +107,7 @@ export function PredictionBadge({ signal, compact = false }: PredictionBadgeProp
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 gap-1 text-xs cursor-default">
+            <Badge variant="outline" className="bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800 gap-1 text-xs cursor-default">
               <Clock className="h-3 w-3" />
               {checkDate ? daysUntil(checkDate) : "No baseline"}
             </Badge>
@@ -122,7 +122,7 @@ export function PredictionBadge({ signal, compact = false }: PredictionBadgeProp
   }
 
   return (
-    <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-700 space-y-1">
+    <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/50 px-3 py-2 text-sm text-blue-700 dark:text-blue-300 space-y-1">
       <div className="flex items-center gap-2 font-medium">
         <Clock className="h-4 w-4" />
         <span>{checkDate ? "Prediction Pending" : "Prediction not scheduled: original baseline unavailable"}</span>

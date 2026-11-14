@@ -123,7 +123,7 @@ export function Header({ userRole, userName, adminShell=false }: HeaderProps) {
   })();
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-slate-800 dark:border-slate-800 bg-white dark:bg-slate-950/80 backdrop-blur-lg">
+    <header className="sticky top-0 z-50 w-full border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/80 backdrop-blur-lg">
       <div className="container mx-auto flex h-16 items-center justify-between px-6">
         <div className="flex items-center gap-8">
           <Link to="/" className="flex items-center gap-2">
@@ -154,7 +154,7 @@ export function Header({ userRole, userName, adminShell=false }: HeaderProps) {
             size="icon"
             onClick={toggleTheme}
             aria-label="Toggle color theme"
-            className="hidden sm:inline-flex text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
+            className={`${adminShell ? "inline-flex" : "hidden sm:inline-flex"} text-slate-600 dark:text-slate-300 hover:bg-muted hover:text-foreground`}
           >
             {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
           </Button>
@@ -163,7 +163,7 @@ export function Header({ userRole, userName, adminShell=false }: HeaderProps) {
             <>
               <DropdownMenu open={showNotifications} onOpenChange={setShowNotifications}>
                 <DropdownMenuTrigger asChild>
-                  <Button aria-label="Notifications" variant="ghost" size="icon" className="relative text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white">
+                  <Button aria-label="Notifications" variant="ghost" size="icon" className="relative text-slate-600 dark:text-slate-300 hover:bg-muted hover:text-foreground">
                     <Bell className="h-5 w-5" />
                     {unreadCount > 0 && (
                       <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-cyan-500 text-white text-[10px] flex items-center justify-center font-bold">
@@ -189,7 +189,7 @@ export function Header({ userRole, userName, adminShell=false }: HeaderProps) {
                         <DropdownMenuItem
                           key={notification.id}
                           onClick={() => handleMarkRead(notification.id)}
-                          className={`flex flex-col items-start gap-1 p-3 cursor-pointer ${
+                          className={`flex flex-col items-start gap-1 p-3 cursor-pointer focus:bg-muted ${
                             !notification.read
                               ? "bg-cyan-50 dark:bg-cyan-950/20"
                               : "hover:bg-slate-50 dark:hover:bg-slate-800/50"
@@ -206,13 +206,13 @@ export function Header({ userRole, userName, adminShell=false }: HeaderProps) {
                           <span className="text-xs text-slate-600 dark:text-slate-400">
                             {notification.message}
                           </span>
-                          <span className="text-xs text-slate-500 dark:text-slate-500">
+                          <span className="text-xs text-muted-foreground">
                             {new Date(notification.createdAt).toLocaleString()}
                           </span>
                         </DropdownMenuItem>
                       ))
                     ) : (
-                      <div className="p-4 text-center text-sm text-slate-500">
+                      <div className="p-4 text-center text-sm text-muted-foreground">
                         No notifications yet
                       </div>
                     )}
@@ -222,7 +222,7 @@ export function Header({ userRole, userName, adminShell=false }: HeaderProps) {
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="gap-2 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white">
+                  <Button variant="ghost" className="gap-2 text-slate-600 dark:text-slate-300 hover:bg-muted hover:text-foreground">
                     <div className="h-8 w-8 rounded-full bg-gradient-to-br from-cyan-500 to-purple-500 flex items-center justify-center">
                       <span className="text-sm font-medium text-white">{resolvedUserName[0] || "U"}</span>
                     </div>
@@ -233,7 +233,7 @@ export function Header({ userRole, userName, adminShell=false }: HeaderProps) {
                   <DropdownMenuLabel className="text-slate-900 dark:text-white">
                     <div className="flex flex-col">
                       <span>{resolvedUserName}</span>
-                      <span className="text-xs text-slate-500 dark:text-slate-400 capitalize">
+                      <span className="text-xs text-muted-foreground dark:text-slate-400 capitalize">
                         {resolvedUserRole}
                       </span>
                     </div>
@@ -281,7 +281,7 @@ export function Header({ userRole, userName, adminShell=false }: HeaderProps) {
           ) : (
             <div className="hidden sm:flex items-center gap-2">
               <Link to="/login">
-                <Button variant="ghost" className="text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white">
+                <Button variant="ghost" className="text-slate-600 dark:text-slate-300 hover:bg-muted hover:text-foreground">
                   Login
                 </Button>
               </Link>
@@ -297,7 +297,8 @@ export function Header({ userRole, userName, adminShell=false }: HeaderProps) {
           <Button
             variant="ghost"
             size="icon"
-            className={`${adminShell ? 'hidden' : 'xl:hidden'} text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white`}
+            className={`${adminShell ? 'hidden' : 'xl:hidden'} text-slate-600 dark:text-slate-300 hover:bg-muted hover:text-foreground`}
+            aria-label="Toggle navigation menu"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           >
             <Menu className="h-5 w-5" />

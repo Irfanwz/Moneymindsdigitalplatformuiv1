@@ -216,7 +216,7 @@ export function InvestorDashboard() {
               </div>
 
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-500" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-muted-foreground" />
                 <Input
                   placeholder="Search by industry, stage, or keyword..."
                   value={searchQuery}
@@ -236,7 +236,7 @@ export function InvestorDashboard() {
 
               <TabsContent value="recommended" className="space-y-4">
                 {startupsLoading ? (
-                  <div className="text-center py-8 text-slate-500">Loading startups...</div>
+                  <div className="text-center py-8 text-muted-foreground">Loading startups...</div>
                 ) : startups.length > 0 ? (
                   startups.map((startup) => (
                     <Card key={startup.id ?? startup.name} className="p-6 bg-white dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 hover:border-purple-500/30 dark:hover:border-purple-500/30 hover:shadow-lg hover:shadow-purple-500/10 transition-all">
@@ -266,7 +266,7 @@ export function InvestorDashboard() {
                           </div>
                         </div>
                         <div className="text-right">
-                          <span className="text-xs text-slate-500">Match not assessed</span>
+                          <span className="text-xs text-muted-foreground">Match not assessed</span>
                         </div>
                       </div>
 

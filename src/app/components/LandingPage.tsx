@@ -1,9 +1,11 @@
+import { chartTooltipTheme } from "@/app/components/ui/chart-theme";
+import { Tooltip } from "recharts";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/app/components/ui/button";
 import { Card } from "@/app/components/ui/card";
 import { Header } from "@/app/components/Header";
 import { Building2, TrendingUp, Users, Shield, Sparkles, BarChart3, ArrowUpRight, ArrowDownRight, Activity, Bitcoin, DollarSign, Zap, Loader2 } from "lucide-react";
-import { LineChart, Line, AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import { LineChart, Line, AreaChart, Area, XAxis, YAxis, ResponsiveContainer, CartesianGrid } from "recharts";
 import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/app/contexts/AuthContext";
@@ -216,7 +218,7 @@ export function LandingPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-7xl mx-auto">
           {displayStats.map((stat, index) => {
             const Icon = statIcons[index] ?? Activity;
-            const color = statColors[index] ?? "text-slate-500";
+            const color = statColors[index] ?? "text-muted-foreground";
             const isPositive = stat.change.startsWith("+");
             return (
               <motion.div
@@ -289,19 +291,17 @@ export function LandingPage() {
                           <stop offset="95%" stopColor="#06b6d4" stopOpacity={0}/>
                         </linearGradient>
                       </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                      <XAxis dataKey="time" stroke="#64748b" />
-                      <YAxis stroke="#64748b" domain={["auto", "auto"]} />
-                      <Tooltip
-                        contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }}
-                        labelStyle={{ color: '#cbd5e1' }}
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                      <XAxis dataKey="time" stroke="var(--muted-foreground)" />
+                      <YAxis stroke="var(--muted-foreground)" domain={["auto", "auto"]} />
+                      <Tooltip {...chartTooltipTheme}
                         formatter={(value: number) => [`$${value.toLocaleString()}`, "BTC"]}
                       />
                       <Area type="monotone" dataKey="btc" stroke="#06b6d4" fill="url(#cryptoGradient)" strokeWidth={2} />
                     </AreaChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div className="flex items-center justify-center h-full text-slate-500">
+                  <div className="flex items-center justify-center h-full text-muted-foreground">
                     {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : "Chart data unavailable"}
                   </div>
                 )}
@@ -314,7 +314,7 @@ export function LandingPage() {
                     <div key={news.title} className="flex items-center justify-between p-3 rounded-lg bg-slate-100 dark:bg-slate-800/50 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
                       <div className="flex-1">
                         <p className="text-sm text-slate-900 dark:text-white mb-1">{news.title}</p>
-                        <span className="text-xs text-slate-500 dark:text-slate-500">{news.time}</span>
+                        <span className="text-xs text-muted-foreground dark:text-muted-foreground">{news.time}</span>
                       </div>
                       <span className={`text-sm font-medium flex items-center gap-1 ml-4 ${
                         news.trend === "up" ? "text-emerald-500 dark:text-emerald-400" : "text-red-500 dark:text-red-400"
@@ -325,7 +325,7 @@ export function LandingPage() {
                     </div>
                   ))
                 ) : (
-                  <div className="text-sm text-slate-500 text-center py-4">
+                  <div className="text-sm text-muted-foreground text-center py-4">
                     {loading ? "Loading prices..." : "Price data unavailable"}
                   </div>
                 )}

@@ -13,33 +13,33 @@ interface CredibilityBadgeProps {
 const badges: Record<BadgeType, { icon: typeof CheckCircle2; color: string; label: string }> = {
   verified: {
     icon: CheckCircle2,
-    color: "bg-green-50 text-green-700 border-green-200",
+    color: "bg-green-50 dark:bg-green-950/50 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800",
     label: "Verified",
   },
   "ai-verified": {
     icon: Sparkles,
-    color: "bg-teal-50 text-teal-700 border-teal-200",
+    color: "bg-teal-50 dark:bg-teal-950/50 text-teal-700 dark:text-teal-300 border-teal-200 dark:border-teal-800",
     label: "AI Verified",
   },
   "due-diligence": {
     icon: Shield,
-    color: "bg-blue-50 text-blue-700 border-blue-200",
+    color: "bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800",
     label: "Due Diligence Complete",
   },
   pending: {
     icon: CheckCircle2,
-    color: "bg-amber-50 text-amber-700 border-amber-200",
+    color: "bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800",
     label: "Pending",
   },
 };
 
 const TIER_BADGE_COLORS: Record<string, string> = {
-  elite: "bg-purple-50 text-purple-700 border-purple-200",
-  expert: "bg-green-50 text-green-700 border-green-200",
-  reliable: "bg-blue-50 text-blue-700 border-blue-200",
-  developing: "bg-yellow-50 text-yellow-700 border-yellow-200",
-  inconsistent: "bg-orange-50 text-orange-700 border-orange-200",
-  poor: "bg-red-50 text-red-700 border-red-200",
+  elite: "bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800",
+  expert: "bg-green-50 dark:bg-green-950/50 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800",
+  reliable: "bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800",
+  developing: "bg-yellow-50 dark:bg-yellow-950/50 text-yellow-700 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800",
+  inconsistent: "bg-orange-50 dark:bg-orange-950/50 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-800",
+  poor: "bg-red-50 dark:bg-red-950/50 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800",
 };
 
 const TIER_LABELS: Record<string, string> = {
@@ -68,14 +68,14 @@ export function CredibilityBadge({ type, label, score, tier }: CredibilityBadgeP
   if (typeof score === "number" && score !== null) {
     const color =
       score >= 90
-        ? "bg-purple-50 text-purple-700 border-purple-200"
+        ? "bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800"
         : score >= 75
-          ? "bg-green-50 text-green-700 border-green-200"
+          ? "bg-green-50 dark:bg-green-950/50 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800"
           : score >= 60
-            ? "bg-blue-50 text-blue-700 border-blue-200"
+            ? "bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800"
             : score >= 40
-              ? "bg-yellow-50 text-yellow-700 border-yellow-200"
-              : "bg-orange-50 text-orange-700 border-orange-200";
+              ? "bg-yellow-50 dark:bg-yellow-950/50 text-yellow-700 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800"
+              : "bg-orange-50 dark:bg-orange-950/50 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-800";
 
     return (
       <Badge variant="outline" className={`${color} gap-1 font-normal`}>

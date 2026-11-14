@@ -63,7 +63,7 @@ export function AdvisorSessionsPage() {
           <Card>
             <CardContent className="pt-6">
               <div className="text-center">
-                <div className="text-3xl font-bold text-slate-600">{profile.typicalRate || "—"}</div>
+                <div className="text-3xl font-bold text-foreground">{profile.typicalRate || "—"}</div>
                 <p className="text-sm text-muted-foreground mt-2">Typical Rate</p>
               </div>
             </CardContent>

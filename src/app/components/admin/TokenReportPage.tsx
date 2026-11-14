@@ -1,3 +1,5 @@
+import { chartTooltipTheme } from "@/app/components/ui/chart-theme";
+import { Tooltip } from "recharts";
 /**
  * Token Burn Report Page — /admin/token-report
  *
@@ -11,7 +13,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
+  BarChart, Bar, XAxis, YAxis, ResponsiveContainer, CartesianGrid, Legend,
 } from "recharts";
 import { BarChart3, Download, RefreshCw, Zap, Calendar, Clock } from "lucide-react";
 import { request } from "@/app/lib/api";
@@ -179,10 +181,10 @@ export function TokenReportPage() {
         ) : (
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={timeline} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
               <XAxis dataKey="date" tickFormatter={fmtDate} tick={{ fontSize: 11 }} />
               <YAxis tickFormatter={(v) => v >= 1000 ? `${(v/1000).toFixed(0)}k` : v} tick={{ fontSize: 11 }} />
-              <Tooltip
+              <Tooltip {...chartTooltipTheme}
                 formatter={(value: number, name: string) => [fmt(value), name === "input" ? "Input Tokens" : "Output Tokens"]}
                 labelFormatter={(label: string) => `Date: ${label}`}
               />

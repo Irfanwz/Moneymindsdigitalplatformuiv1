@@ -1,3 +1,5 @@
+import { chartTooltipTheme } from "@/app/components/ui/chart-theme";
+import { Tooltip } from "recharts";
 import { useEffect, useState } from "react";
 import { Header } from "@/app/components/Header";
 import { Card } from "@/app/components/ui/card";
@@ -21,7 +23,6 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
   ResponsiveContainer,
   PieChart,
   Pie,
@@ -234,7 +235,7 @@ export function StartupAnalytics() {
                     <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                     <XAxis dataKey="name" className="text-xs" tick={{ fontSize: 12 }} />
                     <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} />
-                    <Tooltip />
+                    <Tooltip {...chartTooltipTheme} />
                     <Bar dataKey="progress" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -268,7 +269,7 @@ export function StartupAnalytics() {
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                   <XAxis dataKey="date" tick={{ fontSize: 12 }} />
                   <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-                  <Tooltip />
+                  <Tooltip {...chartTooltipTheme} />
                   <Area type="monotone" dataKey="enrollments" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.2} />
                 </AreaChart>
               </ResponsiveContainer>
@@ -301,7 +302,7 @@ export function StartupAnalytics() {
                         <Cell key={index} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip />
+                    <Tooltip {...chartTooltipTheme} />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="flex-1 space-y-2">

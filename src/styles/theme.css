@@ -1,6 +1,7 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
+  color-scheme: light;
   --font-size: 16px;
   --background: #f8f9fa;
   --foreground: #1a2332;
@@ -13,7 +14,7 @@
   --secondary: #64748b;
   --secondary-foreground: #ffffff;
   --muted: #e2e8f0;
-  --muted-foreground: #64748b;
+  --muted-foreground: #526278;
   --accent: #0f766e;
   --accent-foreground: #ffffff;
   --destructive: #dc2626;
@@ -46,6 +47,7 @@
 }
 
 .dark {
+  color-scheme: dark;
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.145 0 0);
@@ -60,10 +62,12 @@
   --muted-foreground: oklch(0.708 0 0);
   --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.396 0.141 25.723);
-  --destructive-foreground: oklch(0.637 0.237 25.331);
+  --destructive: #f87171;
+  --destructive-foreground: #1a2332;
   --border: oklch(0.269 0 0);
   --input: oklch(0.269 0 0);
+  --input-background: oklch(0.205 0 0);
+  --switch-background: oklch(0.439 0 0);
   --ring: oklch(0.439 0 0);
   --font-weight-medium: 500;
   --font-weight-normal: 400;
@@ -130,6 +134,43 @@
 
   body {
     @apply bg-background text-foreground;
+  }
+
+  /* Native menus render outside the page on some platforms. Set their
+     surfaces explicitly as well as the browser's color scheme. */
+  select {
+    background-color: var(--input-background);
+    color: var(--foreground);
+  }
+
+  select option,
+  select optgroup {
+    background-color: var(--popover);
+    color: var(--popover-foreground);
+  }
+
+  select option:disabled {
+    color: var(--muted-foreground);
+  }
+
+  input:autofill {
+    box-shadow: 0 0 0 1000px var(--input-background) inset;
+    -webkit-text-fill-color: var(--foreground);
+    caret-color: var(--foreground);
+  }
+
+  /* Analytics also use Recharts directly, outside ChartContainer. */
+  .recharts-cartesian-axis-tick text {
+    fill: var(--muted-foreground);
+  }
+
+  .recharts-cartesian-axis-line,
+  .recharts-cartesian-axis-tick-line {
+    stroke: var(--border);
+  }
+
+  .recharts-rectangle.recharts-tooltip-cursor {
+    fill: var(--muted);
   }
 
   /**
