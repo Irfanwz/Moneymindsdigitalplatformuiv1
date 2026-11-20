@@ -98,16 +98,19 @@ export function AdminLayout({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const currentPath = location.pathname.replace("/admin/", "");
 
+  const section = adminSections.find(s => currentPath === s.path || currentPath.startsWith(s.path + "/"));
+  const sectionTitle = section?.children?.find(s => currentPath === s.path)?.label || section?.label || "Account & security";
+
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-background">
+    <div className="admin-workspace min-h-screen bg-slate-50 dark:bg-background">
       <Header userRole="admin" userName={user?.fullName} adminShell />
-      <div className="mx-auto max-w-[1600px] lg:grid lg:grid-cols-[232px_minmax(0,1fr)]">
+      <div className="mx-auto max-w-[1600px] lg:grid lg:grid-cols-[248px_minmax(0,1fr)]">
         <aside className="border-b lg:border-b-0 lg:border-r bg-card lg:sticky lg:top-16 lg:h-[calc(100vh-4rem)] flex flex-col">
-          <div className="hidden lg:block px-6 pt-8 pb-6">
+          <div className="hidden lg:block px-6 pt-6 pb-5 border-b mb-3">
             <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
-              Workspace
+              MoneyMinds workspace
             </p>
-            <p className="font-semibold mt-2">Administration</p>
+            <p className="text-lg font-semibold tracking-tight mt-2">Administration</p>
             <p className="text-xs text-muted-foreground mt-1 capitalize">
               {(user?.adminRole || "super_admin").replace("_", " ")}
             </p>
@@ -153,9 +156,9 @@ export function AdminLayout({ children }: { children: ReactNode }) {
                       to={`/admin/${path}`}
                       end={!!subs}
                       className={({ isActive }) =>
-                        `flex shrink-0 items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors ${
+                        `flex shrink-0 items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors ${
                           isActive || (subs && isParentActive)
-                            ? "bg-indigo-600 text-white shadow-sm"
+                            ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-950"
                             : "text-muted-foreground hover:bg-muted hover:text-foreground"
                         }`
                       }
@@ -177,7 +180,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
                             className={({ isActive }) =>
                               `flex items-center gap-2.5 rounded-md px-2.5 py-2 text-xs font-medium transition-colors ${
                                 isActive
-                                  ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300"
+                                  ? "bg-muted text-foreground"
                                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
                               }`
                             }
@@ -193,20 +196,29 @@ export function AdminLayout({ children }: { children: ReactNode }) {
               })}
           </nav>
           <div className="hidden lg:block mt-auto p-5">
-            <div className="rounded-xl border p-4">
+            <div className="rounded-lg border bg-muted/20 p-4">
               <p className="text-sm font-medium">Your administrator account</p>
               <Link
                 to="/admin/profile"
-                className="mt-3 text-sm text-indigo-600 dark:text-indigo-300 flex items-center gap-2"
+                className="mt-3 text-sm text-foreground flex items-center gap-2"
               >
                 View profile <ArrowUpRight className="h-4 w-4" />
               </Link>
             </div>
           </div>
         </aside>
-        <main id="main-content" className="min-w-0 px-4 py-6 sm:px-7 lg:p-8">
-          {children}
-        </main>
+        <div className="min-w-0">
+          <div className="flex items-center justify-between gap-4 border-b bg-card px-4 py-3 sm:px-7 lg:px-8">
+            <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span>Administration</span><span aria-hidden="true">/</span>
+              <span aria-current="page" className="font-medium text-foreground">{sectionTitle}</span>
+            </nav>
+            <span className="hidden sm:inline-flex items-center gap-1.5 text-xs text-muted-foreground"><ShieldCheck className="h-3.5 w-3.5" />Restricted workspace</span>
+          </div>
+          <main id="main-content" className="min-w-0 px-4 py-6 sm:px-7 lg:p-8">
+            {children}
+          </main>
+        </div>
       </div>
     </div>
   );

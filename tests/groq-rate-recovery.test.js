@@ -188,7 +188,8 @@ it("does not wait hours for a daily quota reset and falls back in Auto mode", as
   expect(Date.now()).toBe(started);
 });
 
-it("returns a daily quota error promptly when the selected provider has no fallback", async () => {
+it("returns a daily quota error promptly when no fallback is configured", async () => {
+  config.anthropicApiKey = "";
   fetchMock.mockImplementation(async () => limited(86400, {
     "x-ratelimit-remaining-requests": "0", "x-ratelimit-reset-requests": "24h",
   }));

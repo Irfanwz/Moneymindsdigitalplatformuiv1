@@ -150,17 +150,26 @@ it("falls back to Gemini and accounts for thinking tokens without exposing keys"
   expect(JSON.stringify(tracker.snapshot())).not.toContain(config.geminiApiKey);
 });
 
-it("honors Gemini-only selection for JSON and uploaded images",async()=>{
+it("uses Groq first despite a legacy Gemini selection for JSON and images",async()=>{
   await saveAiConfig({activeProvider:"gemini",geminiKey:"saved-gemini",geminiModel:"gemini-fixture"},admin.id);
-  await generateJSON("JSON only","fixture");
-  fetch.mockResolvedValueOnce(new Response(JSON.stringify(geminiReply("Document text"))));
-  expect(await readDocument(Buffer.from("fixture"),"image/png")).toEqual({text:"Document text",method:"gemini-vision"});
-  expect(mocks.groq).not.toHaveBeenCalled();
-  expect(fetch.mock.calls[0][1].headers["x-goog-api-key"]).toBe("saved-gemini");
-  expect(JSON.parse(fetch.mock.calls[1][1].body).contents[0].parts[1].inlineData.mimeType).toBe("image/png");
+  expect((await generateJSON("JSON only","fixture")).provider).toBe("groq");
+  mocks.groq.mockResolvedValueOnce({...groqReply,choices:[{message:{content:"Document text"}}]});
+  expect(await readDocument(Buffer.from("fixture"),"image/png")).toEqual({text:"Document text",method:"groq-vision"});
+  expect(mocks.groq).toHaveBeenCalledTimes(2);
+  expect(fetch).not.toHaveBeenCalled();
+});
+
+it("tries all ready Groq keys before Gemini even with a saved Gemini selection",async()=>{
+  await saveAiConfig({activeProvider:"gemini",geminiKey:"saved-gemini"},admin.id);
+  mocks.groq.mockRejectedValue(Object.assign(new Error("Unavailable"),{status:503}));
+  expect((await generateJSON("JSON only","fixture")).provider).toBe("gemini");
+  expect(mocks.groq.mock.calls.map(([key])=>key)).toEqual(config.groqApiKeys);
+  expect(fetch).toHaveBeenCalledTimes(1);
+  expect(mocks.groq.mock.invocationCallOrder.at(-1)).toBeLessThan(fetch.mock.invocationCallOrder[0]);
 });
 
 it("rejects truncated Gemini responses while preserving their consumed tokens",async()=>{
+  config.groqApiKeys=[]; config.groqApiKey="";
   await saveAiConfig({activeProvider:"gemini"},admin.id);
   fetch.mockResolvedValueOnce(new Response(JSON.stringify(geminiReply('{"ok":true}',"MAX_TOKENS"))));
   const tracker=createUsageTracker(async()=>{});

@@ -176,6 +176,7 @@ describe("Actual provider token accounting", () => {
   });
   it("keeps failure usage when every response is invalid", async () => {
     config.aiProvider = "groq";
+    config.anthropicApiKey = "";
     mocks.groq.mockResolvedValue(groqReply(70, 8, "not-json"));
     const result = await run(() => generateJSON("JSON only", "Check"));
     expect(result).toMatchObject({
@@ -213,6 +214,7 @@ describe("Actual provider token accounting", () => {
   });
   it("marks timeout/error usage unavailable instead of claiming zero", async () => {
     config.aiProvider = "groq";
+    config.anthropicApiKey = "";
     mocks.groq.mockRejectedValue(new Error("Provider timeout"));
     const result = await run(() => generateJSON("JSON only", "Check"));
     expect(result.usage).toMatchObject({
@@ -300,6 +302,7 @@ describe("Concurrent and interrupted agent usage", () => {
   });
   it("waits for a sibling request after a parallel call fails, preserving its usage", async () => {
     config.aiProvider = "groq";
+    config.anthropicApiKey = "";
     mocks.groq.mockImplementation(async (body) => {
       if (body.messages[1].content === "fail")
         throw new Error("Provider failed");

@@ -52,6 +52,7 @@ export function createMemoryStore() {
   const trainings = [];
   const trainingEnrollments = [];
   const passwordResetTokens = [];
+  const emailLoginOtps = new Map();
   const signalComments = [];
   const signalReactions = [];
   const notifications = [];
@@ -65,6 +66,29 @@ export function createMemoryStore() {
 
   return {
     mode: "memory",
+    async createEmailLoginOtp(userId, code, expiresAt) {
+      const entry = { id: randomUUID(), user_id: userId, code, expires_at: expiresAt, attempts: 0, used: false };
+      emailLoginOtps.set(userId, entry);
+      return { ...entry };
+    },
+    async verifyEmailLoginOtp(userId, code) {
+      const entry = emailLoginOtps.get(userId);
+      if (!entry || entry.used) return { valid: false, reason: "no_otp" };
+      if (new Date(entry.expires_at).getTime() <= Date.now()) {
+        entry.used = true;
+        return { valid: false, reason: "expired" };
+      }
+      if (entry.attempts >= 3) {
+        entry.used = true;
+        return { valid: false, reason: "max_attempts" };
+      }
+      if (entry.code !== code) {
+        entry.attempts++;
+        return { valid: false, reason: "wrong_code", attemptsLeft: 3 - entry.attempts };
+      }
+      entry.used = true;
+      return { valid: true };
+    },
     ...createApplicationStore(null, applications),
     async createProfileApplication(profile, profiles, application) {
       if (users.some(user => user.email === profile.email.toLowerCase())) throw Object.assign(new Error("An account with this email already exists."), { code: "DUPLICATE_EMAIL" });

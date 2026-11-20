@@ -76,6 +76,11 @@ export function createApp(store, { backgroundJobs = process.env.NODE_ENV !== "te
   if (backgroundJobs) startCredibilityCron(store);
   if (backgroundJobs) startVerificationWorker(store);
 
+  // Keep unknown API paths out of the frontend SPA fallback.
+  app.use("/api", (_req, res) => {
+    res.status(404).json({ message: "API route not found.", code: "API_NOT_FOUND" });
+  });
+
   if (process.env.NODE_ENV === "production") {
     const distPath = path.resolve(import.meta.dirname, "..", "dist");
     app.use(express.static(distPath));

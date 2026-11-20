@@ -34,6 +34,11 @@ const admin = await store.ensureAdminAccount({
   passwordHash: "unused",
 });
 const people = [];
+async function completeProfile(account, role) {
+  if (role === "investor") await store.upsertInvestorProfile(account.id, { investorType: "Individual", title: "Investor", investmentThesis: "Synthetic investment interests", industries: [] });
+  if (role === "startup") await store.upsertStartupProfile(account.id, { companyName: "Fixture startup", industry: "Technology", description: "Synthetic startup for browser validation", categories: [], teamMembers: [] });
+  if (role === "advisor") await store.upsertAdvisorProfile(account.id, { title: "Advisor", specialization: "Planning", yearsExperience: "5", linkedin: "https://www.linkedin.com/in/browser-fixture", expertiseAreas: [], certifications: [], industries: [], languages: [], primaryTickers: [] });
+}
 for (let i = 0; i < 15; i++) {
   const user = await store.createUserProfile({
     fullName:
@@ -172,7 +177,10 @@ async function go(page, route, heading) {
     (t) => document.querySelector("h1")?.textContent?.includes(t),
     {},
     heading,
-  );
+  ).catch(async error => {
+    console.error(JSON.stringify({ route, url: page.url(), heading: await page.$eval("body", el => el.innerText.slice(0, 1500)), failures }));
+    throw error;
+  });
 }
 async function clickText(page, text) {
   await page.waitForFunction(
@@ -335,6 +343,7 @@ try {
   await go(financePage, "/admin/reports", "Reports & Audit");
   assert.equal(await financePage.$('section[aria-label="AI reports"]'), null);
   checked.push("finance role navigation and denied settings route");
+  await completeProfile(people[0], "investor");
   const userPage = await newPage(people[0]);
   await go(userPage, "/investor/dashboard", "Investment Dashboard");
   await userPage.goto(`${origin}/investor/groups`, {
@@ -376,11 +385,15 @@ try {
       const created=await store.createUserProfile({fullName:`${role} fixture`,email:`${role}-browser@example.test`,passwordHash:'unused',requestedRoles:[role]});
       await store.updateApproval(created.id,{status:'approved',approvedRoles:[role]});account=await store.findUserById(created.id);
     }
+    await completeProfile(account, role);
     const rolePage=await newPage(account);
     for(const screen of ['dashboard','analytics','profile','edit-profile']) {
       const before=observedRequests.get(rolePage).length;
       await rolePage.goto(`${origin}/${role}/${screen}`,{waitUntil:'networkidle0'});
-      await rolePage.waitForSelector('h1');
+      await rolePage.waitForSelector('h1').catch(async error => {
+        console.error(JSON.stringify({route: `${role}/${screen}`, url: rolePage.url(), body: await rolePage.$eval('body', el => el.innerText.slice(0, 500)), failures}));
+        throw error;
+      });
       assert.ok(observedRequests.get(rolePage).slice(before).includes(`/api/${role}/profile`),`${role}/${screen} must load data after a cookie-only reload`);
     }
     checked.push(`${role} dashboard, analytics and profile pages load actual API data after refresh`);

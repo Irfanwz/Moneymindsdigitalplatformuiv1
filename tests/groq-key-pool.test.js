@@ -38,7 +38,7 @@ beforeEach(() => {
   config.groqApiKeys = [1,2,3].map(slot => `fixture-${++serial}-${slot}`);
   config.aiProvider = "groq";
   config.geminiApiKey = "";
-  config.anthropicApiKey = "fixture-anthropic";
+  config.anthropicApiKey = "";
   mocks.groq.mockResolvedValue(reply());
   mocks.anthropic.mockResolvedValue({content:[{type:"text",text:'{"ready":true}'}]});
 });
@@ -121,6 +121,7 @@ it("skips an invalid key, records each actual attempt and never records credenti
 
 it("exhausts rejected keys once then falls back to Anthropic in auto mode", async () => {
   config.aiProvider = "auto";
+  config.anthropicApiKey = "fixture-anthropic";
   mocks.groq.mockRejectedValue(Object.assign(new Error("Invalid credentials"),{status:401}));
   expect((await generateJSON("JSON only","Check")).provider).toBe("anthropic");
   expect(mocks.groq).toHaveBeenCalledTimes(3);
@@ -187,6 +188,7 @@ it("waits only when every usable key is cooling and resumes at the earliest Retr
 it("bounds an all-key 429 retry to one extra sequence before provider fallback", async () => {
   vi.useFakeTimers();
   config.aiProvider = "auto";
+  config.anthropicApiKey = "fixture-anthropic";
   mocks.groq.mockRejectedValue(Object.assign(new Error("Rate limited"),{status:429,headers:new Headers({"retry-after":"2"})}));
   const onRetry = vi.fn();
   const work = generateJSON("JSON only","Check",{onRetry});
@@ -284,8 +286,9 @@ it("shares key selection between JSON, image reading and prediction explanations
   expect(mocks.anthropic).not.toHaveBeenCalled();
 });
 
-it("uses the selected image provider and records a real fallback", async () => {
+it("keeps Groq first for image reading despite a legacy provider selection", async () => {
   config.aiProvider = "auto";
+  config.anthropicApiKey = "fixture-anthropic";
   mocks.groq.mockRejectedValue(Object.assign(new Error("Unavailable"),{status:503}));
   mocks.anthropic.mockResolvedValue({content:[{type:"text",text:"Fallback image text"}],usage:{input_tokens:20,output_tokens:5}});
   const tracker = createUsageTracker(async () => {});
@@ -293,7 +296,7 @@ it("uses the selected image provider and records a real fallback", async () => {
   expect(tracker.snapshot().calls.map(call => call.trigger)).toEqual(["initial","retry","retry","fallback"]);
   config.aiProvider = "anthropic";
   await readDocument(Buffer.from("fixture"),"image/png");
-  expect(mocks.groq).toHaveBeenCalledTimes(3);
+  expect(mocks.groq).toHaveBeenCalledTimes(6);
 });
 
 it.each([403,408,413,500,501,502,503,504,599])("tries a different key after HTTP %s and stops on success", async status => {
@@ -332,6 +335,7 @@ it("tracks two failed attempts and third-key success without leaking keys or dup
 
 it("tries each key once before provider fallback and keeps transient keys eligible next time", async () => {
   config.aiProvider = "auto";
+  config.anthropicApiKey = "fixture-anthropic";
   mocks.groq.mockRejectedValue(Object.assign(new Error("Unavailable"),{status:503}));
   const tracker = createUsageTracker(async () => {});
   expect((await tracker.run(() => generateJSON("JSON only","Check"))).provider).toBe("anthropic");
@@ -432,6 +436,7 @@ it("deducts time spent saving usage before allocating a network attempt timeout"
 
 it("tries each key once on 413 before provider fallback without starting a cooldown", async () => {
   config.aiProvider = "auto";
+  config.anthropicApiKey = "fixture-anthropic";
   const onRetry = vi.fn();
   mocks.groq.mockRejectedValue(Object.assign(new Error("Request exceeds token allowance"),{status:413}));
   const tracker = createUsageTracker(async () => {});

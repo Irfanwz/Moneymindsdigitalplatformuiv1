@@ -129,10 +129,10 @@ function Heading({
   return (
     <div className="flex flex-wrap items-start justify-between gap-4 mb-7">
       <div>
-        <p className="text-xs font-semibold tracking-widest uppercase text-indigo-600 dark:text-indigo-300 mb-2">
+        <p className="text-xs font-semibold tracking-widest uppercase text-muted-foreground mb-2">
           MoneyMinds / Admin
         </p>
-        <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">
+        <h1 className="text-2xl font-semibold tracking-tight">
           {title}
         </h1>
         <p className="text-sm text-muted-foreground mt-2 max-w-2xl">
@@ -184,12 +184,12 @@ function Metric({
   icon?: any;
 }) {
   return (
-    <Card className="p-5 gap-2 shadow-none">
+    <Card className="p-5 gap-3 shadow-none border-t-2 border-t-slate-400 dark:border-t-slate-600">
       <div className="flex items-center justify-between text-muted-foreground">
         <span className="text-sm">{title}</span>
         <Icon className="h-4 w-4" />
       </div>
-      <p className="text-3xl font-semibold tracking-tight">{value}</p>
+      <p className="text-3xl font-semibold tracking-tight tabular-nums">{value}</p>
       <p className="text-xs text-muted-foreground">{detail}</p>
     </Card>
   );
@@ -218,7 +218,7 @@ function DataTable({
               {columns.map((c) => (
                 <th
                   key={c.label}
-                  className="p-4 font-medium text-muted-foreground whitespace-nowrap"
+                  className="px-4 py-3 text-xs font-semibold text-muted-foreground whitespace-nowrap"
                 >
                   {c.label}
                 </th>
@@ -232,7 +232,7 @@ function DataTable({
                 className="hover:bg-muted/30"
               >
                 {columns.map((c) => (
-                  <td key={c.label} className="p-4 align-top">
+                  <td key={c.label} className="px-4 py-3 align-top">
                     {c.render(r)}
                   </td>
                 ))}
@@ -404,7 +404,7 @@ function Overview() {
                     to={`/admin/${item.path}`}
                     className="flex items-center gap-4 border rounded-xl p-4 hover:bg-muted/40"
                   >
-                    <span className="rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-300 p-3 font-semibold min-w-12 text-center">
+                    <span className="rounded-lg bg-muted text-foreground p-3 font-semibold min-w-12 text-center">
                       {item.value}
                     </span>
                     <span className="flex-1">
@@ -807,7 +807,7 @@ function UserDetail({
                           href={doc.docUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className="text-sm text-indigo-600 dark:text-indigo-300 underline"
+                          className="text-sm text-muted-foreground underline"
                         >
                           Open submitted document
                         </a>
@@ -1033,7 +1033,7 @@ function UsersPage() {
                 render: (u) => (
                   <div>
                     <button
-                      className="font-medium text-indigo-600 dark:text-indigo-300 hover:underline text-left"
+                      className="font-medium text-muted-foreground hover:underline text-left"
                       onClick={() => setSelected(u.id)}
                     >
                       {u.fullName}
@@ -1836,7 +1836,7 @@ function AccountPage() {
         description="Your signed-in account and access level."
       />
       <Card className="p-6 max-w-2xl gap-4 shadow-none">
-        <div className="h-14 w-14 rounded-2xl bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-300 flex items-center justify-center text-xl font-semibold">
+        <div className="h-14 w-14 rounded-2xl bg-indigo-100 dark:bg-indigo-950 text-muted-foreground flex items-center justify-center text-xl font-semibold">
           {user?.fullName?.slice(0, 1)}
         </div>
         <h2 className="text-xl font-semibold">{user?.fullName}</h2>

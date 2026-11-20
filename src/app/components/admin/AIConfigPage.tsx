@@ -75,7 +75,7 @@ export function AIConfigPage() {
     setSaving(true);
     try {
       const payload:Record<string,unknown> = {
-        activeProvider:cfg.activeProvider,groqModel:cfg.groqModel,geminiModel:cfg.geminiModel,anthropicModel:cfg.anthropicModel,
+        activeProvider:"auto",groqModel:cfg.groqModel,geminiModel:cfg.geminiModel,anthropicModel:cfg.anthropicModel,
         dailyTokenLimit:cfg.dailyTokenLimit,monthlyTokenLimit:cfg.monthlyTokenLimit,agentTokenLimits:cfg.agentTokenLimits,
       };
       const groqKeys = groqDraft.map(key=>key.trim()).filter(Boolean);
@@ -93,31 +93,31 @@ export function AIConfigPage() {
   }
   if (loading) return <div className="p-8 flex gap-2"><RefreshCw className="animate-spin h-5 w-5" /> Loading AI settings…</div>;
   if (error || !cfg) return <div role="alert" className="space-y-3"><p>{error || "Settings unavailable."}</p><Button onClick={load}>Retry</Button></div>;
-  return <div className="max-w-3xl space-y-6">
+  return <div className="max-w-5xl space-y-6">
     <div className="flex justify-between gap-4">
       <div><h1 className="text-2xl font-semibold flex gap-2 items-center"><Cpu /> AI Provider Configuration</h1>
-        <p className="mt-2 text-sm text-muted-foreground">View configured keys, select automatic switching, and adjust token limits.</p></div>
+        <p className="mt-2 text-sm text-muted-foreground">Manage provider keys, review fallback priority, and adjust token limits.</p></div>
       <Button variant="outline" onClick={load} disabled={saving}><RefreshCw className="h-4 w-4 mr-2" />Refresh</Button>
     </div>
     {cfg.memoryMode && <p className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-200">
       Environment settings are shown below. Connect database storage to save changes here; environment changes require a server restart.
     </p>}
     <fieldset disabled={cfg.memoryMode || saving} className="space-y-6">
-      <Card className="p-6 space-y-4">
+      <Card className="p-5 gap-4">
         <h2 className="font-semibold">Automatic switching</h2>
-        <p className="text-sm text-muted-foreground">Auto tries Groq → Gemini → Anthropic, skipping providers without a key. Selecting a provider uses only that provider.</p>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          {["auto","groq","gemini","anthropic"].map(provider=><button type="button" key={provider}
-            aria-pressed={cfg.activeProvider===provider}
-            onClick={()=>setCfg({...cfg,activeProvider:provider})}
-            className={"rounded-lg border px-3 py-3 capitalize text-sm "+(cfg.activeProvider===provider ? "border-indigo-600 bg-indigo-50 text-indigo-700 dark:border-indigo-400 dark:bg-indigo-950/50 dark:text-indigo-300" : "hover:bg-muted")}>
-            {provider==="auto" ? "Auto" : provider}
-          </button>)}
-        </div>
-        {!["auto","groq","gemini","anthropic"].includes(cfg.activeProvider) && <p role="alert" className="text-sm text-amber-700">The saved provider is unsupported by the agent runtime. Select a supported provider and save.</p>}
-        <p className="text-sm">Groq uses the least busy ready key and rotates ties. Authentication, permission, connection, size (413), rate-limit (429) or temporary server failures trigger the next ready key, once per key per sequence. Rate-limited keys wait before reuse. If every key fails, Auto can try another configured provider.</p>
+        <p className="text-sm text-muted-foreground">Groq runs first. Gemini is used only when Groq cannot complete the request. Anthropic is the final fallback when configured.</p>
+        <ol className="grid gap-3 sm:grid-cols-3" aria-label="Provider priority">
+          {[["Groq", "Primary provider"], ["Gemini", "Fallback provider"], ["Anthropic", "Final fallback"]].map(([name, role], index) => (
+            <li key={name} className="rounded-lg border bg-muted/20 p-4">
+              <p className="text-xs text-muted-foreground">Priority {index + 1}</p>
+              <p className="mt-2 font-semibold">{name}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{role}</p>
+            </li>
+          ))}
+        </ol>
+        <p className="text-sm text-muted-foreground">Providers without keys are skipped. Groq rotates ready keys before falling back; retries are bounded. This order also applies to document reading and overrides older single-provider selections.</p>
       </Card>
-      {(["groq","gemini","anthropic"] as const).map(provider=><Card key={provider} className="p-6 space-y-4">
+      {(["groq","gemini","anthropic"] as const).map(provider=><Card key={provider} className="p-5 gap-4">
         <h2 className="font-semibold capitalize">{provider}{provider==="groq" ? " key pool" : ""}</h2>
         <KeyList name={provider==="groq" ? "Groq" : provider==="gemini" ? "Gemini" : "Anthropic"} keys={cfg[(provider+"Keys") as "groqKeys"]} source={cfg.keySources[provider]} />
         <label className="block space-y-2 text-sm font-medium">
@@ -147,12 +147,12 @@ export function AIConfigPage() {
           Remove saved override and use environment keys after saving
         </label>
       </Card>)}
-      {!!cfg.openaiKeys.length && <Card className="p-6 space-y-3">
+      {!!cfg.openaiKeys.length && <Card className="p-5 gap-3">
         <h2 className="font-semibold">OpenAI — stored only</h2>
         <KeyList name="OpenAI" keys={cfg.openaiKeys} source={cfg.keySources.openai} />
         <p className="text-sm text-muted-foreground">This agent runtime does not route requests to OpenAI.</p>
       </Card>}
-      <Card className="p-6 space-y-5">
+      <Card className="p-5 gap-4">
         <h2 className="font-semibold">Token limits</h2>
         <p className="text-sm text-muted-foreground">Limits count input and output tokens across providers. New calls stop once recorded usage reaches a limit; calls already running may finish above it. Daily and monthly periods reset at midnight UTC. Select No limit to remove a threshold; 0 pauses new AI calls.</p>
         <div className="grid sm:grid-cols-2 gap-4">

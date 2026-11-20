@@ -88,7 +88,7 @@ async function generateExplanation(params) {
   const prompt = buildExplanationPrompt(params);
   let trigger = "initial";
 
-  if (getGroqApiKeys(config).length && (config.aiProvider === "auto" || config.aiProvider === "groq")) {
+  if (getGroqApiKeys(config).length) {
     try {
       const res = await requestGroqCompletion({
         model: config.groqModel,
@@ -105,7 +105,7 @@ async function generateExplanation(params) {
     trigger = "fallback";
   }
 
-  if (config.geminiApiKey && (config.aiProvider === "auto" || config.aiProvider === "gemini")) {
+  if (config.geminiApiKey) {
     try {
       return await requestGemini(config,{parts:[{text:prompt}],maxTokens:1500},{purpose:"Explain a prediction result using checked market prices",trigger});
     } catch (error) {
@@ -115,7 +115,7 @@ async function generateExplanation(params) {
     trigger = "fallback";
   }
 
-  if (config.anthropicApiKey && (config.aiProvider === "auto" || config.aiProvider === "anthropic")) {
+  if (config.anthropicApiKey) {
     try {
       const anthropicClient = new Anthropic({apiKey:config.anthropicApiKey,timeout:30000,maxRetries:0});
       const res = await trackAIRequest({provider:"anthropic",model:config.anthropicModel,purpose:"Explain a prediction result using checked market prices",trigger},()=>anthropicClient.messages.create({

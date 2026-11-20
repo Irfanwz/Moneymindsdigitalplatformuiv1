@@ -8,7 +8,9 @@ import { requestGemini } from "./geminiProvider.js";
 
 export function configuredProviders(settings = config) {
   const available = {groq:getGroqApiKeys(settings).length>0,gemini:!!settings.geminiApiKey,anthropic:!!settings.anthropicApiKey};
-  return ["groq","gemini","anthropic"].filter(provider=>available[provider] && (settings.aiProvider==="auto" || settings.aiProvider===provider));
+  // Platform policy: legacy single-provider settings must not bypass Groq.
+  // All consumers, including document OCR, share this ordered fallback chain.
+  return ["groq","gemini","anthropic"].filter(provider=>available[provider]);
 }
 export async function generateJSON(system,prompt,{maxTokens=1800,maxCompletionTokens,validate,onRetry,rateLimitRetry,purpose="Generate a structured AI assessment",usageDetails={}}={}) {
   if(maxCompletionTokens!==undefined && (!Number.isSafeInteger(maxCompletionTokens) || maxCompletionTokens<=0)) {
