@@ -1,3 +1,4 @@
+import { resolveSignalHorizon } from "../shared/signalHorizon.js";
 function trimText(value) {
   return typeof value === "string" ? value.trim() : "";
 }
@@ -31,6 +32,10 @@ export function normalizeGroupInput(input) {
 
 export function normalizeSignalInput(input) {
   const postType = input?.postType === "post" ? "post" : "signal";
+  if (postType === "signal") {
+    try { resolveSignalHorizon(trimText(input?.timeHorizon)); }
+    catch (error) { throw Object.assign(error, {status: 400}); }
+  }
 
   return {
     postType,

@@ -77,13 +77,13 @@ export async function getStockPrice(symbol) {
  * @param {string} symbol - e.g. "BTC", "ETH", "bitcoin"
  * @returns {Promise<number|null>}
  */
-export async function getCryptoPrice(symbol) {
+export async function getCryptoPrice(symbol, { fresh = false } = {}) {
   if (!symbol) return null;
   const upper = symbol.toUpperCase();
   const coinId = CRYPTO_IDS[upper] ?? symbol.toLowerCase();
   const cacheKey = `crypto_${coinId}`;
   const cached = priceCache.get(cacheKey);
-  if (isCacheValid(cached)) return cached.price;
+  if (!fresh && isCacheValid(cached)) return cached.price;
 
   const url = `https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(coinId)}&vs_currencies=usd`;
   const raw = await safeFetch(url);
@@ -105,7 +105,7 @@ function dateInZone(timestamp, timeZone) {
   return `${parts.year}-${parts.month}-${parts.day}`;
 }
 
-export async function getHistoricalPrice(symbol, deadline, {after, assetType} = {}) {
+export async function getHistoricalPrice(symbol, deadline, {after, assetType, maxAgeMs = 7200000} = {}) {
   const cutoff = Date.parse(deadline);
   const earliest = after === undefined ? -Infinity : Date.parse(after);
   if (!symbol || !Number.isFinite(cutoff) || cutoff > Date.now() || Number.isNaN(earliest) || earliest >= cutoff) return null;
@@ -118,7 +118,7 @@ export async function getHistoricalPrice(symbol, deadline, {after, assetType} = 
     const headers = config.coingeckoApiKey ? {"x-cg-demo-api-key":config.coingeckoApiKey} : {};
     const raw = await safeFetch(`https://api.coingecko.com/api/v3/coins/${coinId}/market_chart/range?${params}`, headers);
     const point = (Array.isArray(raw?.prices) ? raw.prices : [])
-      .filter(p => Array.isArray(p) && Number.isFinite(p[0]) && Number.isFinite(p[1]) && p[1] > 0 && p[0] > earliest && p[0] <= cutoff && cutoff - p[0] <= 7200000)
+      .filter(p => Array.isArray(p) && Number.isFinite(p[0]) && Number.isFinite(p[1]) && p[1] > 0 && p[0] > earliest && p[0] <= cutoff && cutoff - p[0] <= maxAgeMs)
       .sort((a,b) => b[0] - a[0])[0];
     if (!point) return null;
     const observedAt = new Date(point[0]).toISOString();

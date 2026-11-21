@@ -1,3 +1,5 @@
+import { SignalHorizonField } from "../signals/SignalHorizonField";
+import { formatSignalHorizon, resolveSignalHorizon } from "../../../../shared/signalHorizon.js";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { Header } from "@/app/components/Header";
@@ -55,7 +57,7 @@ export function CreatePostSignalPage() {
   const [signalType, setSignalType] = useState<"buy" | "sell" | "hold" | "alert">("buy");
   const [predictionTicker, setPredictionTicker] = useState("");
   const [targetPrice, setTargetPrice] = useState("");
-  const [timeHorizon, setTimeHorizon] = useState("");
+  const [timeHorizon, setTimeHorizon] = useState("1hours");
   const [confidenceLevel, setConfidenceLevel] = useState("medium");
   const [tags, setTags] = useState<string[]>([]);
   const [currentTag, setCurrentTag] = useState("");
@@ -125,6 +127,10 @@ export function CreatePostSignalPage() {
     setIsPublishing(true);
     setError(null);
     try {
+      if (postType === "signal") {
+        if (!timeHorizon) throw new Error("Choose a signal duration.");
+        resolveSignalHorizon(timeHorizon);
+      }
       const response = await createAdvisorSignal(session?.token ?? "", selectedGroup, {
         postType,
         title,
@@ -252,15 +258,7 @@ export function CreatePostSignalPage() {
                     <Input id="target-price" placeholder="e.g., $50M - $75M" value={targetPrice} onChange={(e) => setTargetPrice(e.target.value)} className="mt-2" />
                   </div>
                   <div>
-                    <Label htmlFor="time-horizon">Time Horizon</Label>
-                    <Select value={timeHorizon} onValueChange={setTimeHorizon}>
-                      <SelectTrigger id="time-horizon" className="mt-2"><SelectValue placeholder="Select timeframe" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="short">Short-term (0-3 months)</SelectItem>
-                        <SelectItem value="medium">Medium-term (3-12 months)</SelectItem>
-                        <SelectItem value="long">Long-term (1+ years)</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <SignalHorizonField value={timeHorizon} onChange={setTimeHorizon} />
                   </div>
                   <div>
                     <Label htmlFor="confidence">Confidence Level</Label>
@@ -501,7 +499,7 @@ export function CreatePostSignalPage() {
                       {timeHorizon && (
                         <div className="p-3 bg-muted/50 rounded-lg text-center">
                           <div className="text-xs text-muted-foreground mb-1">Time Horizon</div>
-                          <div className="text-sm font-semibold capitalize">{timeHorizon}-term</div>
+                          <div className="text-sm font-semibold capitalize">{formatSignalHorizon(timeHorizon)}</div>
                         </div>
                       )}
                       {confidenceLevel && (

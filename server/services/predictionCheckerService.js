@@ -1,3 +1,4 @@
+import { resolveSignalHorizon } from "../../shared/signalHorizon.js";
 import { getAiConfig } from "./aiConfigStore.js";
 import { requestGemini } from "./geminiProvider.js";
 import Anthropic from "@anthropic-ai/sdk";
@@ -145,12 +146,12 @@ async function generateExplanation(params) {
  * Fetch the current price for a ticker.
  * Tries stock first, then crypto. Falls back to null.
  */
-async function fetchCurrentPrice(ticker) {
+async function fetchCurrentPrice(ticker, fresh = false) {
   if (!ticker) return null;
   try {
     const stockPrice = await getStockPrice(ticker);
     if (stockPrice !== null) return {price:stockPrice, assetType:"stock"};
-    const cryptoPrice = await getCryptoPrice(ticker);
+    const cryptoPrice = await getCryptoPrice(ticker, { fresh });
     return cryptoPrice === null ? null : {price:cryptoPrice, assetType:"crypto"};
   } catch (err) {
     console.warn(`[PredictionChecker] Price fetch failed for ${ticker}:`, err.message);
@@ -181,23 +182,27 @@ export async function scheduleSignalPrediction(signalId, signal, store, {strict=
       return {summary:"No directional, identifiable asset prediction was found in this post.",eligible:false};
     }
     const created=Date.parse(signal.createdAt || new Date().toISOString());
-    const historical=Date.now()-created>60*60*1000 && !signal.baselinePrice;
-    const baseline = historical ? null : await fetchCurrentPrice(parsed.ticker);
+    const explicit = resolveSignalHorizon(signal.timeHorizon, created);
+    const durationMs = explicit?.milliseconds ?? parsed.timeframeDays * 86400000;
+    const deadline = explicit?.checkDate ?? new Date(created + durationMs).toISOString();
+    const historical=(Date.now()-created>60*60*1000 || Date.now() >= Date.parse(deadline)) && !signal.baselinePrice;
+    const baseline = historical ? null : await fetchCurrentPrice(parsed.ticker, durationMs < 86400000);
     // Daily-close stock data cannot establish a post-baseline observation for
     // a one-day horizon. Do not lock such posts into an impossible pending run.
-    const unsupportedHorizon = baseline?.assetType === "stock" && parsed.timeframeDays <= 1;
-    const baselinePrice = unsupportedHorizon ? null : baseline?.price ?? null;
+    const unsupportedHorizon = baseline?.assetType === "stock" && durationMs <= 86400000;
+    const baselinePrice = unsupportedHorizon || Date.now() >= Date.parse(deadline) ? null : baseline?.price ?? null;
     const now=new Date().toISOString();
-    const checkDate=new Date(created+parsed.timeframeDays*86400000).toISOString();
+    const checkDate=deadline;
     const updated=await store.updateSignalPrediction(signalId,{
       predictionTicker:parsed.ticker,predictionDirection:parsed.direction,predictionTargetPrice:parsed.targetPrice,
-      predictionTimeframe:parsed.timeframe,predictionTimeframeDays:parsed.timeframeDays,
+      // Keep the legacy integer day bucket; the timestamp above is the exact deadline.
+      predictionTimeframe:explicit?.label ?? parsed.timeframe,predictionTimeframeDays:Math.ceil(durationMs / 86400000),
       predictionCheckDate:baselinePrice ? checkDate : null,baselinePrice,
       predictionAssetType:baselinePrice ? baseline.assetType : null,
       baselineFetchedAt:signal.baselineFetchedAt || (baselinePrice ? now : null),
     }, {expectedUpdatedAt:signal.updatedAt});
     if(!updated) throw new Error("The extracted prediction could not be saved.");
-    if (unsupportedHorizon) return {summary:"Prediction extracted but not eligible for scoring: one-day stock predictions require intraday historical data; the configured checker uses completed daily closes. This post remains editable.",ticker:parsed.ticker,eligible:false,checkDate:null};
+    if (unsupportedHorizon) return {summary:"Prediction extracted but not eligible for scoring: hourly and one-day stock predictions require intraday historical data; the configured checker uses completed daily closes. This post remains editable.",ticker:parsed.ticker,eligible:false,checkDate:null};
     return {summary:historical ? "Prediction extracted. Original baseline is unavailable for this historical signal; no accuracy score will be fabricated." : baselinePrice ? `Prediction saved; evaluation is due ${checkDate}.` : "Prediction extracted, but a market price was unavailable. Check the price provider and retry while the signal is fresh.",ticker:parsed.ticker,eligible:!!baselinePrice,checkDate:baselinePrice ? checkDate : null};
   } catch(error) {
     if(strict) throw error;
@@ -214,7 +219,7 @@ export async function checkOnePrediction(signal, store) {
     const effectiveTicker=signal.predictionTicker;
     if(!effectiveTicker) return null;
 
-    const evidence = await getHistoricalPrice(effectiveTicker, signal.predictionCheckDate, {after:signal.baselineFetchedAt || signal.createdAt, assetType:signal.predictionAssetType});
+    const evidence = await getHistoricalPrice(effectiveTicker, signal.predictionCheckDate, {after:signal.baselineFetchedAt || signal.createdAt, assetType:signal.predictionAssetType, maxAgeMs: Date.parse(signal.predictionCheckDate) - Date.parse(signal.createdAt) < 86400000 ? 5 * 60000 : undefined});
     const actualPrice = evidence?.price ?? null;
     if (actualPrice === null) {
       console.warn(`[PredictionChecker] No price found for signal ${signal.id} (ticker: ${effectiveTicker}) — skipping`);
@@ -259,7 +264,7 @@ export async function checkOnePrediction(signal, store) {
 
 /**
  * Find all signals past their check date and verify them.
- * Called by the daily cron job.
+ * Called by the minute-based due-prediction scheduler.
  *
  * @param {object} store
  * @returns {Promise<number>} number of signals checked

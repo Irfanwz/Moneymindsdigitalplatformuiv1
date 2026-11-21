@@ -70,7 +70,7 @@ export function createApp(store, { backgroundJobs = process.env.NODE_ENV !== "te
   app.use("/api/admin/ai-config", createAiConfigRouter(store));
   app.use("/api/admin/token-report", createTokenReportRouter(store));
 
-  // Start daily prediction accuracy checker (9 AM every day)
+  // Check for expired predictions every minute; only queue work when due.
   if (backgroundJobs) startPredictionCron(store);
   // Start daily credibility score recalculation (9:30 AM — after predictions)
   if (backgroundJobs) startCredibilityCron(store);

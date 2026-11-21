@@ -1,3 +1,5 @@
+import { SignalHorizonField } from "../signals/SignalHorizonField";
+import { formatSignalHorizon } from "../../../../shared/signalHorizon.js";
 import { useEffect, useState } from "react";
 import { Header } from "@/app/components/Header";
 import { Card } from "@/app/components/ui/card";
@@ -223,7 +225,7 @@ function SignalCardWithComments({
           <div className="flex items-center gap-4 text-xs text-muted-foreground">
             <span>{new Date(signal.createdAt).toLocaleString()}</span>
             {signal.targetPrice && <span>Target: ${signal.targetPrice}</span>}
-            {signal.timeHorizon && <span>Horizon: {signal.timeHorizon}</span>}
+            {signal.timeHorizon && <span>Horizon: {formatSignalHorizon(signal.timeHorizon)}</span>}
             {signal.confidenceLevel && <span>Confidence: {signal.confidenceLevel}</span>}
           </div>
           {signal.tags?.length > 0 && (
@@ -812,15 +814,7 @@ export function AdvisorGroupsPage() {
                   </div>
                   <div className="grid md:grid-cols-2 gap-4">
                     <div>
-                      <Label>Time Horizon</Label>
-                      <Select value={editSignalTimeHorizon} onValueChange={setEditSignalTimeHorizon}>
-                        <SelectTrigger className="mt-2"><SelectValue placeholder="Select timeframe" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="short">Short-term (0-3 months)</SelectItem>
-                          <SelectItem value="medium">Medium-term (3-12 months)</SelectItem>
-                          <SelectItem value="long">Long-term (1+ years)</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <SignalHorizonField value={editSignalTimeHorizon} onChange={setEditSignalTimeHorizon} />
                     </div>
                     <div>
                       <Label>Confidence Level</Label>
