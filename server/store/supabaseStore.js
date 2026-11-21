@@ -78,6 +78,8 @@ function mapStartupProfileRow(row) {
   return {
     id: row.id,
     userId: row.user_id,
+    isVerified: row.is_verified === true,
+    verifiedAt: row.verified_at ?? null,
     companyName: row.company_name,
     tagline: row.tagline ?? "",
     industry: row.industry,
@@ -133,6 +135,8 @@ function mapInvestorProfileRow(row) {
   return {
     id: row.id,
     userId: row.user_id,
+    isVerified: row.is_verified === true,
+    verifiedAt: row.verified_at ?? null,
     investorType: row.investor_type ?? "",
     preferredStage: row.preferred_stage ?? "",
     minInvestment: row.min_investment ?? "",
@@ -190,6 +194,8 @@ function mapAdvisorProfileRow(row) {
   return {
     id: row.id,
     userId: row.user_id,
+    isVerified: row.is_verified === true,
+    verifiedAt: row.verified_at ?? null,
     title: row.title ?? "",
     bio: row.bio ?? "",
     website: row.website ?? "",
@@ -498,7 +504,7 @@ export function createSupabaseStore({ supabaseUrl, supabaseServiceRoleKey }) {
       const timestamp = new Date().toISOString();
       const payload = mapInsert({
         fullName,
-        email,
+        email: email.toLowerCase(),
         passwordHash,
         phone: "",
         location: "",
@@ -515,15 +521,17 @@ export function createSupabaseStore({ supabaseUrl, supabaseServiceRoleKey }) {
 
       const { data, error } = await client
         .from(USERS_TABLE)
-        .upsert(payload, { onConflict: "email" })
+        .upsert(payload, { onConflict: "email", ignoreDuplicates: true })
         .select("*")
-        .single();
+        .maybeSingle();
 
       if (error) {
         throw toStoreError(error);
       }
 
-      return mapRow(data);
+      const user = data ? mapRow(data) : await this.findUserByEmail(email.toLowerCase());
+      if (!user?.isAdmin) throw new Error("Bootstrap admin email belongs to a non-administrator account.");
+      return user;
     },
 
     async createUserProfile(profile) {
@@ -1288,11 +1296,12 @@ export function createSupabaseStore({ supabaseUrl, supabaseServiceRoleKey }) {
       return (data ?? []).map((r) => ({ id: r.id, userId: r.user_id, title: r.title, message: r.message, type: r.type, read: r.read, createdAt: r.created_at }));
     },
 
-    async markNotificationRead(notificationId) {
+    async markNotificationRead(notificationId, userId) {
       const { data, error } = await client
         .from(NOTIFICATIONS_TABLE)
         .update({ read: true })
         .eq("id", notificationId)
+        .eq("user_id", userId)
         .select("*")
         .maybeSingle();
       if (error) throw toStoreError(error);

@@ -74,10 +74,12 @@ export function RequireRole({ role }: { role: AppRole }) {
     checkProfile();
   }, [isLoading, session, user, role, location.pathname]);
 
-  if (isLoading || checkState === "pending") return <GuardLoadingScreen />;
+  if (isLoading) return <GuardLoadingScreen />;
   if (!session || !user) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   if (user.isAdmin) return <Navigate to="/admin/dashboard" replace />;
   if (!user.approvedRoles.includes(role)) return <Navigate to="/choose-role" replace />;
+
+  if (checkState === "pending") return <GuardLoadingScreen />;
 
   if (checkState === "incomplete") {
     return <Navigate to={`/${role}/edit-profile?setup=true`} replace />;

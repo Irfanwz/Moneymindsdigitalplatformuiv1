@@ -8,9 +8,11 @@ if (isEmailConfigured) {
 const FROM_EMAIL = process.env.SENDGRID_FROM_EMAIL || "noreply@moneyminds.app";
 const FROM_NAME = "MoneyMinds";
 
+export const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]);
+
 async function sendEmail({ to, subject, text, html }) {
   if (!isEmailConfigured) {
-    console.log(`[Email - not sent, SENDGRID_API_KEY not set]\nTo: ${to}\nSubject: ${subject}\n${text}`);
+    console.warn("Email was not sent: email provider is not configured.");
     return;
   }
 
@@ -30,7 +32,7 @@ export async function sendPasswordResetEmail(email, resetUrl) {
     text: `You requested a password reset.\n\nClick the link below to set a new password (expires in 1 hour):\n${resetUrl}\n\nIf you did not request this, you can ignore this email.`,
     html: `
       <p>You requested a password reset.</p>
-      <p><a href="${resetUrl}">Reset your password</a> (expires in 1 hour)</p>
+      <p><a href="${escapeHtml(resetUrl)}">Reset your password</a> (expires in 1 hour)</p>
       <p>If you did not request this, you can ignore this email.</p>
     `,
   });
@@ -42,7 +44,7 @@ export async function sendWelcomeEmail(email, fullName) {
     subject: "Welcome to MoneyMinds — your profile is under review",
     text: `Hi ${fullName},\n\nThank you for applying to MoneyMinds! Your profile is currently under review by our admin team.\n\nYou will receive another email once your profile has been approved.\n\nThe MoneyMinds Team`,
     html: `
-      <p>Hi ${fullName},</p>
+      <p>Hi ${escapeHtml(fullName)},</p>
       <p>Thank you for applying to MoneyMinds! Your profile is currently under review by our admin team.</p>
       <p>You will receive another email once your profile has been approved.</p>
       <p>The MoneyMinds Team</p>
@@ -56,9 +58,9 @@ export async function sendApprovalEmail(email, fullName, approvedRoles) {
     subject: "Your MoneyMinds profile has been approved!",
     text: `Hi ${fullName},\n\nGreat news — your MoneyMinds profile has been approved!\n\nYour approved roles: ${approvedRoles.join(", ")}\n\nYou can now sign in and start using the platform.\n\nThe MoneyMinds Team`,
     html: `
-      <p>Hi ${fullName},</p>
+      <p>Hi ${escapeHtml(fullName)},</p>
       <p>Great news — your MoneyMinds profile has been approved!</p>
-      <p><strong>Your approved roles:</strong> ${approvedRoles.join(", ")}</p>
+      <p><strong>Your approved roles:</strong> ${escapeHtml(approvedRoles.join(", "))}</p>
       <p>You can now sign in and start using the platform.</p>
       <p>The MoneyMinds Team</p>
     `,
@@ -71,9 +73,9 @@ export async function sendRejectionEmail(email, fullName, reason) {
     subject: "MoneyMinds — profile application update",
     text: `Hi ${fullName},\n\nUnfortunately your MoneyMinds profile application was not approved at this time.\n\n${reason ? `Reason: ${reason}\n\n` : ""}If you have questions, please contact our support team.\n\nThe MoneyMinds Team`,
     html: `
-      <p>Hi ${fullName},</p>
+      <p>Hi ${escapeHtml(fullName)},</p>
       <p>Unfortunately your MoneyMinds profile application was not approved at this time.</p>
-      ${reason ? `<p><strong>Reason:</strong> ${reason}</p>` : ""}
+      ${reason ? `<p><strong>Reason:</strong> ${escapeHtml(reason)}</p>` : ""}
       <p>If you have questions, please contact our support team.</p>
       <p>The MoneyMinds Team</p>
     `,
@@ -86,9 +88,9 @@ export async function sendLoginOtpEmail(email, fullName, code) {
     subject: `${code} — Your MoneyMinds login code`,
     text: `Hi ${fullName},\n\nYour login verification code is:\n\n${code}\n\nThis code expires in 10 minutes. Do not share it with anyone.\n\nIf you did not request this, change your password immediately.\n\nThe MoneyMinds Team`,
     html: `
-      <p>Hi ${fullName},</p>
+      <p>Hi ${escapeHtml(fullName)},</p>
       <p>Your login verification code is:</p>
-      <h1 style="font-size:40px;letter-spacing:12px;font-family:monospace;color:#111;">${code}</h1>
+      <h1 style="font-size:40px;letter-spacing:12px;font-family:monospace;color:#111;">${escapeHtml(code)}</h1>
       <p>This code expires in <strong>10 minutes</strong>. Do not share it with anyone.</p>
       <p>If you did not request this, please change your password immediately.</p>
       <p>The MoneyMinds Team</p>
@@ -102,8 +104,8 @@ export async function sendPaymentReceiptEmail(email, fullName, amount, itemDescr
     subject: "MoneyMinds — payment receipt",
     text: `Hi ${fullName},\n\nYour payment of $${amount.toFixed(2)} for "${itemDescription}" was successful.\n\nThank you!\n\nThe MoneyMinds Team`,
     html: `
-      <p>Hi ${fullName},</p>
-      <p>Your payment of <strong>$${amount.toFixed(2)}</strong> for <em>${itemDescription}</em> was successful.</p>
+      <p>Hi ${escapeHtml(fullName)},</p>
+      <p>Your payment of <strong>$${amount.toFixed(2)}</strong> for <em>${escapeHtml(itemDescription)}</em> was successful.</p>
       <p>Thank you!</p>
       <p>The MoneyMinds Team</p>
     `,

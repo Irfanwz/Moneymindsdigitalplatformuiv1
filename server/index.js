@@ -1,3 +1,4 @@
+import { shouldSeedDemoProfiles } from "./bootstrapPolicy.js";
 import { hashPassword } from "./auth.js";
 import { createApp } from "./app.js";
 import { config } from "./config.js";
@@ -16,8 +17,10 @@ async function bootstrap() {
     passwordHash,
   });
 
-  console.log("Seeding demo profiles...");
-  await seedDemoProfiles(store);
+  if (shouldSeedDemoProfiles(config.nodeEnv, process.env.SEED_DEMO_PROFILES)) {
+    console.log("Seeding development demo profiles...");
+    await seedDemoProfiles(store);
+  }
 
   const app = createApp(store);
 

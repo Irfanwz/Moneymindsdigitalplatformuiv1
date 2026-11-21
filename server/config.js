@@ -1,3 +1,4 @@
+import { productionConfigurationErrors } from "./bootstrapPolicy.js";
 import dotenv from "dotenv";
 
 if (process.env.NODE_ENV !== "test") dotenv.config();
@@ -84,8 +85,10 @@ if (config.nodeEnv === "production") {
     process.exit(1);
   }
 
-  if (!isSupabaseConfigured) {
-    console.warn("[STARTUP WARN] SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY not set — running in memory mode.");
+  const configurationErrors = productionConfigurationErrors(config);
+  if (configurationErrors.length) {
+    console.error(`[STARTUP ERROR] ${configurationErrors.join("\n")}`);
+    process.exit(1);
   }
 
   if (!isEmailConfigured) {

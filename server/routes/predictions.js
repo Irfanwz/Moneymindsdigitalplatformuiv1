@@ -8,6 +8,7 @@
  */
 
 import { Router } from "express";
+import { canReadGroupContent, requireSignalAccess } from "../groupAccess.js";
 import { createAuthenticate, requirePermission } from "../middleware/auth.js";
 import { trimText } from "../utils.js";
 import { checkDuePredictions, checkOnePrediction } from "../services/predictionCheckerService.js";
@@ -24,7 +25,7 @@ export function createPredictionsRouter(store) {
   // ─── GET /api/signals/:signalId/prediction ──────────────────────────────────
   // Returns prediction fields for a single signal (pending or result)
 
-  router.get("/signals/:signalId/prediction", authenticate, async (req, res, next) => {
+  router.get("/signals/:signalId/prediction", authenticate, requireSignalAccess(store), async (req, res, next) => {
     try {
       const signalId = trimText(req.params.signalId);
       const signal = await store.findSignalById(signalId);
@@ -87,6 +88,7 @@ export function createPredictionsRouter(store) {
       const group = await store.findGroupById(groupId);
       if (!group) return res.status(404).json({ message: "Group not found." });
 
+      if (!await canReadGroupContent(store, req.currentUser, group)) return res.status(404).json({ message: "Group not found." });
       const page = Math.max(1, parseInt(req.query.page) || 1);
       const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
 

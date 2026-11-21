@@ -58,6 +58,23 @@ export function createApplicationStore(client, applications = new Map()) {
       const { error } = await client.storage.from(BUCKET).remove(paths);
       if (error) throw error;
     },
+    async upsertProfileApplication(userId, details) {
+      if (!client) {
+        applications.set(userId, details);
+        return;
+      }
+      // Check if one already exists (table only grants INSERT, not UPDATE)
+      const existing = await client
+        .from(TABLE)
+        .select("user_id")
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (existing.data) return; // already has an application
+      const { error } = await client
+        .from(TABLE)
+        .insert({ user_id: userId, details });
+      if (error) throw error;
+    },
     async downloadApplicationDocument(path) {
       if (!client) {
         const file = files.get(path);

@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { adminCan } from "../../shared/adminPermissions.js";
 import { normalizeTrainingInput } from "../trainings.js";
 import { createAuthenticate, requireApprovedRole } from "../middleware/auth.js";
 import { paginate, trimText } from "../utils.js";
@@ -64,7 +65,9 @@ export function createTrainingsRouter(store) {
 
   router.get("/:id/enrollments", authenticate, async (req, res, next) => {
     try {
-      const enrollments = await store.listEnrollmentsByTraining(trimText(req.params.id));
+      const training = await store.findTrainingById(trimText(req.params.id));
+      if (!training || (training.advisorId !== req.auth.userId && !adminCan(req.currentUser, "content"))) return res.status(404).json({ message: "Training not found." });
+      const enrollments = await store.listEnrollmentsByTraining(training.id);
       res.json({ enrollments });
     } catch (error) { next(error); }
   });

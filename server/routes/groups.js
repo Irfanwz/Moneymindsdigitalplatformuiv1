@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { canManageGroupContent, canReadGroupContent, canSelfJoinGroup, requireSignalAccess } from "../groupAccess.js";
 import { normalizeGroupInput, normalizeSignalInput } from "../advisorGroups.js";
 import { createAuthenticate, requireApprovedRole } from "../middleware/auth.js";
 import { paginate, trimText } from "../utils.js";
@@ -9,6 +10,7 @@ export function createGroupsRouter(store) {
   const router = Router();
   const authenticate = createAuthenticate(store);
   const requireAdvisorRole = requireApprovedRole("advisor");
+  const signalAccess = requireSignalAccess(store);
 
   // --- Browse Groups ---
   router.get("/groups/browse", authenticate, async (req, res, next) => {
@@ -58,6 +60,7 @@ export function createGroupsRouter(store) {
     try {
       const group = await store.findGroupById(trimText(req.params.groupId));
       if (!group) return res.status(404).json({ message: "Group not found." });
+      if (group.isPrivate && !await canReadGroupContent(store, req.currentUser, group)) return res.status(404).json({ message: "Group not found." });
       res.json({ group });
     } catch (error) { next(error); }
   });
@@ -102,6 +105,7 @@ export function createGroupsRouter(store) {
       const groupId = trimText(req.params.groupId);
       const group = await store.findGroupById(groupId);
       if (!group) return res.status(404).json({ message: "Group not found." });
+      if (!await canSelfJoinGroup(store, req.currentUser, group)) return res.status(403).json({ message: "This private group requires an invitation. Self-enrollment is unavailable." });
       if (group.isPaid && (Number(group.joiningFee)>0 || Number(group.monthlyFee)>0) && !await store.hasActivePayment(req.auth.userId,'group_join',groupId) && !await store.hasActivePayment(req.auth.userId,'group_monthly',groupId)) return res.status(402).json({message:'Complete payment before joining this group.'});
       const member = await store.joinGroup(groupId, req.auth.userId);
       try {
@@ -124,6 +128,7 @@ export function createGroupsRouter(store) {
       const groupId = trimText(req.params.groupId);
       const group = await store.findGroupById(groupId);
       if (!group) return res.status(404).json({ message: "Group not found." });
+      if (!canManageGroupContent(req.currentUser, group)) return res.status(404).json({ message: "Group not found." });
       const members = await store.listGroupMembers(groupId);
       const enriched = await Promise.all(members.map(async (m) => {
         const user = await store.findUserById(m.userId);
@@ -169,6 +174,7 @@ export function createGroupsRouter(store) {
       const groupId = trimText(req.params.groupId);
       const group = await store.findGroupById(groupId);
       if (!group) return res.status(404).json({ message: "Group not found." });
+      if (!await canReadGroupContent(store, req.currentUser, group)) return res.status(404).json({ message: "Group not found." });
       const signals = await store.listSignalsByGroup(groupId);
       const { data, pagination } = paginate(signals, req.query);
       res.json({ signals: data, ...(pagination && { pagination }) });
@@ -179,7 +185,7 @@ export function createGroupsRouter(store) {
     try {
       const signalId = trimText(req.params.signalId);
       const signal = await store.findSignalById(signalId);
-      if (!signal || signal.advisorId !== req.auth.userId) return res.status(404).json({ message: "Signal not found." });
+      if (!signal || signal.groupId !== req.params.groupId || signal.advisorId !== req.auth.userId) return res.status(404).json({ message: "Signal not found." });
       const input = normalizeSignalInput(req.body);
       if (input.title.length < 2) return res.status(400).json({ message: "Title is required." });
       if(signal.predictionCheckDate || signal.predictionCheckedAt) return res.status(409).json({message:"This signal has a recorded prediction. Publish a new signal to preserve its original evidence and accuracy history."});
@@ -196,14 +202,14 @@ export function createGroupsRouter(store) {
     try {
       const signalId = trimText(req.params.signalId);
       const signal = await store.findSignalById(signalId);
-      if (!signal || signal.advisorId !== req.auth.userId) return res.status(404).json({ message: "Signal not found." });
+      if (!signal || signal.groupId !== req.params.groupId || signal.advisorId !== req.auth.userId) return res.status(404).json({ message: "Signal not found." });
       await store.deleteSignal(signalId);
       res.json({ message: "Signal deleted successfully." });
     } catch (error) { next(error); }
   });
 
   // --- Comments ---
-  router.get("/signals/:signalId/comments", authenticate, async (req, res, next) => {
+  router.get("/signals/:signalId/comments", authenticate, signalAccess, async (req, res, next) => {
     try {
       const signalId = trimText(req.params.signalId);
       const comments = await store.listCommentsBySignal(signalId);
@@ -215,7 +221,7 @@ export function createGroupsRouter(store) {
     } catch (error) { next(error); }
   });
 
-  router.post("/signals/:signalId/comments", authenticate, async (req, res, next) => {
+  router.post("/signals/:signalId/comments", authenticate, signalAccess, async (req, res, next) => {
     try {
       const signalId = trimText(req.params.signalId);
       const content = trimText(req.body?.content);
@@ -228,11 +234,11 @@ export function createGroupsRouter(store) {
     } catch (error) { next(error); }
   });
 
-  router.delete("/signals/:signalId/comments/:commentId", authenticate, async (req, res, next) => {
+  router.delete("/signals/:signalId/comments/:commentId", authenticate, signalAccess, async (req, res, next) => {
     try {
       const commentId = trimText(req.params.commentId);
       const comment = await store.findCommentById(commentId);
-      if (!comment) return res.status(404).json({ message: "Comment not found." });
+      if (!comment || comment.signalId !== req.params.signalId) return res.status(404).json({ message: "Comment not found." });
       if (comment.userId !== req.auth.userId) {
         const signal = await store.findSignalById(comment.signalId);
         if (!signal || signal.advisorId !== req.auth.userId) return res.status(403).json({ message: "Not authorized to delete this comment." });
@@ -243,14 +249,14 @@ export function createGroupsRouter(store) {
   });
 
   // --- Reactions ---
-  router.get("/signals/:signalId/reactions", authenticate, async (req, res, next) => {
+  router.get("/signals/:signalId/reactions", authenticate, signalAccess, async (req, res, next) => {
     try {
       const reactions = await store.listReactionsBySignal(trimText(req.params.signalId));
       res.json({ reactions });
     } catch (error) { next(error); }
   });
 
-  router.post("/signals/:signalId/reactions", authenticate, async (req, res, next) => {
+  router.post("/signals/:signalId/reactions", authenticate, signalAccess, async (req, res, next) => {
     try {
       const signalId = trimText(req.params.signalId);
       const reaction = trimText(req.body?.reaction);

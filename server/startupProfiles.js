@@ -44,6 +44,8 @@ function normalizeFoundedYear(value) {
 export function buildStartupProfile(user, profile) {
   return {
     id: profile?.id ?? null,
+    isVerified: profile?.isVerified === true,
+    verifiedAt: profile?.verifiedAt ?? null,
     userId: user.id,
     companyName: profile?.companyName ?? "",
     tagline: profile?.tagline ?? "",

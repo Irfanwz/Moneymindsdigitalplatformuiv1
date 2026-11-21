@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { publicAdvisorProfile, publicStartupProfile } from "../profileVisibility.js";
 import { sanitizeUser } from "../auth.js";
 import { buildStartupProfile, normalizeStartupProfileInput } from "../startupProfiles.js";
 import { buildInvestorProfile, normalizeInvestorProfileInput } from "../investorProfiles.js";
@@ -86,7 +87,7 @@ export function createProfilesRouter(store) {
       if (!user || user.status !== "approved" || user.isSuspended || !user.approvedRoles?.includes("advisor")) return res.status(404).json({ message: "Advisor not found." });
       const profile = await store.findAdvisorProfileByUserId(userId);
       if (!profile || profile.isPublic === false) return res.status(404).json({ message: "Advisor not found." });
-      res.json({ profile: buildAdvisorProfile(user, profile), name: user.fullName, location: user.location, bio: user.bio });
+      res.json({ profile: publicAdvisorProfile(buildAdvisorProfile(user, profile)), name: user.fullName, location: user.location, bio: user.bio });
     } catch (error) { next(error); }
   });
 
@@ -97,7 +98,7 @@ export function createProfilesRouter(store) {
       if (!user || user.status !== "approved" || user.isSuspended || !user.approvedRoles?.includes("startup")) return res.status(404).json({ message: "Startup not found." });
       const profile = await store.findStartupProfileByUserId(userId);
       if (!profile || profile.isPublic === false) return res.status(404).json({ message: "Startup not found." });
-      res.json({ profile: buildStartupProfile(user, profile), name: user.fullName, location: user.location, bio: user.bio });
+      res.json({ profile: publicStartupProfile(buildStartupProfile(user, profile)), name: user.fullName, location: user.location, bio: user.bio });
     } catch (error) { next(error); }
   });
 

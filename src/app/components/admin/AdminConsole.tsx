@@ -1,5 +1,5 @@
 import { RegistrationSummary } from "@/app/components/registration/RegistrationSummary";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Activity,
@@ -8,6 +8,8 @@ import {
   Clock,
   Download,
   Loader2,
+  LayoutGrid,
+  List,
   RefreshCw,
   Search,
   ShieldCheck,
@@ -198,10 +200,12 @@ type Column = { label: string; render: (row: any) => ReactNode };
 function DataTable({
   rows,
   columns,
+  renderCard,
   empty = "No records match this view.",
 }: {
   rows: any[];
   columns: Column[];
+  renderCard?: (row: any) => ReactNode;
   empty?: string;
 }) {
   const [page, setPage] = useState(1);
@@ -211,7 +215,15 @@ function DataTable({
   useEffect(() => setPage(1), [rows]);
   return (
     <div className="rounded-xl border bg-card overflow-hidden">
-      <div className="overflow-x-auto">
+      {renderCard ? (
+        rows.length ? (
+          <ul aria-label="User cards" className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 p-4">
+            {rows.slice((current - 1) * size, current * size).map(row => (
+              <li key={row.id} className="min-w-0">{renderCard(row)}</li>
+            ))}
+          </ul>
+        ) : <p className="text-center py-12 px-4 text-muted-foreground text-sm">{empty}</p>
+      ) : <div className="overflow-x-auto">
         <table className="w-full text-sm text-left">
           <thead className="bg-muted/50">
             <tr>
@@ -250,7 +262,7 @@ function DataTable({
             )}
           </tbody>
         </table>
-      </div>
+      </div>}
       <div className="flex flex-wrap items-center justify-between gap-3 border-t px-4 py-3 text-xs text-muted-foreground">
         <span>
           {rows.length} records · Page {current} of {totalPages}
@@ -946,6 +958,14 @@ function UserDetail({
   );
 }
 
+function UserRoles({ user }: { user: AuthUser }) {
+  const roles = user.isAdmin ? [user.adminRole || "super_admin"]
+    : user.approvedRoles.length ? user.approvedRoles : user.requestedRoles;
+  return <div className="flex flex-wrap gap-1">
+    {roles.map(role => <Badge key={role} variant="outline" className="capitalize">{label(role)}</Badge>)}
+  </div>;
+}
+
 function UsersPage() {
   const { data, error, loading, refresh } = useData("/users");
   const [params] = useSearchParams();
@@ -953,7 +973,15 @@ function UsersPage() {
     [status, setStatus] = useState(params.get("status") || "all"),
     [role, setRole] = useState("all"),
     [selected, setSelected] = useState("");
-  const rows = (data?.users || []).filter(
+  const [view, setView] = useState<"list" | "cards">(() => {
+    try { return localStorage.getItem("moneyminds.admin.users.view") === "cards" ? "cards" : "list"; }
+    catch { return "list"; }
+  });
+  const changeView = (value: "list" | "cards") => {
+    setView(value);
+    try { localStorage.setItem("moneyminds.admin.users.view", value); } catch { /* View still works when storage is unavailable. */ }
+  };
+  const rows = useMemo(() => (data?.users || []).filter(
     (u: AuthUser) =>
       `${u.fullName} ${u.email}`.toLowerCase().includes(search.toLowerCase()) &&
       (status === "all" ||
@@ -964,7 +992,7 @@ function UsersPage() {
           : [...u.requestedRoles, ...u.approvedRoles].includes(
               role as AppRole,
             ))),
-  );
+  ), [data, search, status, role]);
   return (
     <>
       <Heading
@@ -1024,9 +1052,41 @@ function UsersPage() {
               <Download className="h-4 w-4 mr-2" />
               Export view
             </Button>
+            <div role="group" aria-label="User display view" className="flex items-center gap-1 rounded-lg border bg-muted/30 p-1 sm:ml-auto">
+              <Button size="sm" variant={view === "list" ? "secondary" : "ghost"} aria-pressed={view === "list"} onClick={() => changeView("list")}>
+                <List aria-hidden="true" /> List view
+              </Button>
+              <Button size="sm" variant={view === "cards" ? "secondary" : "ghost"} aria-pressed={view === "cards"} onClick={() => changeView("cards")}>
+                <LayoutGrid aria-hidden="true" /> Card view
+              </Button>
+            </div>
           </div>
           <DataTable
             rows={rows}
+            renderCard={view === "cards" ? (u: AuthUser) => (
+              <article className="flex h-full flex-col gap-4 rounded-xl border bg-background p-5">
+                <div className="flex items-start gap-3">
+                  <div aria-hidden="true" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-semibold">
+                    {u.fullName.trim().split(/\s+/).filter(Boolean).slice(0, 2).map(name => name[0]).join("").toUpperCase() || "U"}
+                  </div>
+                  <div className="min-w-0">
+                    <h2 className="font-semibold break-words">
+                      <button className="text-left hover:underline focus-visible:underline focus-visible:outline-none" onClick={() => setSelected(u.id)}>{u.fullName}</button>
+                    </h2>
+                    <p className="mt-1 text-xs text-muted-foreground break-all">{u.email}</p>
+                  </div>
+                </div>
+                <div><Status value={u.isSuspended ? "suspended" : u.status} /></div>
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground">{u.isAdmin ? "Administrator role" : u.approvedRoles.length ? "Approved roles" : "Requested roles"}</p>
+                  <UserRoles user={u} />
+                </div>
+                <div className="mt-auto flex flex-wrap items-center justify-between gap-3 border-t pt-4">
+                  <div className="text-xs text-muted-foreground">Registered<p className="mt-1 text-foreground">{new Date(u.createdAt).toLocaleDateString()}</p></div>
+                  <Button size="sm" variant="outline" onClick={() => setSelected(u.id)}>View details <ArrowRight aria-hidden="true" /></Button>
+                </div>
+              </article>
+            ) : undefined}
             columns={[
               {
                 label: "User",
@@ -1052,20 +1112,7 @@ function UsersPage() {
               },
               {
                 label: "Roles",
-                render: (u) => (
-                  <div className="flex flex-wrap gap-1">
-                    {(u.isAdmin
-                      ? [u.adminRole || "super_admin"]
-                      : u.approvedRoles.length
-                        ? u.approvedRoles
-                        : u.requestedRoles
-                    ).map((r: string) => (
-                      <Badge key={r} variant="outline" className="capitalize">
-                        {label(r)}
-                      </Badge>
-                    ))}
-                  </div>
-                ),
+                render: (u) => <UserRoles user={u} />,
               },
               {
                 label: "Registered",

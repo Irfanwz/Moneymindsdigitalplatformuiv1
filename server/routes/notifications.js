@@ -16,7 +16,7 @@ export function createNotificationsRouter(store) {
 
   router.patch("/:id/read", authenticate, async (req, res, next) => {
     try {
-      const notification = await store.markNotificationRead(trimText(req.params.id));
+      const notification = await store.markNotificationRead(trimText(req.params.id), req.auth.userId);
       if (!notification) return res.status(404).json({ message: "Notification not found." });
       res.json({ message: "Marked as read.", notification });
     } catch (error) { next(error); }

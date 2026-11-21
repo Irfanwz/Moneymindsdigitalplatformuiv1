@@ -1,4 +1,5 @@
 import express, { Router } from "express";
+import { canSelfJoinGroup } from "../groupAccess.js";
 import { config, isStripeConfigured } from "../config.js";
 import { sendPaymentReceiptEmail } from "../email.js";
 import { createAuthenticate } from "../middleware/auth.js";
@@ -10,7 +11,7 @@ export function createPaymentsRouter(store) {
   const authenticate = createAuthenticate(store);
 
   // Helper to resolve item amount
-  async function resolveAmount(itemType, itemId) {
+  async function resolveAmount(itemType, itemId, user) {
     if (itemType === "training") {
       const training = await store.findTrainingById(itemId);
       if (!training)
@@ -28,6 +29,8 @@ export function createPaymentsRouter(store) {
     const group = await store.findGroupById(itemId);
     if (!group)
       throw Object.assign(new Error("Group not found."), { status: 404 });
+    if (!await canSelfJoinGroup(store, user, group))
+      throw Object.assign(new Error("This private group requires an invitation."), { status: 403 });
     if (!group.isPaid)
       throw Object.assign(new Error("This group is free."), { status: 400 });
     return parseFloat(
@@ -105,7 +108,7 @@ export function createPaymentsRouter(store) {
             .json({
               message: "You already have a completed payment for this item.",
             });
-        const amount = await resolveAmount(itemType, itemId);
+        const amount = await resolveAmount(itemType, itemId, req.currentUser);
         if (!Number.isFinite(amount) || amount <= 0)
           return res
             .status(400)
@@ -236,7 +239,7 @@ export function createPaymentsRouter(store) {
 
         let amount;
         try {
-          amount = await resolveAmount(itemType, itemId);
+          amount = await resolveAmount(itemType, itemId, req.currentUser);
         } catch (err) {
           return res.status(err.status || 400).json({ message: err.message });
         }
@@ -321,7 +324,7 @@ export function createPaymentsRouter(store) {
 
         let amount;
         try {
-          amount = await resolveAmount(itemType, itemId);
+          amount = await resolveAmount(itemType, itemId, req.currentUser);
         } catch (err) {
           return res.status(err.status || 400).json({ message: err.message });
         }

@@ -258,6 +258,38 @@ try {
   assert.equal((await store.getAdminSettings()).registrationOpen, false);
   checked.push("settings persist after cookie-session reload");
   await go(page, "/admin/users", "Users");
+  await clickText(page, "Next");
+  await page.waitForFunction(() => document.body.textContent.includes("Page 2 of"));
+  const pageTwoNames = await page.$$eval("tbody tr td:first-child button", nodes => nodes.map(node => node.textContent));
+  await clickText(page, "Card view");
+  await page.waitForSelector('ul[aria-label="User cards"]');
+  assert.deepEqual(await page.$$eval('ul[aria-label="User cards"] h2 button', nodes => nodes.map(node => node.textContent)), pageTwoNames);
+  assert.ok(await page.evaluate(() => document.body.textContent.includes("Page 2 of")));
+  await clickText(page, "List view");
+  assert.deepEqual(await page.$$eval("tbody tr td:first-child button", nodes => nodes.map(node => node.textContent)), pageTwoNames);
+  await clickText(page, "Card view");
+  await page.reload({ waitUntil: "networkidle0" });
+  await page.waitForSelector('ul[aria-label="User cards"]');
+  assert.equal(await page.$$eval('ul[aria-label="User cards"] > li', nodes => nodes.length), 12);
+  await page.screenshot({ path: path.join(output, "users-cards-desktop.png"), fullPage: true });
+  await page.select('[aria-label="Account status"]', "pending");
+  const pendingNames = await page.$$eval('ul[aria-label="User cards"] h2 button', nodes => nodes.map(node => node.textContent));
+  assert.ok(pendingNames.length > 0 && pendingNames.length < 12);
+  await clickText(page, "List view");
+  assert.deepEqual(await page.$$eval("tbody tr td:first-child button", nodes => nodes.map(node => node.textContent)), pendingNames);
+  await clickText(page, "Card view");
+  await page.type('input[aria-label="Search name or email…"]', "no-matching-user");
+  await page.waitForFunction(() => document.body.textContent.includes("No records match this view."));
+  await page.$eval('input[aria-label="Search name or email…"]', el => { el.focus(); el.select(); });
+  await page.keyboard.press("Backspace");
+  await page.select('[aria-label="Account status"]', "all");
+  await page.setViewport({ width: 390, height: 844 });
+  await noOverflow(page);
+  await page.evaluate(() => document.documentElement.classList.add("dark"));
+  await page.screenshot({ path: path.join(output, "users-cards-mobile-dark.png"), fullPage: true });
+  await page.evaluate(() => document.documentElement.classList.remove("dark"));
+  await page.setViewport({ width: 1440, height: 1000 });
+  checked.push("user list/card toggle preserves page and filters, persists after reload, handles empty results and fits mobile dark theme");
   await page.type(
     'input[aria-label="Search name or email…"]',
     "Fixture Investor",
@@ -279,6 +311,8 @@ try {
   );
   await page.keyboard.press("Escape");
   await page.waitForFunction(() => !document.querySelector('[role="dialog"]'));
+  await clickText(page, "List view");
+  checked.push("user card opens the existing detail/review actions");
   const client = await page.createCDPSession();
   await client.send("Browser.setDownloadBehavior", {
     behavior: "allow",

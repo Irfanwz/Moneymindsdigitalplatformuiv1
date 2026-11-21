@@ -57,6 +57,8 @@ function normalizeCertifications(value) {
 export function buildAdvisorProfile(user, profile) {
   return {
     id: profile?.id ?? null,
+    isVerified: profile?.isVerified === true,
+    verifiedAt: profile?.verifiedAt ?? null,
     userId: user.id,
     title: profile?.title ?? "",
     bio: profile?.bio ?? user.bio ?? "",

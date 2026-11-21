@@ -119,11 +119,7 @@ export function createMemoryStore() {
       const timestamp = now();
 
       if (existingUser) {
-        existingUser.fullName = fullName;
-        existingUser.passwordHash = passwordHash;
-        existingUser.isAdmin = true;
-        existingUser.status = "approved";
-        existingUser.updatedAt = timestamp;
+        if (!existingUser.isAdmin) throw new Error("Bootstrap admin email belongs to a non-administrator account.");
         return cloneUser(existingUser);
       }
 
@@ -841,8 +837,8 @@ export function createMemoryStore() {
         .map((n) => ({ ...n }));
     },
 
-    async markNotificationRead(notificationId) {
-      const n = notifications.find((n) => n.id === notificationId);
+    async markNotificationRead(notificationId, userId) {
+      const n = notifications.find((n) => n.id === notificationId && n.userId === userId);
       if (!n) return null;
       n.read = true;
       return { ...n };

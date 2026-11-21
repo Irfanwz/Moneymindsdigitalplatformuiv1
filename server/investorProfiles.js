@@ -21,6 +21,8 @@ function normalizeBoolean(value, fallback) {
 export function buildInvestorProfile(user, profile) {
   return {
     id: profile?.id ?? null,
+    isVerified: profile?.isVerified === true,
+    verifiedAt: profile?.verifiedAt ?? null,
     userId: user.id,
     investorType: profile?.investorType ?? "",
     preferredStage: profile?.preferredStage ?? "",

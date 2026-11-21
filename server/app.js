@@ -3,6 +3,7 @@ import cors from "cors";
 import express from "express";
 import helmet from "helmet";
 import path from "path";
+import { randomUUID } from "node:crypto";
 
 import { config } from "./config.js";
 import { createAuthRouter } from "./routes/auth.js";
@@ -43,8 +44,8 @@ export function createApp(store, { backgroundJobs = process.env.NODE_ENV !== "te
 
   app.get("/api/health", async (_req, res, next) => {
     try {
-      const result = await store.health();
-      res.json({ ok: true, ...result });
+      await store.health();
+      res.json({ ok: true });
     } catch (error) { next(error); }
   });
 
@@ -90,8 +91,14 @@ export function createApp(store, { backgroundJobs = process.env.NODE_ENV !== "te
   }
 
   app.use((error, _req, res, _next) => {
-    const message = error instanceof Error ? error.message : "Unexpected server error.";
-    res.status(error.status || 500).json({ message, code: error.code });
+    const referenceId = randomUUID();
+    const status = Number.isInteger(error.status) && error.status >= 400 && error.status <= 599 ? error.status : 500;
+    const message = error.type === "entity.parse.failed" ? "Invalid JSON request body."
+      : status < 500 && error instanceof Error ? error.message : "Unexpected server error. Please try again later.";
+    // Keep correlation and classification without logging request bodies,
+    // provider keys, reset links or raw database messages.
+    if (status >= 500) console.error("Request failed", { referenceId, name: error.name, code: error.code });
+    res.status(status).json({ message, referenceId, ...(status < 500 && typeof error.code === "string" ? { code: error.code } : {}) });
   });
 
   return app;

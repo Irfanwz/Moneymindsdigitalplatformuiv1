@@ -146,14 +146,14 @@ export function createAuthRouter(store) {
       }
 
       // Generate 4-digit email OTP
-      const otpCode = String(Math.floor(1000 + Math.random() * 9000));
+      const otpCode = String(crypto.randomInt(1000, 10000));
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 minutes
       await store.createEmailLoginOtp(user.id, otpCode, expiresAt);
       try {
         await sendLoginOtpEmail(user.email, user.fullName, otpCode);
       } catch (err) {
-        // Always log so dev environments can get the code even without email configured
-        console.log(`[Login OTP] ${user.email} → code: ${otpCode} (email send failed: ${err?.message})`);
+        console.error("Login verification email could not be sent.");
+        return res.status(503).json({ message: "Verification email could not be delivered. Please try again later." });
       }
 
       return res.status(200).json({ code: "EMAIL_OTP_REQUIRED", message: "A 4-digit verification code has been sent to your email." });
@@ -220,7 +220,6 @@ export function createAuthRouter(store) {
       await store.createPasswordResetToken(user.id, token, expiresAt);
 
       const resetUrl = `${config.clientOrigin}/reset-password?token=${token}`;
-      console.log(`[Password Reset] ${email} → ${resetUrl}`);
       try { await sendPasswordResetEmail(email, resetUrl); } catch { /* non-critical */ }
 
       res.json({ message: "If that email exists, a reset link has been generated." });
