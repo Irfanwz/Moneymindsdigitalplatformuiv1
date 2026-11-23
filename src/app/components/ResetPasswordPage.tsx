@@ -8,6 +8,7 @@ import { Button } from "@/app/components/ui/button";
 import { Card } from "@/app/components/ui/card";
 import { Input } from "@/app/components/ui/input";
 import { Label } from "@/app/components/ui/label";
+import { Header } from "@/app/components/Header";
 
 export function ResetPasswordPage() {
   const [searchParams] = useSearchParams();
@@ -49,22 +50,13 @@ export function ResetPasswordPage() {
     }
   };
 
-  const topBar = (
-    <div className="border-b px-6 py-4">
-      <Link to="/" className="flex items-center gap-2 w-fit">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-r from-cyan-500 to-purple-500">
-          <span className="font-bold text-white text-sm">MM</span>
-        </div>
-        <span className="font-semibold text-lg">MoneyMinds</span>
-      </Link>
-    </div>
-  );
+  const topBar = <Header />;
 
   if (!token) {
     return (
       <div className="min-h-screen bg-background flex flex-col">
         {topBar}
-        <div className="flex-1 flex items-center justify-center p-6">
+        <div className="flex-1 flex items-center justify-center p-6 pt-6 sm:pt-8 pb-12">
         <div className="w-full max-w-md">
           <Card className="p-8 text-center">
             <LockKeyhole className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
@@ -93,7 +85,7 @@ export function ResetPasswordPage() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {topBar}
-      <div className="flex-1 flex items-center justify-center p-6">
+      <div className="flex-1 flex items-center justify-center p-6 pt-6 sm:pt-8 pb-12">
       <div className="w-full max-w-md">
         <Card className="p-8">
           <div className="mb-8">

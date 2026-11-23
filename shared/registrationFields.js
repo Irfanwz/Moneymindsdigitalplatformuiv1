@@ -139,6 +139,13 @@ export const registrationSections = {
         "integer",
         { max: 80 },
       ),
+      field(
+        "avatarUrl",
+        "Profile photo / Avatar image URL",
+        false,
+        "url",
+        { placeholder: "https://... (or leave blank for realistic headshot)" }
+      ),
       field("linkedin", "LinkedIn profile", true, "url"),
       field("website", "Professional website", false, "url"),
       choice("employmentStatus", "Work history", [

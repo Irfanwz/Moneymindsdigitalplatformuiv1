@@ -5,6 +5,7 @@ import { KeyRound, ArrowLeft, CheckCircle2 } from "lucide-react";
 import { forgotPassword, ApiError } from "@/app/lib/api";
 import { Alert, AlertDescription, AlertTitle } from "@/app/components/ui/alert";
 import { Button } from "@/app/components/ui/button";
+import { Header } from "@/app/components/Header";
 import { Card } from "@/app/components/ui/card";
 import { Input } from "@/app/components/ui/input";
 import { Label } from "@/app/components/ui/label";
@@ -41,15 +42,8 @@ export function ForgotPasswordPage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <div className="border-b px-6 py-4">
-        <Link to="/" className="flex items-center gap-2 w-fit">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-r from-cyan-500 to-purple-500">
-            <span className="font-bold text-white text-sm">MM</span>
-          </div>
-          <span className="font-semibold text-lg">MoneyMinds</span>
-        </Link>
-      </div>
-      <div className="flex-1 flex items-center justify-center p-6">
+      <Header />
+      <div className="flex-1 flex items-center justify-center p-6 pt-6 sm:pt-8 pb-12">
       <div className="w-full max-w-md">
         <Card className="p-8">
           <div className="mb-8">

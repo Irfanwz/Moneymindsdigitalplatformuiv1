@@ -40,6 +40,10 @@ import { RequireAdmin, RequireRole, RequireSignedIn } from "@/app/components/aut
 import { Toaster } from "@/app/components/ui/sonner";
 import { AdminConsole } from '@/app/components/admin/AdminConsole';
 import { PaymentComplete } from '@/app/components/shared/PaymentComplete';
+import { BlogDetailPage } from '@/app/components/blog/BlogDetailPage';
+import { PrivacyPolicyPage } from "@/app/components/legal/PrivacyPolicyPage";
+import { TermsOfAdvisoryPage } from "@/app/components/legal/TermsOfAdvisoryPage";
+import { SecurityDisclosuresPage } from "@/app/components/legal/SecurityDisclosuresPage";
 
 function GroupPredictionsRoute() {
   const { groupId } = useParams<{ groupId: string }>();
@@ -61,7 +65,16 @@ export default function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<LandingPage />} />
+            <Route path="/advisors" element={<FindAdvisorsPage />} />
             <Route path="/apply" element={<ProfileApplicationPage />} />
+            <Route path="/blogs" element={<BlogDetailPage />} />
+            <Route path="/blogs/:id" element={<BlogDetailPage />} />
+            <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+            <Route path="/privacy" element={<PrivacyPolicyPage />} />
+            <Route path="/terms-of-advisory" element={<TermsOfAdvisoryPage />} />
+            <Route path="/terms" element={<TermsOfAdvisoryPage />} />
+            <Route path="/security-disclosures" element={<SecurityDisclosuresPage />} />
+            <Route path="/security" element={<SecurityDisclosuresPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />

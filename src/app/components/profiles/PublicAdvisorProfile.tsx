@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Header } from "@/app/components/Header";
+import { InstitutionalFooter } from "@/app/components/footer/InstitutionalFooter";
 import { Card } from "@/app/components/ui/card";
 import { Button } from "@/app/components/ui/button";
 import { Badge } from "@/app/components/ui/badge";
@@ -267,6 +268,7 @@ export function PublicAdvisorProfile() {
           </div>
         </div>
       </div>
+      <InstitutionalFooter />
     </div>
   );
 }

@@ -129,15 +129,16 @@ function Heading({
   children?: ReactNode;
 }) {
   return (
-    <div className="flex flex-wrap items-start justify-between gap-4 mb-7">
+    <div className="flex flex-wrap items-start justify-between gap-4 mb-8">
       <div>
-        <p className="text-xs font-semibold tracking-widest uppercase text-muted-foreground mb-2">
-          MoneyMinds / Admin
+        <p className="text-[11px] font-mono font-bold tracking-widest uppercase text-cyan-600 dark:text-cyan-400 mb-1.5 flex items-center gap-2">
+          <span className="h-1.5 w-1.5 rounded-full bg-cyan-500 animate-pulse" />
+          MONEYMINDS // ADMINISTRATION
         </p>
-        <h1 className="text-2xl font-semibold tracking-tight">
+        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
           {title}
         </h1>
-        <p className="text-sm text-muted-foreground mt-2 max-w-2xl">
+        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-2xl leading-relaxed">
           {description}
         </p>
       </div>
@@ -147,8 +148,12 @@ function Heading({
 }
 function Refresh({ onClick }: { onClick: () => void }) {
   return (
-    <Button variant="outline" onClick={onClick}>
-      <RefreshCw className="mr-2 h-4 w-4" />
+    <Button 
+      variant="outline" 
+      onClick={onClick}
+      className="border-slate-200 dark:border-slate-800 hover:border-cyan-500/50 text-slate-700 dark:text-slate-200 hover:text-cyan-600 dark:hover:text-cyan-400 rounded-xl text-xs font-semibold px-4 py-2 transition-all shadow-xs cursor-pointer group"
+    >
+      <RefreshCw className="mr-2 h-3.5 w-3.5 group-hover:rotate-180 transition-transform duration-500" />
       Refresh
     </Button>
   );
@@ -161,14 +166,14 @@ function Status({ value }: { value: string }) {
     "verified",
     "resolved",
   ].includes(value)
-    ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300"
+    ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/40"
     : ["failed", "rejected", "suspended", "hidden"].includes(value)
-      ? "bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-300"
-      : "bg-amber-50 text-amber-800 dark:bg-amber-950/30 dark:text-amber-300";
+      ? "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400 border-rose-200 dark:border-rose-800/40"
+      : "bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-400 border-amber-200 dark:border-amber-800/40";
   return (
     <Badge
       variant="outline"
-      className={`capitalize border-transparent ${color}`}
+      className={`capitalize font-mono text-[11px] font-semibold ${color}`}
     >
       {label(value)}
     </Badge>
@@ -186,13 +191,16 @@ function Metric({
   icon?: any;
 }) {
   return (
-    <Card className="p-5 gap-3 shadow-none border-t-2 border-t-slate-400 dark:border-t-slate-600">
-      <div className="flex items-center justify-between text-muted-foreground">
-        <span className="text-sm">{title}</span>
-        <Icon className="h-4 w-4" />
+    <Card className="p-5.5 rounded-2xl bg-white dark:bg-[#0c1424] border border-slate-200/90 dark:border-slate-800 shadow-sm hover:shadow-md transition-all group relative overflow-hidden">
+      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 to-emerald-500 opacity-90" />
+      <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2.5">
+        <span className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 font-mono">{title}</span>
+        <div className="h-8 w-8 rounded-xl bg-cyan-50 dark:bg-cyan-950/50 border border-cyan-200/50 dark:border-cyan-800/50 flex items-center justify-center text-cyan-600 dark:text-cyan-400 group-hover:scale-105 transition-transform">
+          <Icon className="h-4 w-4" />
+        </div>
       </div>
-      <p className="text-3xl font-semibold tracking-tight tabular-nums">{value}</p>
-      <p className="text-xs text-muted-foreground">{detail}</p>
+      <p className="text-3xl sm:text-4xl font-extrabold tracking-tight tabular-nums text-slate-900 dark:text-white font-mono my-1">{value}</p>
+      <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">{detail}</p>
     </Card>
   );
 }
@@ -381,94 +389,108 @@ function Overview() {
             />
           </div>
           <div className="grid xl:grid-cols-[1.4fr_1fr] gap-6">
-            <Card className="p-6 shadow-none gap-4">
-              <h2 className="text-lg font-semibold">Needs attention</h2>
-              <p className="text-sm text-muted-foreground">
-                Open a workspace to review the underlying records.
-              </p>
-              {[
-                {
-                  title: "User applications",
-                  detail: `${data.users.pending} pending approval`,
-                  path: "users?status=pending",
-                  permission: "users.read",
-                  value: data.users.pending,
-                },
-                {
-                  title: "Background evidence",
-                  detail: `${data.backgroundChecks.review} reports recommend human review`,
-                  path: "reviews",
-                  permission: "reviews",
-                  value: data.backgroundChecks.review,
-                },
-                {
-                  title: "Failed AI runs",
-                  detail: "Inspect the failure reason and retry eligible work",
-                  path: "agents?status=failed",
-                  permission: "agents",
-                  value: data.agents.failed,
-                },
-              ]
-                .filter((item) => adminCan(user, item.permission))
-                .map((item) => (
-                  <Link
-                    key={item.title}
-                    to={`/admin/${item.path}`}
-                    className="flex items-center gap-4 border rounded-xl p-4 hover:bg-muted/40"
-                  >
-                    <span className="rounded-lg bg-muted text-foreground p-3 font-semibold min-w-12 text-center">
-                      {item.value}
-                    </span>
-                    <span className="flex-1">
-                      <span className="block font-medium text-sm">
-                        {item.title}
+            <Card className="p-6 sm:p-7 rounded-2xl bg-white dark:bg-[#0c1424] border border-slate-200/90 dark:border-slate-800 shadow-sm flex flex-col justify-between gap-5">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white">Needs attention</h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  Open a workspace to review the underlying records.
+                </p>
+              </div>
+              <div className="space-y-3">
+                {[
+                  {
+                    title: "User applications",
+                    detail: `${data.users.pending} pending approval`,
+                    path: "users?status=pending",
+                    permission: "users.read",
+                    value: data.users.pending,
+                  },
+                  {
+                    title: "Background evidence",
+                    detail: `${data.backgroundChecks.review} reports recommend human review`,
+                    path: "reviews",
+                    permission: "reviews",
+                    value: data.backgroundChecks.review,
+                  },
+                  {
+                    title: "Failed AI runs",
+                    detail: "Inspect the failure reason and retry eligible work",
+                    path: "agents?status=failed",
+                    permission: "agents",
+                    value: data.agents.failed,
+                  },
+                ]
+                  .filter((item) => adminCan(user, item.permission))
+                  .map((item) => (
+                    <Link
+                      key={item.title}
+                      to={`/admin/${item.path}`}
+                      className="flex items-center gap-4 border border-slate-200/80 dark:border-slate-800 rounded-xl p-4 hover:border-cyan-500/50 hover:bg-slate-50/70 dark:hover:bg-slate-900/50 transition-all group"
+                    >
+                      <span className="rounded-xl bg-cyan-50 dark:bg-cyan-950/60 text-cyan-700 dark:text-cyan-300 border border-cyan-200/60 dark:border-cyan-800/60 p-2.5 font-mono font-extrabold min-w-12 text-center text-sm sm:text-base shadow-xs">
+                        {item.value}
                       </span>
-                      <span className="text-xs text-muted-foreground">
-                        {item.detail}
+                      <span className="flex-1">
+                        <span className="block font-bold text-sm text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">
+                          {item.title}
+                        </span>
+                        <span className="text-xs text-slate-500 dark:text-slate-400 font-mono">
+                          {item.detail}
+                        </span>
                       </span>
-                    </span>
-                    <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                  </Link>
-                ))}
+                      <ArrowRight className="h-4 w-4 text-slate-400 group-hover:text-cyan-500 group-hover:translate-x-1 transition-all" />
+                    </Link>
+                  ))}
+              </div>
               {adminCan(user, "payments") && (
-                <Button variant="outline" asChild>
-                  <Link to="/admin/payments">
-                    Review payment records{" "}
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Link>
-                </Button>
+                <div className="pt-2">
+                  <Button variant="outline" asChild className="w-full rounded-xl border border-slate-200 dark:border-slate-800 hover:border-cyan-500/50 hover:bg-cyan-500/5 text-slate-800 dark:text-slate-200 hover:text-cyan-600 dark:hover:text-cyan-400 font-semibold text-xs py-2.5 transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer">
+                    <Link to="/admin/payments">
+                      Review payment records{" "}
+                      <ArrowRight className="ml-1 h-3.5 w-3.5" />
+                    </Link>
+                  </Button>
+                </div>
               )}
             </Card>
-            <Card className="p-6 shadow-none gap-5">
-              <h2 className="text-lg font-semibold">Account health</h2>
-              <div className="space-y-4">
+            <Card className="p-6 sm:p-7 rounded-2xl bg-white dark:bg-[#0c1424] border border-slate-200/90 dark:border-slate-800 shadow-sm flex flex-col justify-between gap-5">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white">Account health</h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  Active directory validation status.
+                </p>
+              </div>
+              <div className="space-y-3.5">
                 {[
-                  ["Approved", data.users.approved],
-                  ["Rejected", data.users.rejected],
-                  ["Suspended", data.users.suspended],
-                ].map(([name, count]) => (
+                  ["Approved", data.users.approved, "bg-emerald-500", "text-emerald-600 dark:text-emerald-400"],
+                  ["Rejected", data.users.rejected, "bg-rose-500", "text-rose-600 dark:text-rose-400"],
+                  ["Suspended", data.users.suspended, "bg-amber-500", "text-amber-600 dark:text-amber-400"],
+                ].map(([name, count, dotBg, textColor]) => (
                   <div
-                    key={name}
-                    className="flex justify-between border-b pb-3 text-sm"
+                    key={name as string}
+                    className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/80 pb-3 text-sm"
                   >
-                    <span className="text-muted-foreground">{name}</span>
-                    <strong>{count}</strong>
+                    <span className="flex items-center gap-2 text-slate-600 dark:text-slate-400 font-medium text-xs sm:text-sm">
+                      <span className={`h-2 w-2 rounded-full ${dotBg}`} />
+                      {name}
+                    </span>
+                    <strong className={`font-mono text-sm sm:text-base font-bold ${textColor}`}>{count}</strong>
                   </div>
                 ))}
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground">
+              <div className="p-4 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800/80">
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">
                   Average time from registration to approval
                 </p>
-                <p className="text-2xl font-semibold mt-1">
+                <p className="text-2xl font-extrabold mt-1 text-slate-900 dark:text-white font-mono flex items-center gap-2">
+                  <Clock className="h-5 w-5 text-cyan-500" />
                   {data.averageApprovalHours === null
                     ? "No approvals yet"
                     : `${data.averageApprovalHours.toFixed(1)} hours`}
                 </p>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Updated {date(data.generatedAt)}. Refresh to load the latest
-                records.
+              <p className="text-[11px] font-mono text-slate-400 dark:text-slate-500">
+                Updated {date(data.generatedAt)}. Refresh to load the latest records.
               </p>
             </Card>
           </div>

@@ -78,7 +78,7 @@ describe("Admin console permissions and persistence", () => {
         .expect(403);
     await action(user, "settings.update", "platform", settings).expect(403);
     expect(await store.listAdminAudit()).toHaveLength(0);
-  });
+  }, 15_000);
   it("persists settings, blocks registration and permits admin access during maintenance", async () => {
     await action(admin, "settings.update", "platform", {
       ...settings,

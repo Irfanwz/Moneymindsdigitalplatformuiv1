@@ -30,6 +30,7 @@ export function requireSignalAccess(store) {
         return res.status(404).json({ message: "Signal not found." });
       }
       req.signal = signal;
+      req.matchedSignal = signal;
       next();
     } catch (error) { next(error); }
   };

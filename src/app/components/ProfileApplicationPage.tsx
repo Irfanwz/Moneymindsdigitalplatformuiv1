@@ -1,4 +1,4 @@
-﻿import { useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import {
   Building2,
@@ -23,6 +23,7 @@ import {
   RoleRegistrationFields,
 } from "./registration/RegistrationFields";
 import { RegistrationSummary } from "./registration/RegistrationSummary";
+import { Header } from "@/app/components/Header";
 import {
   commonRegistrationFields,
   registrationRoles,
@@ -152,39 +153,12 @@ export function ProfileApplicationPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b px-6 py-4 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2 font-semibold text-lg">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-r from-cyan-500 to-purple-500 text-sm text-white">
-            MM
-          </span>
-          MoneyMinds
-        </Link>
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label="Toggle color theme"
-          onClick={toggleTheme}
-        >
-          {theme === "dark" ? (
-            <Sun className="h-5 w-5" />
-          ) : (
-            <Moon className="h-5 w-5" />
-          )}
-        </Button>
-      </header>
-      <main className="mx-auto max-w-5xl px-4 sm:px-6 py-10 sm:py-14">
-        <div className="max-w-2xl mb-8">
-          <div className="inline-flex items-center gap-2 rounded-full bg-cyan-500/10 px-3 py-2 text-sm text-cyan-700 dark:text-cyan-300">
-            <ShieldCheck className="h-4 w-4" />
-            Reviewed by our team
-          </div>
-          <h1 className="mt-4 text-3xl sm:text-4xl font-semibold tracking-tight">
+      <Header />
+      <main className="mx-auto max-w-5xl px-4 sm:px-6 pt-6 sm:pt-8 pb-16">
+        <div className="max-w-2xl mb-6">
+          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">
             Apply to MoneyMinds
           </h1>
-          <p className="mt-3 text-muted-foreground">
-            Choose your profile roles and tell us about yourself. Admin approval
-            is required before you can sign in.
-          </p>
         </div>
         {success ? (
           <Card className="p-8 space-y-4" role="status">

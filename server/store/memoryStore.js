@@ -395,6 +395,7 @@ export function createMemoryStore() {
           id: profile.id,
           userId: profile.userId,
           name: user.fullName,
+          avatarUrl: user.avatarUrl || profile.avatarUrl || "",
           title: profile.title ?? "",
           location: user.location ?? "",
           bio: profile.bio ?? "",

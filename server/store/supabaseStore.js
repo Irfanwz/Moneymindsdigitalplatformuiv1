@@ -792,7 +792,7 @@ export function createSupabaseStore({ supabaseUrl, supabaseServiceRoleKey }) {
     async searchAdvisors({ industry, specialization, query } = {}) {
       let q = client
         .from(ADVISOR_PROFILES_TABLE)
-        .select("id, user_id, title, bio, years_experience, clients_helped, specialization, typical_rate, availability, industries, expertise_areas, credibility_score, credibility_tier, platform_users!inner(full_name, location)")
+        .select("id, user_id, title, bio, years_experience, clients_helped, specialization, typical_rate, availability, industries, expertise_areas, credibility_score, credibility_tier, platform_users!inner(full_name, location, avatar_url)")
         .eq("is_public", true)
         .eq("platform_users.status", "approved")
         .eq("platform_users.is_suspended", false)
@@ -817,6 +817,7 @@ export function createSupabaseStore({ supabaseUrl, supabaseServiceRoleKey }) {
           id: row.id,
           userId: row.user_id,
           name: u.full_name ?? "",
+          avatarUrl: u.avatar_url ?? "",
           title: row.title ?? "",
           location: u.location ?? "",
           bio: row.bio ?? "",
