@@ -119,8 +119,8 @@ export function BrowseGroupsPage({ userRole }: { userRole: "startup" | "investor
             : g
         )
       );
-    } catch {
-      // ignore
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not leave the group.");
     } finally {
       setJoiningGroupId(null);
     }
@@ -156,7 +156,7 @@ export function BrowseGroupsPage({ userRole }: { userRole: "startup" | "investor
     <div className="min-h-screen bg-background">
       <Header userRole={userRole} userName={userName} />
 
-      <div className="container mx-auto px-6 py-8">
+      <div className="w-full px-4 py-6 sm:px-8 sm:py-8 xl:px-14">
         <div className="mb-8">
           <h1 className="text-3xl font-semibold mb-2">Browse Advisory Groups</h1>
           <p className="text-muted-foreground">
@@ -317,7 +317,7 @@ export function BrowseGroupsPage({ userRole }: { userRole: "startup" | "investor
                       variant="outline"
                       className="w-full"
                       onClick={() => handleLeave(group.id)}
-                      disabled={joiningGroupId === group.id}
+                      disabled={joiningGroupId !== null}
                     >
                       {joiningGroupId === group.id ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -330,7 +330,7 @@ export function BrowseGroupsPage({ userRole }: { userRole: "startup" | "investor
                     <Button
                       className="w-full"
                       onClick={() => handleJoin(group.id)}
-                      disabled={joiningGroupId === group.id}
+                      disabled={joiningGroupId !== null}
                     >
                       {joiningGroupId === group.id ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />

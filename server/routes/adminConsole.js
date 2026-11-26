@@ -204,6 +204,89 @@ export function createAdminConsoleRouter(store) {
       next(e);
     }
   });
+  router.get(
+    "/ecosystem",
+    requirePermission("users.read"),
+    async (_req, res, next) => {
+      try {
+        const users = await store.listUsers({ includeAdmins: false });
+        const nonAdminUsers = users.filter((u) => !u.isAdmin);
+
+        const enriched = [];
+        const chunkSize = 15;
+        for (let i = 0; i < nonAdminUsers.length; i += chunkSize) {
+          const chunk = nonAdminUsers.slice(i, i + chunkSize);
+          const chunkResults = await Promise.all(
+            chunk.map(async (u) => {
+              const [startup, investor, advisor, credibility] = await Promise.all([
+                typeof store.findStartupProfileByUserId === "function"
+                  ? store.findStartupProfileByUserId(u.id).catch(() => null)
+                  : null,
+                typeof store.findInvestorProfileByUserId === "function"
+                  ? store.findInvestorProfileByUserId(u.id).catch(() => null)
+                  : null,
+                typeof store.findAdvisorProfileByUserId === "function"
+                  ? store.findAdvisorProfileByUserId(u.id).catch(() => null)
+                  : null,
+                typeof store.getCredibilityScore === "function"
+                  ? store.getCredibilityScore(u.id).catch(() => null)
+                  : null,
+              ]);
+              return {
+                user: sanitizeUser(u),
+                startup,
+                investor,
+                advisor,
+                credibility,
+              };
+            }),
+          );
+          enriched.push(...chunkResults);
+        }
+
+        const hasRole = (u, role) =>
+          u.currentRole === role ||
+          (Array.isArray(u.approvedRoles) && u.approvedRoles.includes(role)) ||
+          (Array.isArray(u.requestedRoles) && u.requestedRoles.includes(role));
+
+        const startups = enriched
+          .filter((e) => hasRole(e.user, "startup") || e.startup)
+          .map((e) => ({ ...e.user, profile: e.startup }));
+
+        const investors = enriched
+          .filter((e) => hasRole(e.user, "investor") || e.investor)
+          .map((e) => ({ ...e.user, profile: e.investor }));
+
+        const advisors = enriched
+          .filter((e) => hasRole(e.user, "advisor") || e.advisor)
+          .map((e) => ({
+            ...e.user,
+            profile: e.advisor,
+            credibility: e.credibility,
+          }));
+
+        const countStats = (list) => ({
+          total: list.length,
+          approved: list.filter((x) => x.status === "approved" && !x.isSuspended).length,
+          pending: list.filter((x) => x.status === "pending").length,
+          suspended: list.filter((x) => x.isSuspended).length,
+        });
+
+        res.json({
+          summary: {
+            startups: countStats(startups),
+            investors: countStats(investors),
+            advisors: countStats(advisors),
+          },
+          startups,
+          investors,
+          advisors,
+        });
+      } catch (e) {
+        next(e);
+      }
+    },
+  );
   router.post("/actions", async (req, res, next) => {
     try {
       const { action, targetId, payload } = req.body || {};

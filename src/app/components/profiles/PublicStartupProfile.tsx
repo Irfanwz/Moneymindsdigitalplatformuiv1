@@ -63,7 +63,7 @@ export function PublicStartupProfile() {
     return (
       <div className="min-h-screen bg-background">
         <Header userRole={currentRole} userName={user?.fullName ?? ""} />
-        <div className="container mx-auto px-6 py-8 text-center">
+        <div className="w-full px-4 py-6 sm:px-8 sm:py-8 xl:px-14 text-center">
           <h2 className="text-xl font-semibold mb-4">Startup not found</h2>
           <Button variant="outline" onClick={() => navigate(-1)}>
             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -78,7 +78,7 @@ export function PublicStartupProfile() {
     <div className="min-h-screen bg-background">
       <Header userRole={currentRole} userName={user?.fullName ?? ""} />
 
-      <div className="container mx-auto px-6 py-8">
+      <div className="w-full px-4 py-6 sm:px-8 sm:py-8 xl:px-14">
         <Button variant="ghost" onClick={() => navigate(-1)} className="mb-6">
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back

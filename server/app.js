@@ -97,7 +97,16 @@ export function createApp(store, { backgroundJobs = process.env.NODE_ENV !== "te
       : status < 500 && error instanceof Error ? error.message : "Unexpected server error. Please try again later.";
     // Keep correlation and classification without logging request bodies,
     // provider keys, reset links or raw database messages.
-    if (status >= 500) console.error("Request failed", { referenceId, name: error.name, code: error.code });
+    if (status >= 500) {
+      const details = { referenceId, name: error.name, code: error.code };
+      // In development, include the route and the error location so failures can be traced.
+      if (process.env.NODE_ENV !== "production") {
+        details.route = `${_req.method} ${_req.originalUrl?.split("?")[0]}`;
+        details.message = error.message;
+        details.at = String(error.stack || "").split("\n").slice(1, 4).map(line => line.trim()).join(" | ");
+      }
+      console.error("Request failed", details);
+    }
     res.status(status).json({ message, referenceId, ...(status < 500 && typeof error.code === "string" ? { code: error.code } : {}) });
   });
 

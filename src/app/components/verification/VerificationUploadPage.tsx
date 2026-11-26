@@ -290,5 +290,5 @@ function VerificationUploadForm() {
 export function VerificationUploadPage() {
   const {user} = useAuth();
   const {runs, error} = useAgentRuns("document");
-  return <div className="min-h-screen bg-background"><Header userName={user?.fullName}/><main className="container mx-auto px-4 py-8 space-y-6"><VerificationUploadForm/><section className="max-w-2xl mx-auto space-y-3"><h2 className="font-semibold">Document agent activity</h2>{error && <p role="alert" className="text-sm text-destructive">{error}</p>}{runs.slice(0,5).map(run => <AgentRunCard key={run.id} run={run}/>)}</section></main></div>;
+  return <div className="min-h-screen bg-background"><Header userName={user?.fullName}/><main className="w-full px-4 py-6 sm:px-8 sm:py-8 xl:px-14 space-y-6"><VerificationUploadForm/><section className="w-full space-y-3"><h2 className="font-semibold">Document agent activity</h2>{error && <p role="alert" className="text-sm text-destructive">{error}</p>}{runs.slice(0,5).map(run => <AgentRunCard key={run.id} run={run}/>)}</section></main></div>;
 }

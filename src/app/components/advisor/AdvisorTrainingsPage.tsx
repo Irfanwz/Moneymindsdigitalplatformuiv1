@@ -167,15 +167,15 @@ export function AdvisorTrainingsPage() {
     <div className="min-h-screen bg-background">
       <Header userRole="advisor" userName={userName} />
 
-      <div className="container mx-auto px-6 py-8">
+      <div className="w-full px-4 py-6 sm:px-8 sm:py-8 xl:px-14">
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <div className="flex items-center gap-3 mb-2"><GraduationCap className="h-8 w-8 text-accent" /><h1 className="text-3xl font-semibold">Training Programs</h1></div>
+              <div className="flex items-center gap-3 mb-2"><GraduationCap className="h-8 w-8 text-cyan-600 dark:text-cyan-400" /><h1 className="text-3xl font-extrabold tracking-tight">Training Programs</h1></div>
               <p className="text-muted-foreground">Create and manage training programs for investors and startups</p>
             </div>
             <Dialog open={isCreateDialogOpen} onOpenChange={(o) => { setIsCreateDialogOpen(o); if (!o) resetForm(); }}>
-              <DialogTrigger asChild><Button><PlusCircle className="mr-2 h-4 w-4" />Create Training</Button></DialogTrigger>
+              <DialogTrigger asChild><Button className="rounded-none bg-gradient-to-r from-cyan-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 text-white font-semibold shadow-sm"><PlusCircle className="mr-2 h-4 w-4" />Create Training</Button></DialogTrigger>
               <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader><DialogTitle>Create New Training Program</DialogTitle><DialogDescription>Set up a new training program</DialogDescription></DialogHeader>
                 {error && <div className="p-3 bg-destructive/10 border border-destructive/30 text-destructive rounded-lg text-sm">{error}</div>}
@@ -215,7 +215,7 @@ export function AdvisorTrainingsPage() {
           <Card className="p-6"><div className="flex items-center justify-between mb-2"><div className="text-sm text-muted-foreground">Total Trainings</div><GraduationCap className="h-4 w-4 text-muted-foreground" /></div><div className="text-2xl font-semibold">{trainings.length}</div></Card>
           <Card className="p-6"><div className="flex items-center justify-between mb-2"><div className="text-sm text-muted-foreground">Total Enrolled</div><Users className="h-4 w-4 text-muted-foreground" /></div><div className="text-2xl font-semibold">{totalEnrolled}</div></Card>
           <Card className="p-6"><div className="flex items-center justify-between mb-2"><div className="text-sm text-muted-foreground">Revenue</div><DollarSign className="h-4 w-4 text-muted-foreground" /></div><div className="text-2xl font-semibold">${(totalRevenue / 1000).toFixed(1)}k</div></Card>
-          <Card className="p-6"><div className="flex items-center justify-between mb-2"><div className="text-sm text-muted-foreground">Active</div><TrendingUp className="h-4 w-4 text-accent" /></div><div className="text-2xl font-semibold">{trainings.filter((t) => t.status !== "completed").length}</div></Card>
+          <Card className="p-6"><div className="flex items-center justify-between mb-2"><div className="text-sm text-muted-foreground">Active</div><TrendingUp className="h-4 w-4 text-emerald-600 dark:text-emerald-400" /></div><div className="text-2xl font-semibold">{trainings.filter((t) => t.status !== "completed").length}</div></Card>
         </div>
 
         <Card className="p-6">
@@ -235,7 +235,7 @@ export function AdvisorTrainingsPage() {
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2 flex-wrap">
                           <h3 className="text-lg font-semibold">{training.title}</h3>
-                          <Badge variant={training.status === "ongoing" ? "default" : "outline"} className={training.status === "ongoing" ? "bg-accent text-accent-foreground" : ""}>
+                          <Badge variant={training.status === "ongoing" ? "default" : "outline"} className={training.status === "ongoing" ? "bg-emerald-600 text-white" : ""}>
                             {training.status === "ongoing" ? "Live" : training.status === "upcoming" ? "Upcoming" : "Completed"}
                           </Badge>
                           {training.type === "paid" ? <Badge variant="outline" className="bg-green-50 text-green-700 dark:bg-green-950/50 dark:text-green-300"><DollarSign className="mr-1 h-3 w-3" />${training.price}</Badge> : <Badge variant="outline">Free</Badge>}

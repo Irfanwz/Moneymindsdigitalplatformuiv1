@@ -150,7 +150,7 @@ export function SubmittedApplication({ role }: { role: AppRole }) {
     );
   if (!application?.profiles[role]) return null;
   return (
-    <details className="mx-auto max-w-7xl my-6 rounded-xl border bg-card p-5">
+    <details className="w-full my-6 rounded-xl border bg-card p-5">
       <summary className="font-medium cursor-pointer">
         Your registration submission
       </summary>

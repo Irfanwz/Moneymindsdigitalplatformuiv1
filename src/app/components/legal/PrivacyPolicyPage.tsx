@@ -155,7 +155,7 @@ export const PrivacyPolicyPage: React.FC = () => {
                   <button
                     key={sec.id}
                     onClick={() => scrollTo(sec.id)}
-                    className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                    className={`w-full text-left px-3 py-2 rounded-none text-xs font-medium transition-all ${
                       activeSection === sec.id
                         ? "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 font-semibold border-l-2 border-cyan-500"
                         : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/50"

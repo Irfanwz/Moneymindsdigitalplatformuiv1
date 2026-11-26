@@ -135,7 +135,7 @@ export default function App() {
             </Route>
 
             <Route element={<RequireAdmin />}>
-              {['dashboard','users','reviews','agents','agents/verification','agents/due-diligence','agents/documents','agents/signals','agents/predictions','agents/research','content','payments','reports','settings','ai-config','token-report','profile'].map(section=><Route key={section} path={`/admin/${section}`} element={<AdminConsole section={section}/>} />)}
+              {['dashboard','users','ecosystem','reviews','agents','agents/verification','agents/due-diligence','agents/documents','agents/signals','agents/predictions','agents/research','content','payments','reports','settings','ai-config','token-report','profile'].map(section=><Route key={section} path={`/admin/${section}`} element={<AdminConsole section={section}/>} />)}
               <Route path="/admin" element={<Navigate to="/admin/dashboard" replace/>}/>
             </Route>
 

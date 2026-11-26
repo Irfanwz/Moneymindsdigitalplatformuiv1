@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Bell, ChevronDown, Menu, Moon, Sun, User, Check, Shield, Sparkles, Lock, ExternalLink, ArrowRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import logoImg from "@/assets/logo.png";
@@ -25,10 +25,12 @@ interface HeaderProps {
   userRole?: "startup" | "investor" | "advisor" | "admin";
   userName?: string;
   adminShell?: boolean;
+  showTicker?: boolean;
 }
 
-export function Header({ userRole, userName, adminShell = false }: HeaderProps) {
+export function Header({ userRole, userName, adminShell = false, showTicker = false }: HeaderProps) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { theme, toggleTheme } = useTheme();
   const { logout, user, session } = useAuth();
   const [showNotifications, setShowNotifications] = useState(false);
@@ -38,8 +40,10 @@ export function Header({ userRole, userName, adminShell = false }: HeaderProps) 
 
   const resolvedUserName = userName ?? user?.fullName ?? "User";
   const resolvedUserRole = user?.isAdmin ? "admin" : user?.currentRole ?? user?.approvedRoles?.[0] ?? userRole;
+  const tickerVisible = showTicker || ["startup", "advisor", "investor"].includes(resolvedUserRole ?? "");
 
   useEffect(() => {
+    if (!tickerVisible) return;
     let active = true;
     async function loadStats() {
       try {
@@ -60,7 +64,7 @@ export function Header({ userRole, userName, adminShell = false }: HeaderProps) 
     }
     loadStats();
     return () => { active = false; };
-  }, []);
+  }, [tickerVisible]);
 
   useEffect(() => {
     if (!user) return;
@@ -183,69 +187,70 @@ export function Header({ userRole, userName, adminShell = false }: HeaderProps) 
 
   return (
     <div className="w-full z-50 sticky top-0 font-sans">
-      {/* --- SECTION 1: TOP ANNOUNCEMENT & STATUS BAR (FULL WIDTH) --- */}
-      <div className="w-full bg-[#040714] text-slate-300 border-b border-slate-800/80 px-4 sm:px-8 xl:px-14 py-2 flex items-center justify-between text-xs tracking-wide">
-        {/* Left Status Pill */}
-        <div className="flex items-center gap-2">
-          <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
-          <span className="text-slate-300 font-medium hidden sm:inline">
-            Verified Diligence Engine Online
-          </span>
-          <span className="text-emerald-400 font-semibold sm:hidden">
-            Protocol Live
-          </span>
-          <span className="hidden md:inline text-slate-600 dark:text-slate-600">•</span>
-          <span className="hidden md:inline text-slate-400">
-            Real-Time Advisor Accuracy Audits
-          </span>
-
-          {/* Cinematic Loader Replay Button */}
-          <button
-            onClick={() => window.dispatchEvent(new CustomEvent("mm-replay-loader"))}
-            className="inline-flex items-center gap-1 text-[10px] font-mono font-medium text-cyan-300 hover:text-white bg-cyan-950/70 hover:bg-cyan-900 border border-cyan-700/60 rounded px-2 py-0.5 ml-2 transition-all cursor-pointer shadow-[0_0_8px_rgba(6,182,212,0.2)]"
-            title="Click to replay the high-level financial diligence loader"
-          >
-            <Sparkles className="h-2.5 w-2.5 text-cyan-400 animate-pulse" />
-            <span>Replay Loader</span>
-          </button>
-        </div>
-
-        {/* Center Live Crypto / Benchmark stats (Real Present-Time Numbers) */}
-        <div className="hidden lg:flex items-center gap-4 text-[11px] text-slate-400">
-          <span className="flex items-center gap-1 font-mono">
-            <span className="text-amber-400 font-bold">BTC:</span>
-            <span>{headerStats?.btc ? `$${headerStats.btc.toLocaleString()}` : "$61,582"}</span>
-            <span className={headerStats?.btcChange !== undefined && headerStats.btcChange < 0 ? "text-red-400" : "text-emerald-400 font-semibold"}>
-              ({headerStats?.btcChange !== undefined ? `${headerStats.btcChange >= 0 ? "+" : ""}${headerStats.btcChange.toFixed(1)}%` : "+4.6%"})
+      {tickerVisible && (
+        <div className="w-full bg-[#040714] text-slate-300 border-b border-slate-800/80 px-4 sm:px-8 xl:px-14 py-2 flex items-center justify-between text-xs tracking-wide">
+          {/* Left Status Pill */}
+          <div className="flex items-center gap-2">
+            <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
+            <span className="text-slate-300 font-medium hidden sm:inline">
+              Verified Diligence Engine Online
             </span>
-          </span>
-          <span className="text-slate-700">|</span>
-          <span className="flex items-center gap-1 font-mono">
-            <span className="text-cyan-400 font-bold">ETH:</span>
-            <span>{headerStats?.eth ? `$${headerStats.eth.toLocaleString()}` : "$3,450"}</span>
-            <span className={headerStats?.ethChange !== undefined && headerStats.ethChange < 0 ? "text-red-400" : "text-emerald-400 font-semibold"}>
-              ({headerStats?.ethChange !== undefined ? `${headerStats.ethChange >= 0 ? "+" : ""}${headerStats.ethChange.toFixed(1)}%` : "+3.1%"})
+            <span className="text-emerald-400 font-semibold sm:hidden">
+              Protocol Live
             </span>
-          </span>
-          <span className="text-slate-700">|</span>
-          <span className="flex items-center gap-1 text-emerald-400 font-medium font-mono">
-            {headerStats?.startups ? `${headerStats.startups} Verified Startups` : "123 Verified Startups"}
-          </span>
-        </div>
+            <span className="hidden md:inline text-slate-600 dark:text-slate-600">•</span>
+            <span className="hidden md:inline text-slate-400">
+              Real-Time Advisor Accuracy Audits
+            </span>
 
-        {/* Right Security & Access Pill */}
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5 text-slate-300 hover:text-white transition-colors cursor-pointer text-[11px]">
-            <Lock className="h-3 w-3 text-cyan-400" />
-            <span className="hidden sm:inline">Private Investor Dealrooms</span>
-            <span className="sm:hidden">Private Portal</span>
+            {/* Cinematic Loader Replay Button */}
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent("mm-replay-loader"))}
+              className="inline-flex items-center gap-1 text-[10px] font-mono font-medium text-cyan-300 hover:text-white bg-cyan-950/70 hover:bg-cyan-900 border border-cyan-700/60 rounded px-2 py-0.5 ml-2 transition-all cursor-pointer shadow-[0_0_8px_rgba(6,182,212,0.2)]"
+              title="Click to replay the high-level financial diligence loader"
+            >
+              <Sparkles className="h-2.5 w-2.5 text-cyan-400 animate-pulse" />
+              <span>Replay Loader</span>
+            </button>
           </div>
-          <span className="text-slate-700 hidden sm:inline">|</span>
-          <span className="hidden sm:inline text-[11px] text-slate-400 font-mono">
-            TLS 256-Bit
-          </span>
+
+          {/* Center Live Crypto / Benchmark stats (Real Present-Time Numbers) */}
+          <div className="hidden lg:flex items-center gap-4 text-[11px] text-slate-400">
+            <span className="flex items-center gap-1 font-mono">
+              <span className="text-amber-400 font-bold">BTC:</span>
+              <span>{headerStats?.btc ? `$${headerStats.btc.toLocaleString()}` : "$61,582"}</span>
+              <span className={headerStats?.btcChange !== undefined && headerStats.btcChange < 0 ? "text-red-400" : "text-emerald-400 font-semibold"}>
+                ({headerStats?.btcChange !== undefined ? `${headerStats.btcChange >= 0 ? "+" : ""}${headerStats.btcChange.toFixed(1)}%` : "+4.6%"})
+              </span>
+            </span>
+            <span className="text-slate-700">|</span>
+            <span className="flex items-center gap-1 font-mono">
+              <span className="text-cyan-400 font-bold">ETH:</span>
+              <span>{headerStats?.eth ? `$${headerStats.eth.toLocaleString()}` : "$3,450"}</span>
+              <span className={headerStats?.ethChange !== undefined && headerStats.ethChange < 0 ? "text-red-400" : "text-emerald-400 font-semibold"}>
+                ({headerStats?.ethChange !== undefined ? `${headerStats.ethChange >= 0 ? "+" : ""}${headerStats.ethChange.toFixed(1)}%` : "+3.1%"})
+              </span>
+            </span>
+            <span className="text-slate-700">|</span>
+            <span className="flex items-center gap-1 text-emerald-400 font-medium font-mono">
+              {headerStats?.startups ? `${headerStats.startups} Verified Startups` : "123 Verified Startups"}
+            </span>
+          </div>
+
+          {/* Right Security & Access Pill */}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 text-slate-300 hover:text-white transition-colors cursor-pointer text-[11px]">
+              <Lock className="h-3 w-3 text-cyan-400" />
+              <span className="hidden sm:inline">Private Investor Dealrooms</span>
+              <span className="sm:hidden">Private Portal</span>
+            </div>
+            <span className="text-slate-700 hidden sm:inline">|</span>
+            <span className="hidden sm:inline text-[11px] text-slate-400 font-mono">
+              TLS 256-Bit
+            </span>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* --- SECTION 2: MAIN FULL-WIDTH NAVIGATION BAR --- */}
       <header className="w-full bg-[#070d1d]/90 dark:bg-[#070d1d]/90 backdrop-blur-2xl border-b border-slate-800/80 px-4 sm:px-8 xl:px-14 transition-colors relative">
@@ -276,16 +281,37 @@ export function Header({ userRole, userName, adminShell = false }: HeaderProps) 
           {/* 2. Center: Public or Role Tabs (DEAD CENTER OF NAVBAR) */}
           {!adminShell ? (
             <nav className="hidden lg:flex items-center justify-center gap-1 xl:gap-2 absolute left-1/2 -translate-x-1/2">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.to}
-                  to={link.to}
-                  onClick={(e) => handleNavClick(e, link.to)}
-                  className="px-3.5 py-2 rounded-xl text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800/70 border border-transparent hover:border-slate-700/60 transition-all duration-200"
-                >
-                  {link.label}
-                </Link>
-              ))}
+              {navLinks.map((link) => {
+                const isActive =
+                  location.pathname === link.to ||
+                  (link.to !== "/" && !link.to.startsWith("/#") && location.pathname.startsWith(link.to));
+                return (
+                  <Link
+                    key={link.to}
+                    to={link.to}
+                    onClick={(e) => handleNavClick(e, link.to)}
+                    className={`group relative px-3.5 py-2.5 rounded-none text-sm font-medium tracking-wide transition-colors duration-300 ${
+                      isActive ? "text-white" : "text-slate-300 hover:text-white"
+                    }`}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className={`pointer-events-none absolute inset-0 bg-gradient-to-t from-cyan-500/15 via-emerald-500/5 to-transparent transition-opacity duration-300 ${
+                        isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                      }`}
+                    />
+                    <span className="relative z-10 inline-block transition-transform duration-200 group-hover:-translate-y-0.5">
+                      {link.label}
+                    </span>
+                    <span
+                      aria-hidden="true"
+                      className={`pointer-events-none absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-cyan-400 via-teal-300 to-emerald-400 shadow-[0_0_10px_rgba(34,211,238,0.85)] origin-left transition-transform duration-300 ease-out ${
+                        isActive ? "scale-x-100" : "scale-x-0 group-hover:scale-x-100"
+                      }`}
+                    />
+                  </Link>
+                );
+              })}
             </nav>
           ) : null}
 
@@ -296,7 +322,7 @@ export function Header({ userRole, userName, adminShell = false }: HeaderProps) 
               size="icon"
               onClick={toggleTheme}
               aria-label="Toggle color theme"
-              className={`${adminShell ? "inline-flex" : "hidden sm:inline-flex"} text-slate-300 hover:text-white hover:bg-slate-800/60 rounded-xl h-10 w-10 border border-slate-800`}
+              className={`${adminShell ? "inline-flex" : "hidden sm:inline-flex"} text-slate-300 hover:text-white hover:bg-slate-800/60 rounded-none h-10 w-10 border border-slate-800`}
             >
               {theme === "dark" ? <Sun className="h-4 w-4 text-amber-400" /> : <Moon className="h-4 w-4 text-cyan-300" />}
             </Button>
@@ -305,7 +331,7 @@ export function Header({ userRole, userName, adminShell = false }: HeaderProps) 
               <>
                 <DropdownMenu open={showNotifications} onOpenChange={setShowNotifications}>
                   <DropdownMenuTrigger asChild>
-                    <Button aria-label="Notifications" variant="ghost" size="icon" className="relative text-slate-300 hover:text-white hover:bg-slate-800/60 rounded-xl h-10 w-10 border border-slate-800">
+                    <Button aria-label="Notifications" variant="ghost" size="icon" className="relative text-slate-300 hover:text-white hover:bg-slate-800/60 rounded-none h-10 w-10 border border-slate-800">
                       <Bell className="h-4 w-4" />
                       {unreadCount > 0 && (
                         <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-cyan-500 text-white text-[10px] flex items-center justify-center font-bold shadow-md shadow-cyan-500/50">
@@ -314,7 +340,7 @@ export function Header({ userRole, userName, adminShell = false }: HeaderProps) 
                       )}
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-80 bg-[#0d1527] border-slate-800 text-slate-200">
+                  <DropdownMenuContent align="end" className="w-80 rounded-none bg-[#0d1527] border-slate-800 text-slate-200 p-0">
                     <div className="flex items-center justify-between px-3 py-2">
                       <DropdownMenuLabel className="text-white p-0">Notifications</DropdownMenuLabel>
                       {unreadCount > 0 && (
@@ -349,26 +375,26 @@ export function Header({ userRole, userName, adminShell = false }: HeaderProps) 
                 {/* User Account Menu */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="flex items-center gap-2 pl-2 pr-3 h-10 rounded-xl bg-slate-800/40 hover:bg-slate-800 border border-slate-700/60 text-white">
-                      <div className="h-6 w-6 rounded-lg bg-gradient-to-tr from-cyan-500 to-emerald-500 flex items-center justify-center text-white text-xs font-bold">
+                    <Button variant="ghost" className="flex items-center gap-2 pl-2 pr-3 h-10 min-w-0 rounded-none bg-slate-800/40 hover:bg-slate-800 border border-slate-700/60 text-white">
+                      <div className="h-6 w-6 rounded-none bg-gradient-to-tr from-cyan-500 to-emerald-500 flex items-center justify-center text-white text-xs font-bold">
                         {resolvedUserName.charAt(0).toUpperCase()}
                       </div>
                       <span className="text-xs font-medium max-w-[100px] truncate hidden md:inline">{resolvedUserName}</span>
                       <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56 bg-[#0d1527] border-slate-800 text-slate-200">
-                    <DropdownMenuLabel className="font-normal text-xs text-slate-400">
-                      Signed in as <strong className="text-white block truncate">{resolvedUserName}</strong>
+                  <DropdownMenuContent align="end" className="w-56 rounded-none bg-[#0d1527] border-slate-800 text-slate-200 p-0">
+                    <DropdownMenuLabel className="font-normal text-xs text-slate-400 px-3 py-2.5">
+                      Signed in as <strong className="text-white block truncate mt-0.5">{resolvedUserName}</strong>
                     </DropdownMenuLabel>
-                    <DropdownMenuSeparator className="bg-slate-800" />
-                    <DropdownMenuItem asChild>
+                    <DropdownMenuSeparator className="bg-slate-800 m-0" />
+                    <DropdownMenuItem asChild className="rounded-none px-3 py-2.5">
                       <Link to={resolvedUserRole === "admin" ? "/admin/profile" : `/${resolvedUserRole}/profile`} className="cursor-pointer hover:bg-slate-800">
                         <User className="h-4 w-4 mr-2" /> View Profile
                       </Link>
                     </DropdownMenuItem>
-                    <DropdownMenuSeparator className="bg-slate-800" />
-                    <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-400 hover:bg-red-950/20">
+                    <DropdownMenuSeparator className="bg-slate-800 m-0" />
+                    <DropdownMenuItem onClick={handleLogout} className="rounded-none px-3 py-2.5 cursor-pointer text-red-400 hover:bg-red-950/20">
                       Log out
                     </DropdownMenuItem>
                   </DropdownMenuContent>
@@ -377,15 +403,15 @@ export function Header({ userRole, userName, adminShell = false }: HeaderProps) 
             ) : (
               <div className="hidden sm:flex items-center gap-3">
                 <Link to="/login">
-                  <Button variant="ghost" className="text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800/60 rounded-xl px-4 h-10 border border-slate-800/60 transition-all">
+                  <Button variant="ghost" className="text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800/60 rounded-none px-4 h-10 border border-slate-800/60 transition-all">
                     Log In
                   </Button>
                 </Link>
                 
                 {/* Elevated, High-End Luminous Join Platform Button */}
                 <Link to="/apply" className="relative inline-flex items-center justify-center group">
-                  <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-500 via-teal-400 to-emerald-400 rounded-xl blur-xs opacity-75 group-hover:opacity-100 transition duration-300 group-hover:blur-sm" />
-                  <div className="relative flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-400 via-teal-300 to-emerald-400 text-slate-950 font-bold text-xs sm:text-sm shadow-md group-hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 cursor-pointer">
+                  <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-500 via-teal-400 to-emerald-400 rounded-none blur-xs opacity-75 group-hover:opacity-100 transition duration-300 group-hover:blur-sm" />
+                  <div className="relative flex items-center gap-2 px-5 py-2.5 rounded-none bg-gradient-to-r from-cyan-400 via-teal-300 to-emerald-400 text-slate-950 font-bold text-xs sm:text-sm shadow-md group-hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 cursor-pointer">
                     <span>Join Platform</span>
                     <ArrowRight className="h-3.5 w-3.5 transform group-hover:translate-x-0.5 transition-transform" />
                   </div>
@@ -397,7 +423,7 @@ export function Header({ userRole, userName, adminShell = false }: HeaderProps) 
             <Button
               variant="ghost"
               size="icon"
-              className="lg:hidden text-slate-300 hover:text-white hover:bg-slate-800/60 rounded-xl h-10 w-10 border border-slate-800"
+              className="lg:hidden text-slate-300 hover:text-white hover:bg-slate-800/60 rounded-none h-10 w-10 border border-slate-800"
               aria-label="Toggle navigation menu"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
@@ -415,7 +441,7 @@ export function Header({ userRole, userName, adminShell = false }: HeaderProps) 
                   key={link.to}
                   to={link.to}
                   onClick={(e) => handleNavClick(e, link.to)}
-                  className="text-sm font-medium text-slate-200 hover:text-cyan-400 hover:bg-slate-800/60 rounded-xl px-4 py-3 transition-colors"
+                  className="text-sm font-medium text-slate-200 hover:text-cyan-300 border-l-2 border-transparent hover:border-cyan-400 hover:bg-cyan-500/10 rounded-none px-4 py-3 transition-all duration-200"
                 >
                   {link.label}
                 </Link>
@@ -426,7 +452,7 @@ export function Header({ userRole, userName, adminShell = false }: HeaderProps) 
                     Log In
                   </Link>
                   <Link to="/apply" onClick={() => setMobileMenuOpen(false)}>
-                    <Button className="w-full bg-gradient-to-r from-cyan-500 via-teal-400 to-emerald-400 text-slate-950 font-bold text-sm rounded-xl py-3 shadow-lg shadow-cyan-500/25">
+                    <Button className="w-full bg-gradient-to-r from-cyan-500 via-teal-400 to-emerald-400 text-slate-950 font-bold text-sm rounded-none py-3 shadow-lg shadow-cyan-500/25">
                       Join Platform
                     </Button>
                   </Link>

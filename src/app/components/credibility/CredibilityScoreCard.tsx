@@ -14,21 +14,21 @@ import { useAuth } from "@/app/contexts/AuthContext";
 import { getMyCredibility, recalculateCredibility, type CredibilityScore } from "@/app/lib/api";
 
 const TIER_COLORS: Record<string, string> = {
-  elite: "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300",
-  expert: "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300",
-  reliable: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300",
-  developing: "bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300",
-  inconsistent: "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300",
-  poor: "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300",
+  elite: "bg-cyan-50 text-cyan-800 border-cyan-300 dark:bg-cyan-950/40 dark:text-cyan-300 dark:border-cyan-700",
+  expert: "bg-emerald-50 text-emerald-800 border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-700",
+  reliable: "bg-blue-50 text-blue-800 border-blue-300 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-700",
+  developing: "bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-700",
+  inconsistent: "bg-orange-50 text-orange-800 border-orange-300 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-700",
+  poor: "bg-rose-50 text-rose-800 border-rose-300 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-700",
 };
 
 const PROGRESS_COLORS: Record<string, string> = {
-  elite: "[&>div]:bg-purple-500",
-  expert: "[&>div]:bg-green-500",
+  elite: "[&>div]:bg-cyan-500",
+  expert: "[&>div]:bg-emerald-500",
   reliable: "[&>div]:bg-blue-500",
-  developing: "[&>div]:bg-yellow-500",
+  developing: "[&>div]:bg-amber-500",
   inconsistent: "[&>div]:bg-orange-500",
-  poor: "[&>div]:bg-red-500",
+  poor: "[&>div]:bg-rose-500",
 };
 
 interface CredibilityScoreCardProps {
@@ -93,8 +93,10 @@ export function CredibilityScoreCard({ score: propScore, tier: propTier, updated
   return (
     <Card className={className}>
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-white">
-          <Award className="h-5 w-5 text-emerald-500" />
+        <CardTitle className="flex items-center gap-2.5 text-slate-900 dark:text-white">
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-cyan-500/20 bg-cyan-500/10 text-cyan-700 dark:text-cyan-300">
+            <Award className="h-4 w-4" />
+          </div>
           Credibility Score
         </CardTitle>
       </CardHeader>

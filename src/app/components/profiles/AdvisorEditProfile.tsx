@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { toast } from "sonner";
 import { Header } from "@/app/components/Header";
 import { Card } from "@/app/components/ui/card";
 import { Button } from "@/app/components/ui/button";
@@ -87,7 +88,7 @@ export function AdvisorEditProfile() {
     if (!file || !session?.user) return;
     try {
       await uploadFile((session?.token ?? ""), file);
-      alert("Certificate uploaded successfully!");
+      toast.success("Certificate uploaded successfully!");
     } catch {
       setError("Failed to upload certificate.");
     }
@@ -206,7 +207,7 @@ export function AdvisorEditProfile() {
     <div className="min-h-screen bg-background">
       <Header userRole="advisor" userName={userName} />
 
-      <div className="container mx-auto px-6 py-8 max-w-5xl">
+      <div className="w-full px-4 py-6 sm:px-8 sm:py-8 xl:px-14">
         <div className="mb-8">
           <h1 className="text-3xl font-semibold mb-2">Edit Profile</h1>
           <p className="text-muted-foreground">Update your advisor profile and credentials</p>

@@ -572,11 +572,12 @@ export function searchStartups(token: string, params?: { industry?: string; stag
   });
 }
 
-export function searchAdvisors(token: string, params?: { industry?: string; specialization?: string; q?: string }) {
+export function searchAdvisors(token: string, params?: { industry?: string; specialization?: string; q?: string; source?: "database" }) {
   const query = new URLSearchParams();
   if (params?.industry) query.set("industry", params.industry);
   if (params?.specialization) query.set("specialization", params.specialization);
   if (params?.q) query.set("q", params.q);
+  if (params?.source) query.set("source", params.source);
   const qs = query.toString();
   return request<{ advisors: AdvisorSearchResult[] }>(`/api/advisors/search${qs ? `?${qs}` : ""}`, {
     headers: { Authorization: `Bearer ${token}` },

@@ -172,7 +172,7 @@ export function AdvisorAnalytics() {
     return (
       <div className="min-h-screen bg-background">
         <Header userRole="advisor" userName={userName} />
-        <div className="container mx-auto px-6 py-8">
+        <div className="w-full px-4 py-6 sm:px-8 sm:py-8 xl:px-14">
           <div className="text-center py-16 text-muted-foreground">Loading analytics...</div>
         </div>
       </div>
@@ -180,23 +180,32 @@ export function AdvisorAnalytics() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-b from-cyan-50/60 via-background to-background dark:from-[#0b1728]">
       <Header userRole="advisor" userName={userName} />
 
-      <div className="container mx-auto px-6 py-8">
-        {/* Header */}
-        <div className="flex items-center gap-4 mb-8">
-          <Link to="/advisor/dashboard">
-            <Button variant="outline" size="sm">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Dashboard
+      {/* Institutional Dark Hero Header */}
+      <section className="relative isolate overflow-hidden border-b border-cyan-900/60 bg-[#070d1d] text-slate-100">
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top_right,rgba(8,145,178,0.30),transparent_65%),radial-gradient(ellipse_at_bottom_left,rgba(16,185,129,0.14),transparent_55%)]" />
+        <div className="flex flex-col gap-4 px-4 py-7 sm:px-8 lg:flex-row lg:items-center lg:justify-between xl:px-14">
+          <div className="space-y-2">
+            <Button asChild variant="ghost" size="sm" className="-ml-2 h-8 rounded-none text-xs font-medium text-cyan-200 transition-all hover:bg-cyan-950 hover:text-white">
+              <Link to="/advisor/dashboard">
+                <ArrowLeft className="mr-1.5 h-3.5 w-3.5" />
+                Back to dashboard
+              </Link>
             </Button>
-          </Link>
-          <div>
-            <h1 className="text-3xl font-semibold">Analytics</h1>
-            <p className="text-muted-foreground">Track your impact, revenue, and growth</p>
+            <h1 className="text-2xl font-extrabold tracking-tight sm:text-4xl">
+              Advisor <span className="bg-gradient-to-r from-emerald-300 to-cyan-300 bg-clip-text text-transparent">Analytics</span>
+            </h1>
+            <p className="text-sm text-slate-300">Track your impact, revenue, credibility trajectory, and group growth.</p>
           </div>
+          <Button asChild variant="outline" className="w-fit rounded-none border-cyan-800 bg-transparent text-cyan-100 hover:bg-cyan-950 hover:text-white">
+            <Link to="/advisor/credibility">Credibility details</Link>
+          </Button>
         </div>
+      </section>
+
+      <div className="w-full px-4 py-6 sm:px-8 sm:py-8 xl:px-14">
 
         {/* Stats Overview */}
         <div className="grid md:grid-cols-4 gap-6 mb-8">
@@ -249,8 +258,8 @@ export function AdvisorAnalytics() {
                   <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
                   <Tooltip {...chartTooltipTheme} />
                   <Legend />
-                  <Bar dataKey="members" fill="#8b5cf6" radius={[4, 4, 0, 0]} name="Members" />
-                  <Bar dataKey="signals" fill="#06b6d4" radius={[4, 4, 0, 0]} name="Signals" />
+                  <Bar dataKey="members" fill="#0891b2" radius={[6, 6, 0, 0]} name="Members" />
+                  <Bar dataKey="signals" fill="#10b981" radius={[6, 6, 0, 0]} name="Signals" />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
@@ -379,15 +388,15 @@ export function AdvisorAnalytics() {
         </div>
 
         {/* Credibility Score Trend */}
-        <Card className="p-6 mb-8">
+        <Card className="p-6 mb-8 rounded-2xl border-cyan-900/10 bg-card/90 shadow-sm dark:border-cyan-800/35">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-2">
-              <Award className="h-5 w-5 text-purple-500" />
+              <Award className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
               <h2 className="text-lg font-semibold">Credibility Score Trend</h2>
             </div>
-            <Link to="/advisor/credibility">
-              <Button variant="outline" size="sm">View Details</Button>
-            </Link>
+            <Button asChild variant="outline" size="sm" className="rounded-none border-slate-200 dark:border-slate-700 hover:border-cyan-500/50">
+              <Link to="/advisor/credibility">View Details</Link>
+            </Button>
           </div>
           {credHistory.length > 0 ? (
             <ResponsiveContainer width="100%" height={220}>
@@ -400,14 +409,14 @@ export function AdvisorAnalytics() {
                 <XAxis dataKey="date" tick={{ fontSize: 11 }} />
                 <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} />
                 <Tooltip {...chartTooltipTheme} formatter={(value: number, _name: string) => [`${value}/100`, "Score"]} />
-                <ReferenceLine y={90} stroke="#8b5cf6" strokeDasharray="4 2" label={{ value: "Elite", fontSize: 10, fill: "#8b5cf6" }} />
+                <ReferenceLine y={90} stroke="#0891b2" strokeDasharray="4 2" label={{ value: "Elite", fontSize: 10, fill: "#0891b2" }} />
                 <ReferenceLine y={75} stroke="#10b981" strokeDasharray="4 2" label={{ value: "Expert", fontSize: 10, fill: "#10b981" }} />
                 <Line
                   type="monotone"
                   dataKey="score"
-                  stroke="#8b5cf6"
+                  stroke="#0891b2"
                   strokeWidth={2}
-                  dot={{ fill: "#8b5cf6", r: 4 }}
+                  dot={{ fill: "#0891b2", r: 4 }}
                   activeDot={{ r: 6 }}
                   name="Score"
                 />

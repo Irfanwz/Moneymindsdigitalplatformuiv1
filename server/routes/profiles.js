@@ -123,7 +123,7 @@ export function createProfilesRouter(store) {
       let advisors = await store.searchAdvisors({ industry, specialization, query });
 
       // Merge with curated directory if database results are sparse so all advisors show
-      if (!advisors || advisors.length < CURATED_PUBLIC_ADVISORS.length) {
+      if (req.query.source !== "database" && (!advisors || advisors.length < CURATED_PUBLIC_ADVISORS.length)) {
         let fallback = [...CURATED_PUBLIC_ADVISORS];
         if (industry) {
           fallback = fallback.filter((a) => a.industries?.some((ind) => ind.toLowerCase() === industry.toLowerCase()));
@@ -138,6 +138,11 @@ export function createProfilesRouter(store) {
         const existingIds = new Set((advisors || []).map((a) => a.id || a.userId));
         const missing = fallback.filter((a) => !existingIds.has(a.id) && !existingIds.has(a.userId));
         advisors = [...(advisors || []), ...missing];
+      }
+
+      if (req.query.source === "database") {
+        const { data, pagination } = paginate(advisors ?? [], req.query);
+        return res.json({ advisors: data, ...(pagination && { pagination }) });
       }
 
       // Enrich with member clusters

@@ -143,7 +143,7 @@ export function InvestorEditProfile() {
     <div className="min-h-screen bg-background">
       <Header userRole="investor" userName={user?.fullName ?? ""} />
 
-      <div className="container mx-auto px-6 py-8 max-w-5xl">
+      <div className="w-full px-4 py-6 sm:px-8 sm:py-8 xl:px-14">
         {/* Page Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-semibold mb-2">Edit Profile</h1>
@@ -452,8 +452,8 @@ export function InvestorEditProfile() {
                       }
                       className={`cursor-pointer transition-colors ${
                         profile.industries.includes(industry)
-                          ? "bg-accent text-accent-foreground hover:bg-accent/90"
-                          : "hover:bg-accent/10"
+                          ? "bg-cyan-600 text-white hover:bg-cyan-500 border-cyan-600"
+                          : "hover:border-cyan-500/50 hover:bg-cyan-50/60 dark:hover:bg-cyan-950/30"
                       }`}
                       onClick={() => toggleIndustry(industry)}
                     >
@@ -498,16 +498,16 @@ export function InvestorEditProfile() {
           {/* Privacy & Visibility Settings */}
           <Card className="p-6">
             <div className="flex items-center gap-3 mb-6">
-              <Shield className="h-5 w-5 text-accent" />
+              <Shield className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
               <h2 className="text-xl font-semibold">Privacy & Visibility Settings</h2>
             </div>
 
             <div className="space-y-4">
-              <div className="p-4 border border-accent/30 bg-accent/5 rounded-lg">
+              <div className="p-4 border border-cyan-500/30 bg-cyan-50/60 dark:bg-cyan-950/20 rounded-xl">
                 <div className="flex items-start gap-3">
-                  <Shield className="h-5 w-5 text-accent mt-0.5" />
+                  <Shield className="h-5 w-5 text-cyan-600 dark:text-cyan-400 mt-0.5" />
                   <div>
-                    <div className="font-medium text-accent mb-1">Private by Default</div>
+                    <div className="font-semibold text-cyan-800 dark:text-cyan-300 mb-1">Private by Default</div>
                     <p className="text-sm text-muted-foreground">
                       Investor profiles are private by default. Control who can see your information and activity.
                     </p>
@@ -590,18 +590,18 @@ export function InvestorEditProfile() {
           </Card>
 
           {/* Action Buttons */}
-          <div className="flex items-center justify-end gap-4 pt-4">
-            <Button variant="outline" onClick={handleCancel} disabled={isSaving}>
+          <div className="flex items-center justify-end gap-3 pt-4">
+            <Button variant="outline" className="rounded-none border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/60 font-medium text-slate-700 dark:text-slate-200 hover:border-cyan-500/50 hover:bg-cyan-50/60 dark:hover:bg-cyan-950/30" onClick={handleCancel} disabled={isSaving}>
               <X className="mr-2 h-4 w-4" />
               Cancel
             </Button>
-            <Button onClick={handleSave} disabled={isSaving}>
+            <Button className="rounded-none bg-gradient-to-r from-cyan-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 text-white font-semibold shadow-sm transition-all" onClick={handleSave} disabled={isSaving}>
               {isSaving ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
                 <Save className="mr-2 h-4 w-4" />
               )}
-              {isSaving ? "Saving..." : "Save Changes"}
+              {isSaving ? "Saving..." : "Save changes"}
             </Button>
           </div>
         </div>

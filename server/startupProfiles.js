@@ -48,6 +48,7 @@ export function buildStartupProfile(user, profile) {
     verifiedAt: profile?.verifiedAt ?? null,
     userId: user.id,
     companyName: profile?.companyName ?? "",
+    companyLogo: profile?.companyLogo ?? "",
     tagline: profile?.tagline ?? "",
     industry: profile?.industry ?? "",
     foundedYear: profile?.foundedYear ? String(profile.foundedYear) : "",
@@ -85,6 +86,7 @@ export function normalizeStartupProfileInput(input, user) {
 
   return {
     companyName,
+    ...(typeof input?.companyLogo === "string" && { companyLogo: trimText(input.companyLogo) }),
     tagline: trimText(input?.tagline),
     industry,
     foundedYear: normalizeFoundedYear(input?.foundedYear),

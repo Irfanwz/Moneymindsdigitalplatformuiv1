@@ -136,14 +136,14 @@ export const InstitutionalFooter: React.FC = () => {
           <div className="flex flex-wrap items-center gap-3">
             <Link
               to="/advisors"
-              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 via-teal-400 to-emerald-400 hover:from-cyan-400 hover:to-emerald-300 text-slate-950 font-bold text-xs shadow-md shadow-cyan-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-1.5 cursor-pointer"
+              className="px-5 py-2.5 rounded-none bg-gradient-to-r from-cyan-500 via-teal-400 to-emerald-400 hover:from-cyan-400 hover:to-emerald-300 text-slate-950 font-bold text-xs shadow-md shadow-cyan-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-1.5 cursor-pointer"
             >
               <span>Explore Advisors</span>
               <ArrowRight className="h-3.5 w-3.5" />
             </Link>
             <Link
               to="/apply"
-              className="px-5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-cyan-500 text-slate-800 dark:text-slate-200 font-bold text-xs hover:bg-slate-50 dark:hover:bg-slate-800/80 transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+              className="px-5 py-2.5 rounded-none bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-cyan-500 text-slate-800 dark:text-slate-200 font-bold text-xs hover:bg-slate-50 dark:hover:bg-slate-800/80 transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
             >
               <span>Apply as Startup</span>
               <ArrowUpRight className="h-3.5 w-3.5 text-cyan-500" />
@@ -224,7 +224,7 @@ export const InstitutionalFooter: React.FC = () => {
           <div className="flex items-center gap-3 shrink-0 self-end md:self-auto">
             <button
               onClick={copyHash}
-              className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-[11px] font-semibold transition-colors flex items-center gap-1 cursor-pointer"
+              className="px-2.5 py-1 rounded-none bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-[11px] font-semibold transition-colors flex items-center gap-1 cursor-pointer"
               title="Copy current cryptographic block hash"
             >
               <Terminal className="h-3 w-3 text-cyan-500" />

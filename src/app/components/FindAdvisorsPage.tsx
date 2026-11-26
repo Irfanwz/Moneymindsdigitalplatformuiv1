@@ -677,7 +677,7 @@ function AdvisorCard({
         <div className="pt-3.5">
           <Button
             onClick={() => onViewProfile(advisor.userId || advisor.id)}
-            className="w-full bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white font-semibold text-xs rounded-xl py-2 flex items-center justify-center gap-1.5 transition-all shadow-sm group-hover:bg-emerald-600 dark:group-hover:bg-emerald-600 cursor-pointer"
+            className="w-full bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white font-semibold text-xs rounded-none py-2 flex items-center justify-center gap-1.5 transition-all shadow-sm group-hover:bg-emerald-600 dark:group-hover:bg-emerald-600 cursor-pointer"
           >
             <span>View Profile</span>
             <ArrowRight className="h-3 w-3" />
@@ -800,7 +800,7 @@ function AdvisorListItem({
       <div className="flex items-center gap-3 w-full md:w-auto justify-end pt-3 md:pt-0 border-t md:border-t-0 border-slate-100 dark:border-slate-800">
         <Button
           onClick={() => onViewProfile(advisor.userId || advisor.id)}
-          className="w-full md:w-auto bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-emerald-600 text-white font-semibold text-xs rounded-xl px-5 py-2.5 flex items-center justify-center gap-1.5 transition-all shadow-sm cursor-pointer"
+          className="w-full md:w-auto bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-emerald-600 text-white font-semibold text-xs rounded-none px-5 py-2.5 flex items-center justify-center gap-1.5 transition-all shadow-sm cursor-pointer"
         >
           <span>View Profile</span>
           <ArrowRight className="h-3.5 w-3.5" />
@@ -927,7 +927,7 @@ export function FindAdvisorsPage({ userRole }: FindAdvisorsPageProps) {
     <div className="min-h-screen bg-[#f8fafc] dark:bg-[#090d16] text-slate-900 dark:text-slate-100">
       <Header userRole={userRole} userName={userName} />
 
-      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="w-full px-4 py-6 sm:px-8 sm:py-8 xl:px-14">
         
         {/* Page Title & Breadcrumb */}
         <div className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
@@ -944,31 +944,31 @@ export function FindAdvisorsPage({ userRole }: FindAdvisorsPageProps) {
             </p>
           </div>
 
-          <div className="flex items-center gap-2 text-xs text-slate-400">
+          <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
             <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="font-mono text-emerald-400 font-semibold">{filteredAndSortedAdvisors.length} Verified Minds</span>
+            <span className="font-mono text-emerald-700 dark:text-emerald-400 font-semibold">{filteredAndSortedAdvisors.length} Verified Minds</span>
           </div>
         </div>
 
         {/* Modern Unified Search & Filter Hub */}
-        <div className="p-4 sm:p-5 mb-8 rounded-2xl bg-[#080e1c]/95 dark:bg-[#080e1c]/95 border border-slate-800/90 shadow-2xl backdrop-blur-xl">
+        <div className="p-4 sm:p-5 mb-8 rounded-2xl bg-white dark:bg-[#080e1c]/95 border border-slate-200/90 dark:border-slate-800/90 shadow-sm dark:shadow-2xl backdrop-blur-xl">
           <div className="flex flex-col gap-4">
             
             {/* Top Search Input Row */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
               <div className="relative flex-1">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-cyan-400" />
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-cyan-600 dark:text-cyan-400" />
                 <Input
                   placeholder="Search advisors by name, specialization, keywords, or location..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
-                  className="pl-10 pr-9 py-2.5 rounded-xl bg-slate-900/90 border-slate-800 text-sm text-slate-100 placeholder:text-slate-500 focus-visible:ring-1 focus-visible:ring-cyan-400 focus-visible:border-cyan-400/80 transition-all shadow-inner"
+                  className="pl-10 pr-9 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border-slate-200 dark:border-slate-800 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:ring-1 focus-visible:ring-cyan-500 dark:focus-visible:ring-cyan-400 focus-visible:border-cyan-500 dark:focus-visible:border-cyan-400/80 transition-all"
                 />
                 {searchQuery && (
                   <button
                     onClick={() => setSearchQuery("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 dark:hover:text-white cursor-pointer"
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>
@@ -979,7 +979,7 @@ export function FindAdvisorsPage({ userRole }: FindAdvisorsPageProps) {
               <div className="flex items-center gap-2">
                 <Button 
                   onClick={handleSearch}
-                  className="bg-gradient-to-r from-cyan-500 via-teal-400 to-emerald-400 hover:from-cyan-400 hover:to-emerald-300 text-slate-950 font-bold text-xs rounded-xl px-5 py-2.5 flex items-center gap-2 shadow-[0_0_14px_rgba(6,182,212,0.3)] transition-all cursor-pointer"
+                  className="bg-gradient-to-r from-cyan-600 via-teal-500 to-emerald-500 dark:from-cyan-500 dark:via-teal-400 dark:to-emerald-400 hover:from-cyan-500 hover:to-emerald-400 text-white dark:text-slate-950 font-bold text-xs rounded-none px-5 py-2.5 flex items-center gap-2 shadow-sm dark:shadow-[0_0_14px_rgba(6,182,212,0.3)] transition-all cursor-pointer"
                 >
                   <Filter className="h-3.5 w-3.5" />
                   <span>Search</span>
@@ -994,7 +994,7 @@ export function FindAdvisorsPage({ userRole }: FindAdvisorsPageProps) {
                       setSelectedSpecialization("all");
                       setSortBy("credibility");
                     }}
-                    className="text-xs text-slate-400 hover:text-rose-400 hover:bg-rose-950/20 rounded-xl px-3 cursor-pointer"
+                    className="text-xs text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-xl px-3 cursor-pointer"
                   >
                     Reset
                   </Button>
@@ -1003,17 +1003,17 @@ export function FindAdvisorsPage({ userRole }: FindAdvisorsPageProps) {
             </div>
 
             {/* Dropdown Filters Row */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-slate-800/60">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-slate-100 dark:border-slate-800/60">
               {/* Industry Select */}
               <div>
-                <label className="text-[11px] font-mono font-medium text-slate-400 uppercase tracking-wider mb-1 block">
+                <label className="text-[11px] font-mono font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1 block">
                   Industry Focus
                 </label>
                 <Select value={selectedIndustry} onValueChange={setSelectedIndustry}>
-                  <SelectTrigger className="bg-slate-900/90 border-slate-800 rounded-xl text-xs h-9 text-slate-200 focus:ring-cyan-500/40">
+                  <SelectTrigger className="bg-slate-50 dark:bg-slate-900/90 border-slate-200 dark:border-slate-800 rounded-xl text-xs h-9 text-slate-800 dark:text-slate-200 focus:ring-cyan-500/40">
                     <SelectValue placeholder="All Industries" />
                   </SelectTrigger>
-                  <SelectContent className="bg-[#0b1324] border-slate-800 text-slate-200">
+                  <SelectContent className="bg-white dark:bg-[#0b1324] border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
                     <SelectItem value="all">All Industries</SelectItem>
                     <SelectItem value="FinTech">FinTech</SelectItem>
                     <SelectItem value="HealthTech">HealthTech</SelectItem>
@@ -1029,14 +1029,14 @@ export function FindAdvisorsPage({ userRole }: FindAdvisorsPageProps) {
 
               {/* Specialization Select */}
               <div>
-                <label className="text-[11px] font-mono font-medium text-slate-400 uppercase tracking-wider mb-1 block">
+                <label className="text-[11px] font-mono font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1 block">
                   Advisory Specialization
                 </label>
                 <Select value={selectedSpecialization} onValueChange={setSelectedSpecialization}>
-                  <SelectTrigger className="bg-slate-900/90 border-slate-800 rounded-xl text-xs h-9 text-slate-200 focus:ring-cyan-500/40">
+                  <SelectTrigger className="bg-slate-50 dark:bg-slate-900/90 border-slate-200 dark:border-slate-800 rounded-xl text-xs h-9 text-slate-800 dark:text-slate-200 focus:ring-cyan-500/40">
                     <SelectValue placeholder="All Specializations" />
                   </SelectTrigger>
-                  <SelectContent className="bg-[#0b1324] border-slate-800 text-slate-200">
+                  <SelectContent className="bg-white dark:bg-[#0b1324] border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
                     <SelectItem value="all">All Specializations</SelectItem>
                     <SelectItem value="financial-planning">Financial Planning</SelectItem>
                     <SelectItem value="fundraising">Fundraising Strategy</SelectItem>
@@ -1051,14 +1051,14 @@ export function FindAdvisorsPage({ userRole }: FindAdvisorsPageProps) {
 
               {/* Sort By Select */}
               <div>
-                <label className="text-[11px] font-mono font-medium text-slate-400 uppercase tracking-wider mb-1 block">
+                <label className="text-[11px] font-mono font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1 block">
                   Rank &amp; Order
                 </label>
                 <Select value={sortBy} onValueChange={setSortBy}>
-                  <SelectTrigger className="bg-slate-900/90 border-slate-800 rounded-xl text-xs h-9 text-slate-200 focus:ring-cyan-500/40">
+                  <SelectTrigger className="bg-slate-50 dark:bg-slate-900/90 border-slate-200 dark:border-slate-800 rounded-xl text-xs h-9 text-slate-800 dark:text-slate-200 focus:ring-cyan-500/40">
                     <SelectValue placeholder="Sort by" />
                   </SelectTrigger>
-                  <SelectContent className="bg-[#0b1324] border-slate-800 text-slate-200">
+                  <SelectContent className="bg-white dark:bg-[#0b1324] border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
                     <SelectItem value="credibility">Highest Audited Credibility</SelectItem>
                     <SelectItem value="experience">Most Experienced</SelectItem>
                     <SelectItem value="clients">Most Clients Helped</SelectItem>
@@ -1068,7 +1068,7 @@ export function FindAdvisorsPage({ userRole }: FindAdvisorsPageProps) {
             </div>
 
             {/* Quick Filter Tags Row */}
-            <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-slate-800/40">
+            <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-slate-100 dark:border-slate-800/40">
               <span className="text-[11px] font-mono text-slate-500">Quick Filters:</span>
               {["FinTech", "AI/ML", "SaaS", "growth-strategy", "cfo-services", "fundraising"].map((tag) => {
                 const isSpecialty = tag.includes("-");
@@ -1083,10 +1083,10 @@ export function FindAdvisorsPage({ userRole }: FindAdvisorsPageProps) {
                         setSelectedIndustry(isActive ? "all" : tag);
                       }
                     }}
-                    className={`text-[10px] font-mono font-medium px-2.5 py-0.5 rounded-full border transition-all cursor-pointer ${
+                    className={`text-[11px] font-mono font-medium px-2.5 py-0.5 rounded-full border transition-all cursor-pointer ${
                       isActive
-                        ? "bg-cyan-500/20 text-cyan-300 border-cyan-400/80 shadow-[0_0_8px_rgba(6,182,212,0.25)]"
-                        : "bg-slate-900/80 text-slate-400 border-slate-800 hover:text-slate-200 hover:border-slate-700"
+                        ? "bg-cyan-50 dark:bg-cyan-500/20 text-cyan-800 dark:text-cyan-300 border-cyan-400 dark:border-cyan-400/80 shadow-xs"
+                        : "bg-slate-50 dark:bg-slate-900/80 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:text-slate-900 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-700"
                     }`}
                   >
                     {SPECIALIZATION_LABELS[tag] || tag}
@@ -1100,23 +1100,30 @@ export function FindAdvisorsPage({ userRole }: FindAdvisorsPageProps) {
 
         {/* Live Status & View Switcher Row */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
-          <div className="text-xs font-mono text-slate-500 dark:text-slate-400">
-            {isLoading ? "Updating directory..." : `Showing ${filteredAndSortedAdvisors.length} Verified Financial Advisors`}
+          <div className="flex items-center gap-2 text-xs font-mono text-slate-600 dark:text-slate-400">
+            {isLoading ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-cyan-600 dark:text-cyan-400" />
+                <span>Syncing verified advisor directory…</span>
+              </>
+            ) : (
+              <span>Showing {filteredAndSortedAdvisors.length} Verified Financial Advisors</span>
+            )}
           </div>
 
           <div className="flex items-center gap-3">
-            <span className="text-[11px] font-mono font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-500/30 px-2.5 py-0.5 rounded-full">
+            <span className="text-[11px] font-mono font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-500/30 px-2.5 py-0.5 rounded-full">
               ✓ Audited Track Records
             </span>
 
             {/* Segmented View Switcher (Grid View vs List View) */}
-            <div className="flex items-center p-1 rounded-xl bg-slate-900/90 border border-slate-800 shadow-inner">
+            <div className="flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-inner">
               <button
                 onClick={() => setViewMode("grid")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-none text-xs font-semibold transition-all cursor-pointer ${
                   viewMode === "grid"
-                    ? "bg-gradient-to-r from-cyan-500 to-emerald-500 text-slate-950 shadow-sm"
-                    : "text-slate-400 hover:text-white"
+                    ? "bg-gradient-to-r from-cyan-600 to-emerald-600 dark:from-cyan-500 dark:to-emerald-500 text-white dark:text-slate-950 shadow-sm"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                 }`}
                 title="Grid View (4-Column Cards)"
               >
@@ -1126,10 +1133,10 @@ export function FindAdvisorsPage({ userRole }: FindAdvisorsPageProps) {
 
               <button
                 onClick={() => setViewMode("list")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-none text-xs font-semibold transition-all cursor-pointer ${
                   viewMode === "list"
-                    ? "bg-gradient-to-r from-cyan-500 to-emerald-500 text-slate-950 shadow-sm"
-                    : "text-slate-400 hover:text-white"
+                    ? "bg-gradient-to-r from-cyan-600 to-emerald-600 dark:from-cyan-500 dark:to-emerald-500 text-white dark:text-slate-950 shadow-sm"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                 }`}
                 title="List View (Horizontal Rows)"
               >
@@ -1140,11 +1147,64 @@ export function FindAdvisorsPage({ userRole }: FindAdvisorsPageProps) {
           </div>
         </div>
 
-        {/* Loading Spinner */}
+        {/* Institutional Skeleton Loading State */}
         {isLoading && (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-cyan-400" />
-          </div>
+          viewMode === "grid" ? (
+            <div aria-busy="true" aria-label="Loading advisors" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="rounded-2xl bg-white dark:bg-[#0c1424] border border-slate-200/90 dark:border-slate-800 p-5 shadow-sm space-y-4 animate-pulse"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="h-12 w-12 rounded-2xl bg-slate-200/80 dark:bg-slate-800 shrink-0" />
+                      <div className="space-y-2">
+                        <div className="h-4 w-28 rounded-md bg-slate-200/90 dark:bg-slate-800" />
+                        <div className="h-3 w-20 rounded-md bg-slate-100 dark:bg-slate-800/70" />
+                      </div>
+                    </div>
+                    <div className="h-6 w-14 rounded-full bg-cyan-100/70 dark:bg-cyan-950/50" />
+                  </div>
+                  <div className="space-y-2 pt-1">
+                    <div className="h-3 w-full rounded bg-slate-100 dark:bg-slate-800/70" />
+                    <div className="h-3 w-4/5 rounded bg-slate-100 dark:bg-slate-800/70" />
+                  </div>
+                  <div className="flex gap-2">
+                    <div className="h-5 w-16 rounded-full bg-slate-100 dark:bg-slate-800/80" />
+                    <div className="h-5 w-20 rounded-full bg-slate-100 dark:bg-slate-800/80" />
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100 dark:border-slate-800/70">
+                    <div className="h-8 rounded-lg bg-slate-100/80 dark:bg-slate-800/50" />
+                    <div className="h-8 rounded-lg bg-slate-100/80 dark:bg-slate-800/50" />
+                    <div className="h-8 rounded-lg bg-slate-100/80 dark:bg-slate-800/50" />
+                  </div>
+                  <div className="h-9 w-full rounded-xl bg-slate-200/70 dark:bg-slate-800/80" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div aria-busy="true" aria-label="Loading advisors" className="flex flex-col gap-3.5">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="rounded-2xl bg-white dark:bg-[#0c1424] border border-slate-200/90 dark:border-slate-800 p-4 sm:p-5 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-pulse"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="h-12 w-12 rounded-2xl bg-slate-200/80 dark:bg-slate-800 shrink-0" />
+                    <div className="space-y-2">
+                      <div className="h-4 w-40 rounded-md bg-slate-200/90 dark:bg-slate-800" />
+                      <div className="h-3 w-56 rounded-md bg-slate-100 dark:bg-slate-800/70" />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="h-6 w-20 rounded-full bg-slate-100 dark:bg-slate-800/80" />
+                    <div className="h-9 w-28 rounded-xl bg-slate-200/80 dark:bg-slate-800" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )
         )}
 
         {/* Advisors Display: Either 4-Card Responsive Grid or Clean Horizontal List */}
@@ -1203,7 +1263,7 @@ export function FindAdvisorsPage({ userRole }: FindAdvisorsPageProps) {
                 setSortBy("credibility");
                 loadAdvisors();
               }}
-              className="rounded-xl border-cyan-500/40 text-cyan-400 hover:bg-cyan-950/40"
+              className="rounded-xl border-cyan-500/40 text-cyan-700 dark:text-cyan-400 hover:bg-cyan-50 dark:hover:bg-cyan-950/40"
             >
               Reset All Filters
             </Button>

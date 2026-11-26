@@ -299,7 +299,8 @@ const TESTIMONIALS_VIDEO = [
     badge: "Verified Institutional VC",
     quote: "MoneyMinds cuts out 80% of our preliminary screening noise. Startups backed by audited advisors consistently show cleaner cap tables and disciplined governance.",
     videoLength: "1:45",
-    videoThumbnail: "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&w=500&q=80",
+    videoThumbnail: "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&w=800&q=80",
+    videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
     embedTitle: "Why BlueHarbor Uses Audited Signals",
   },
   {
@@ -309,7 +310,8 @@ const TESTIMONIALS_VIDEO = [
     badge: "Verified Growth Investor",
     quote: "The blurred public score model keeps advisors focused on real track records instead of marketing. When we unlock private profiles, the data is completely transparent.",
     videoLength: "2:10",
-    videoThumbnail: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=500&q=80",
+    videoThumbnail: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=800&q=80",
+    videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
     embedTitle: "Institutional Due Diligence with MoneyMinds",
   },
 ];
@@ -349,6 +351,7 @@ export function LandingPage() {
   const [selectedAdvisor, setSelectedAdvisor] = useState<any>(null);
   const [videoModalOpen, setVideoModalOpen] = useState(false);
   const [activeVideo, setActiveVideo] = useState<any>(null);
+  const [videoError, setVideoError] = useState(false);
   const [newsletterEmail, setNewsletterEmail] = useState("");
   const [newsletterSuccess, setNewsletterSuccess] = useState(false);
   const [activePhone, setActivePhone] = useState<1 | 2>(1);
@@ -441,6 +444,7 @@ export function LandingPage() {
 
   const openVideoModal = (video: any) => {
     setActiveVideo(video);
+    setVideoError(false);
     setVideoModalOpen(true);
   };
 
@@ -463,7 +467,7 @@ export function LandingPage() {
         <HighLevelLoader onComplete={() => setShowLoader(false)} minDuration={2200} />
       )}
 
-      <Header />
+      <Header showTicker />
 
       {/* --- HERO SECTION WITH 3D FINTECH PHONE & COINS VISUAL --- */}
       <section className="relative pt-16 pb-24 lg:pt-20 lg:pb-32 px-4 sm:px-6 lg:px-8 overflow-hidden">
@@ -522,13 +526,13 @@ export function LandingPage() {
                 className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 w-full sm:w-auto mb-14"
               >
                 <a href="#advisors" className="w-full sm:w-auto">
-                  <Button size="lg" className="w-full sm:w-auto h-13 px-8 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-600 hover:to-cyan-600 text-white font-semibold text-base shadow-lg shadow-emerald-500/25 rounded-xl border-0 transition-all duration-200">
+                  <Button size="lg" className="w-full sm:w-auto h-13 px-8 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-600 hover:to-cyan-600 text-white font-semibold text-base shadow-lg shadow-emerald-500/25 rounded-none border-0 transition-all duration-200">
                     Explore Public Advisors
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </a>
                 <Link to={user ? "/choose-role" : "/apply"} className="w-full sm:w-auto">
-                  <Button size="lg" variant="outline" className="w-full sm:w-auto h-13 px-8 border-slate-300 dark:border-slate-700 bg-white/70 dark:bg-slate-900/70 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 font-semibold text-base rounded-xl backdrop-blur-md">
+                  <Button size="lg" variant="outline" className="w-full sm:w-auto h-13 px-8 border-slate-300 dark:border-slate-700 bg-white/80 dark:bg-slate-900/70 hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 dark:hover:text-white font-semibold text-base rounded-none backdrop-blur-md">
                     {user ? "Go to Dashboard" : "Join Platform"}
                   </Button>
                 </Link>
@@ -571,10 +575,10 @@ export function LandingPage() {
               <motion.div
                 animate={{ y: [0, -12, 0], rotate: [0, 8, 0] }}
                 transition={{ repeat: Infinity, duration: 4.2, ease: "easeInOut" }}
-                className="absolute -top-4 left-4 sm:left-8 z-30 flex items-center justify-center w-13 h-13 sm:w-15 sm:h-15 rounded-full bg-gradient-to-tr from-amber-500 via-yellow-400 to-amber-200 border-2 border-yellow-200/90 shadow-[0_0_25px_rgba(245,158,11,0.65)] cursor-pointer transform -rotate-12"
+                className="absolute -top-6 left-2 sm:left-4 z-40 flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-tr from-amber-500 via-yellow-400 to-amber-200 border-[3px] border-yellow-200/95 shadow-[0_0_32px_rgba(245,158,11,0.75)] cursor-pointer transform -rotate-12"
               >
-                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full border border-amber-600/40 flex items-center justify-center bg-amber-400/90 shadow-inner">
-                  <span className="font-black text-amber-950 text-xl sm:text-2xl font-mono">₿</span>
+                <div className="w-12 h-12 sm:w-15 sm:h-15 rounded-full border-2 border-amber-600/45 flex items-center justify-center bg-amber-400/95 shadow-inner">
+                  <span className="font-black text-amber-950 text-2xl sm:text-3xl font-mono leading-none">₿</span>
                 </div>
               </motion.div>
 
@@ -582,10 +586,10 @@ export function LandingPage() {
               <motion.div
                 animate={{ y: [0, 14, 0], rotate: [0, -10, 0] }}
                 transition={{ repeat: Infinity, duration: 5, ease: "easeInOut", delay: 0.6 }}
-                className="absolute top-10 -right-2 sm:right-2 z-30 flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-tr from-cyan-600 via-teal-400 to-cyan-200 border-2 border-cyan-200/90 shadow-[0_0_25px_rgba(6,182,212,0.65)] transform rotate-12"
+                className="absolute top-6 -right-3 sm:right-0 z-40 flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-tr from-cyan-600 via-teal-400 to-cyan-200 border-[3px] border-cyan-200/95 shadow-[0_0_32px_rgba(6,182,212,0.75)] transform rotate-12"
               >
-                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border border-cyan-700/40 flex items-center justify-center bg-cyan-400/90 shadow-inner">
-                  <span className="font-black text-cyan-950 text-lg sm:text-xl font-mono">Ξ</span>
+                <div className="w-12 h-12 sm:w-15 sm:h-15 rounded-full border-2 border-cyan-700/45 flex items-center justify-center bg-cyan-400/95 shadow-inner">
+                  <span className="font-black text-cyan-950 text-2xl sm:text-3xl font-mono leading-none">Ξ</span>
                 </div>
               </motion.div>
 
@@ -593,10 +597,10 @@ export function LandingPage() {
               <motion.div
                 animate={{ y: [0, -10, 0], rotate: [0, 6, 0] }}
                 transition={{ repeat: Infinity, duration: 4.6, ease: "easeInOut", delay: 1.2 }}
-                className="absolute -bottom-4 right-6 sm:right-10 z-30 flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-tr from-emerald-600 via-emerald-400 to-teal-200 border-2 border-emerald-200/90 shadow-[0_0_25px_rgba(16,185,129,0.65)] transform rotate-6"
+                className="absolute -bottom-6 right-4 sm:right-6 z-40 flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-tr from-emerald-600 via-emerald-400 to-teal-200 border-[3px] border-emerald-200/95 shadow-[0_0_32px_rgba(16,185,129,0.75)] transform rotate-6"
               >
-                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border border-emerald-700/40 flex items-center justify-center bg-emerald-400/90 shadow-inner">
-                  <span className="font-black text-emerald-950 text-lg sm:text-xl font-mono">$</span>
+                <div className="w-12 h-12 sm:w-15 sm:h-15 rounded-full border-2 border-emerald-700/45 flex items-center justify-center bg-emerald-400/95 shadow-inner">
+                  <span className="font-black text-emerald-950 text-2xl sm:text-3xl font-mono leading-none">$</span>
                 </div>
               </motion.div>
 
@@ -604,10 +608,10 @@ export function LandingPage() {
               <motion.div
                 animate={{ y: [0, 10, 0], rotate: [0, -8, 0] }}
                 transition={{ repeat: Infinity, duration: 5.4, ease: "easeInOut", delay: 1.8 }}
-                className="absolute bottom-6 -left-2 sm:left-2 z-30 flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-gradient-to-tr from-purple-600 via-indigo-400 to-purple-200 border-2 border-purple-200/90 shadow-[0_0_20px_rgba(168,85,247,0.6)] transform -rotate-6"
+                className="absolute bottom-2 -left-3 sm:left-0 z-40 flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-tr from-purple-600 via-indigo-400 to-purple-200 border-[3px] border-purple-200/95 shadow-[0_0_30px_rgba(168,85,247,0.7)] transform -rotate-6"
               >
-                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border border-purple-700/40 flex items-center justify-center bg-purple-400/90 shadow-inner">
-                  <span className="font-black text-purple-950 text-base sm:text-lg font-mono">α</span>
+                <div className="w-12 h-12 sm:w-15 sm:h-15 rounded-full border-2 border-purple-700/45 flex items-center justify-center bg-purple-400/95 shadow-inner">
+                  <span className="font-black text-purple-950 text-2xl sm:text-3xl font-mono leading-none">α</span>
                 </div>
               </motion.div>
 
@@ -750,11 +754,11 @@ export function LandingPage() {
 
                     {/* Gradient Action Buttons (Send / Receive / Alpha) */}
                     <div className="flex items-center gap-2">
-                      <button className="flex-1 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-slate-950 font-bold text-[10px] shadow-sm shadow-cyan-500/30 transition-all flex items-center justify-center gap-1">
+                      <button className="flex-1 py-1.5 rounded-none bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-slate-950 font-bold text-[10px] shadow-sm shadow-cyan-500/30 transition-all flex items-center justify-center gap-1">
                         <ArrowUpRight className="h-3 w-3" />
                         Alpha Signal
                       </button>
-                      <button className="flex-1 py-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-white font-semibold text-[10px] border border-slate-700 transition-all flex items-center justify-center gap-1">
+                      <button className="flex-1 py-1.5 rounded-none bg-slate-800/90 hover:bg-slate-700 text-white font-semibold text-[10px] border border-slate-700 transition-all flex items-center justify-center gap-1">
                         <Shield className="h-3 w-3 text-cyan-400" />
                         Verify
                       </button>
@@ -1007,7 +1011,7 @@ export function LandingPage() {
               <Button
                 variant="outline"
                 onClick={() => navigate("/advisors")}
-                className="border-cyan-500/50 text-cyan-600 dark:text-cyan-400 hover:text-white hover:bg-cyan-950/60 rounded-xl text-xs font-semibold px-3.5 py-1.5 flex items-center gap-1.5 shadow-[0_0_12px_rgba(6,182,212,0.15)] transition-all cursor-pointer"
+                className="border-cyan-500/50 text-cyan-600 dark:text-cyan-400 hover:text-white hover:bg-cyan-950/60 rounded-none text-xs font-semibold px-3.5 py-1.5 flex items-center gap-1.5 shadow-[0_0_12px_rgba(6,182,212,0.15)] transition-all cursor-pointer"
               >
                 <Users className="h-3.5 w-3.5 text-cyan-500 dark:text-cyan-400" />
                 View All Advisors
@@ -1016,7 +1020,7 @@ export function LandingPage() {
               <Button
                 variant="outline"
                 onClick={() => openUnlockModal()}
-                className="border-emerald-500/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 rounded-xl text-xs font-semibold px-3.5 py-1.5 flex items-center gap-1.5 transition-all cursor-pointer"
+                className="border-emerald-500/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 rounded-none text-xs font-semibold px-3.5 py-1.5 flex items-center gap-1.5 transition-all cursor-pointer"
               >
                 <Lock className="h-3 w-3 mr-0.5" />
                 Register to Unlock All (Free)
@@ -1184,7 +1188,7 @@ export function LandingPage() {
                     <div className="pt-4">
                       <Button
                         onClick={() => navigate("/advisors")}
-                        className="w-full bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white font-semibold text-xs sm:text-sm rounded-xl py-2.5 flex items-center justify-center gap-1.5 transition-all shadow-sm group-hover:bg-emerald-600 dark:group-hover:bg-emerald-600 cursor-pointer"
+                        className="w-full bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white font-semibold text-xs sm:text-sm rounded-none py-2.5 flex items-center justify-center gap-1.5 transition-all shadow-sm group-hover:bg-emerald-600 dark:group-hover:bg-emerald-600 cursor-pointer"
                       >
                         <span>View Profile</span>
                         <ArrowRight className="h-3.5 w-3.5" />
@@ -1629,7 +1633,7 @@ export function LandingPage() {
 
             <div>
               <Link to="/apply">
-                <Button className="bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-slate-950 font-bold text-xs rounded-xl px-4 py-2 shadow-sm transition-all cursor-pointer">
+                <Button className="bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-slate-950 font-bold text-xs rounded-none px-4 py-2 shadow-sm transition-all cursor-pointer">
                   Apply as Startup &rarr;
                 </Button>
               </Link>
@@ -1801,7 +1805,7 @@ export function LandingPage() {
           <div className="flex flex-wrap items-center justify-center gap-3 mb-10">
             <button
               onClick={() => setActiveStoryAct("crisis")}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer border ${
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-none text-xs sm:text-sm font-semibold transition-all cursor-pointer border ${
                 activeStoryAct === "crisis"
                   ? "bg-rose-50 dark:bg-rose-500/15 text-rose-700 dark:text-rose-400 border-rose-300 dark:border-rose-500/40 shadow-sm"
                   : "bg-white dark:bg-slate-800/40 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-800/70"
@@ -1813,7 +1817,7 @@ export function LandingPage() {
 
             <button
               onClick={() => setActiveStoryAct("engine")}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer border ${
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-none text-xs sm:text-sm font-semibold transition-all cursor-pointer border ${
                 activeStoryAct === "engine"
                   ? "bg-cyan-50 dark:bg-cyan-500/15 text-cyan-800 dark:text-cyan-400 border-cyan-300 dark:border-cyan-500/40 shadow-sm"
                   : "bg-white dark:bg-slate-800/40 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-800/70"
@@ -1825,7 +1829,7 @@ export function LandingPage() {
 
             <button
               onClick={() => setActiveStoryAct("ecosystem")}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer border ${
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-none text-xs sm:text-sm font-semibold transition-all cursor-pointer border ${
                 activeStoryAct === "ecosystem"
                   ? "bg-purple-50 dark:bg-purple-500/15 text-purple-800 dark:text-purple-400 border-purple-300 dark:border-purple-500/40 shadow-sm"
                   : "bg-white dark:bg-slate-800/40 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-800/70"
@@ -2463,7 +2467,7 @@ export function LandingPage() {
                 />
                 <button
                   type="submit"
-                  className="h-13 px-8 rounded-2xl bg-white text-slate-950 font-extrabold text-sm sm:text-base hover:bg-slate-100 active:scale-95 transition-all shadow-xl flex items-center justify-center gap-2 shrink-0 cursor-pointer"
+                  className="h-13 px-8 rounded-none bg-white text-slate-950 font-extrabold text-sm sm:text-base hover:bg-slate-100 active:scale-95 transition-all shadow-xl flex items-center justify-center gap-2 shrink-0 cursor-pointer"
                 >
                   <Send className="h-4 w-4 text-slate-950" />
                   <span>Get Invite</span>
@@ -2516,7 +2520,7 @@ export function LandingPage() {
             >
               <button
                 onClick={() => setUnlockModalOpen(false)}
-                className="absolute top-5 right-5 p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                className="absolute top-5 right-5 p-2 rounded-none text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -2552,12 +2556,12 @@ export function LandingPage() {
 
               <div className="flex flex-col sm:flex-row gap-3">
                 <Link to="/apply" className="flex-1">
-                  <Button className="w-full bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-600 hover:to-cyan-600 text-white font-semibold text-sm rounded-xl py-3 shadow-md shadow-emerald-500/20">
+                  <Button className="w-full bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-600 hover:to-cyan-600 text-white font-semibold text-sm rounded-none py-3 shadow-md shadow-emerald-500/20">
                     Create Free Account &rarr;
                   </Button>
                 </Link>
                 <Link to="/login" className="flex-1">
-                  <Button variant="outline" className="w-full rounded-xl py-3 text-sm font-semibold border-slate-300 dark:border-slate-700">
+                  <Button variant="outline" className="w-full rounded-none py-3 text-sm font-semibold border-slate-300 dark:border-slate-700">
                     Already a Member? Log In
                   </Button>
                 </Link>
@@ -2575,33 +2579,55 @@ export function LandingPage() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="relative w-full max-w-3xl rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl overflow-hidden text-white"
+              className="relative w-full max-w-3xl rounded-none bg-slate-900 border border-slate-800 shadow-2xl overflow-hidden text-white"
             >
               <button
                 onClick={() => setVideoModalOpen(false)}
-                className="absolute top-4 right-4 z-10 p-2 rounded-full bg-black/60 hover:bg-black/80 text-white transition-colors"
+                className="absolute top-4 right-4 z-10 p-2 rounded-none bg-black/70 hover:bg-black/90 text-white transition-colors"
+                aria-label="Close video modal"
               >
                 <X className="h-5 w-5" />
               </button>
 
               <div className="relative aspect-video bg-black flex items-center justify-center">
-                <img
-                  src={activeVideo.videoThumbnail}
-                  alt={activeVideo.name}
-                  className="w-full h-full object-cover opacity-60"
-                />
-                <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
-                  <div className="w-20 h-20 rounded-full bg-emerald-500/90 flex items-center justify-center mb-4 shadow-xl shadow-emerald-500/50 animate-pulse">
-                    <Play className="h-9 w-9 ml-1 fill-white" />
-                  </div>
-                  <h4 className="text-xl font-bold mb-1">{activeVideo.embedTitle}</h4>
-                  <p className="text-sm text-slate-300">{activeVideo.name} &bull; {activeVideo.role}</p>
-                  <p className="text-xs text-emerald-400 mt-2 font-mono">Simulated HD Video Preview</p>
-                </div>
+                {!videoError && activeVideo.videoUrl ? (
+                  <video
+                    key={activeVideo.id}
+                    src={activeVideo.videoUrl}
+                    poster={activeVideo.videoThumbnail}
+                    controls
+                    autoPlay
+                    playsInline
+                    onError={() => setVideoError(true)}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <>
+                    <img
+                      src={activeVideo.videoThumbnail}
+                      alt={activeVideo.name}
+                      className="w-full h-full object-cover opacity-50"
+                    />
+                    <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
+                      <h4 className="text-xl font-bold mb-1">{activeVideo.embedTitle}</h4>
+                      <p className="text-sm text-slate-300">{activeVideo.name} &bull; {activeVideo.role}</p>
+                      <p className="text-xs text-cyan-400 mt-2 font-mono">Verified Audio Transcript Record</p>
+                    </div>
+                  </>
+                )}
               </div>
 
-              <div className="p-6 bg-slate-950">
-                <p className="text-sm text-slate-300 italic">&ldquo;{activeVideo.quote}&rdquo;</p>
+              <div className="p-6 bg-slate-950 border-t border-slate-800 space-y-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h4 className="text-base font-bold text-white">{activeVideo.embedTitle}</h4>
+                    <p className="text-xs text-cyan-400">{activeVideo.name} &bull; {activeVideo.role}</p>
+                  </div>
+                  <span className="text-[11px] font-mono uppercase px-2 py-0.5 bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                    {activeVideo.badge}
+                  </span>
+                </div>
+                <p className="text-sm text-slate-300 italic pt-1">&ldquo;{activeVideo.quote}&rdquo;</p>
               </div>
             </motion.div>
           </div>

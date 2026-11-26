@@ -85,21 +85,21 @@ export const BlogDetailPage: React.FC = () => {
             <button
               onClick={handleCopyLink}
               title="Copy Link"
-              className="h-9 w-9 rounded-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors shadow-sm"
+              className="h-9 w-9 rounded-none border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors shadow-sm"
             >
               {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
             </button>
             <button
               onClick={handleShareTwitter}
               title="Share on X"
-              className="h-9 w-9 rounded-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:text-blue-500 transition-colors shadow-sm"
+              className="h-9 w-9 rounded-none border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:text-blue-500 transition-colors shadow-sm"
             >
               <Twitter className="h-4 w-4" />
             </button>
             <button
               onClick={handleShareLinkedIn}
               title="Share on LinkedIn"
-              className="h-9 w-9 rounded-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:text-blue-600 transition-colors shadow-sm"
+              className="h-9 w-9 rounded-none border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:text-blue-600 transition-colors shadow-sm"
             >
               <Linkedin className="h-4 w-4" />
             </button>

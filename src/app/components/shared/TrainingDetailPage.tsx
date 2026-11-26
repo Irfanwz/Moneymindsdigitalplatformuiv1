@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { Header } from "@/app/components/Header";
 import { Card } from "@/app/components/ui/card";
 import { Button } from "@/app/components/ui/button";
@@ -24,7 +24,6 @@ interface TrainingDetailPageProps {
 
 export function TrainingDetailPage({ userRole }: TrainingDetailPageProps) {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const { session, user } = useAuth();
   const [training, setTraining] = useState<Training | null>(null);
   const [enrollment, setEnrollment] = useState<TrainingEnrollment | null>(null);
@@ -117,12 +116,12 @@ export function TrainingDetailPage({ userRole }: TrainingDetailPageProps) {
     return (
       <div className="min-h-screen bg-background">
         <Header userRole={userRole} userName={userName} />
-        <div className="container mx-auto px-6 py-8 text-center">
+        <div className="w-full px-4 py-6 sm:px-8 sm:py-8 xl:px-14 text-center">
           <GraduationCap className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
           <h2 className="text-xl font-semibold mb-2">Training not found</h2>
           <p className="text-muted-foreground mb-4">This training may have been removed.</p>
-          <Button variant="outline" onClick={() => navigate(-1)}>
-            <ArrowLeft className="mr-2 h-4 w-4" />Go Back
+          <Button asChild variant="outline">
+            <Link to={`/${userRole}/trainings`}><ArrowLeft className="h-4 w-4" />Back to trainings</Link>
           </Button>
         </div>
       </div>
@@ -136,9 +135,9 @@ export function TrainingDetailPage({ userRole }: TrainingDetailPageProps) {
     <div className="min-h-screen bg-background">
       <Header userRole={userRole} userName={userName} />
 
-      <div className="container mx-auto px-6 py-8">
-        <Button variant="ghost" className="mb-6" onClick={() => navigate(-1)}>
-          <ArrowLeft className="mr-2 h-4 w-4" />Back to Trainings
+      <div className="w-full px-4 py-6 sm:px-8 sm:py-8 xl:px-14">
+        <Button asChild variant="ghost" className="mb-6">
+          <Link to={`/${userRole}/trainings`}><ArrowLeft className="h-4 w-4" />Back to trainings</Link>
         </Button>
 
         <div className="grid md:grid-cols-3 gap-8">

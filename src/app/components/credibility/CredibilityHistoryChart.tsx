@@ -15,8 +15,8 @@ interface CredibilityHistoryChartProps {
 }
 
 const TIER_LINES = [
-  { y: 90, label: "Elite", color: "#8b5cf6" },
-  { y: 75, label: "Expert", color: "#22c55e" },
+  { y: 90, label: "Elite", color: "#0891b2" },
+  { y: 75, label: "Expert", color: "#10b981" },
   { y: 60, label: "Reliable", color: "#3b82f6" },
   { y: 40, label: "Developing", color: "#eab308" },
   { y: 20, label: "Inconsistent", color: "#f97316" },
@@ -61,8 +61,10 @@ export function CredibilityHistoryChart({ className }: CredibilityHistoryChartPr
   return (
     <Card className={className}>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-white">
-          <TrendingUp className="h-5 w-5 text-emerald-500" />
+        <CardTitle className="flex items-center gap-2.5 text-slate-900 dark:text-white">
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">
+            <TrendingUp className="h-4 w-4" />
+          </div>
           Score History
         </CardTitle>
       </CardHeader>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
   AlertTriangle,
   Building2,
@@ -66,6 +66,7 @@ const stageOptions = [
 export function StartupEditProfile() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { hash } = useLocation();
   const isSetup = searchParams.get("setup") === "true";
   const { session, user } = useAuth();
   const [profile, setProfile] = useState<StartupProfile>(() => createEmptyStartupProfile(user));
@@ -196,11 +197,18 @@ export function StartupEditProfile() {
     }
   };
 
+  useEffect(() => {
+    if (isLoading || !hash) return;
+    const section = document.getElementById(hash.slice(1));
+    section?.scrollIntoView({ block: "start" });
+    section?.focus({ preventScroll: true });
+  }, [hash, isLoading]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
         <Header userRole="startup" userName={profile.companyName || user?.fullName} />
-        <div className="container mx-auto px-6 py-8 max-w-5xl">
+        <div className="w-full px-4 py-6 sm:px-8 sm:py-8 xl:px-14">
           <Card className="p-8">Loading startup profile...</Card>
         </div>
       </div>
@@ -211,7 +219,7 @@ export function StartupEditProfile() {
     <div className="min-h-screen bg-background">
       <Header userRole="startup" userName={profile.companyName || user?.fullName} />
 
-      <div className="container mx-auto px-6 py-8 max-w-5xl">
+      <div className="w-full px-4 py-6 sm:px-8 sm:py-8 xl:px-14">
         <div className="mb-8">
           <h1 className="text-3xl font-semibold mb-2">Edit Startup Profile</h1>
           <p className="text-muted-foreground">
@@ -283,9 +291,9 @@ export function StartupEditProfile() {
                       className="hidden"
                       onChange={handlePhotoUpload}
                     />
-                    <Button variant="outline" size="sm" onClick={() => document.getElementById("startup-photo-upload")?.click()} disabled={photoUploading}>
-                      <Upload className="mr-2 h-4 w-4" />
-                      {photoUploading ? "Uploading..." : "Upload Photo"}
+                    <Button variant="outline" size="sm" className="rounded-none border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/60 font-medium text-slate-700 dark:text-slate-200 hover:border-cyan-500/50 hover:bg-cyan-50/60 dark:hover:bg-cyan-950/30" onClick={() => document.getElementById("startup-photo-upload")?.click()} disabled={photoUploading}>
+                      <Upload className="mr-2 h-3.5 w-3.5" />
+                      {photoUploading ? "Uploading..." : "Upload photo"}
                     </Button>
                   </div>
                 </div>
@@ -299,7 +307,7 @@ export function StartupEditProfile() {
                   <Label htmlFor="company-name">Company Name *</Label>
                   <Input
                     id="company-name"
-                    className="mt-2"
+                    className="scroll-mt-28 mt-2"
                     value={profile.companyName}
                     onChange={(event) => updateField("companyName", event.target.value)}
                     placeholder="TechVenture Inc"
@@ -517,7 +525,7 @@ export function StartupEditProfile() {
                 <Label htmlFor="pitch">Investment Pitch</Label>
                 <Textarea
                   id="pitch"
-                  className="mt-2"
+                  className="scroll-mt-28 mt-2"
                   rows={5}
                   value={profile.pitch}
                   onChange={(event) => updateField("pitch", event.target.value)}
@@ -527,15 +535,15 @@ export function StartupEditProfile() {
             </div>
           </Card>
 
-          <Card className="p-6">
+          <Card id="startup-team" tabIndex={-1} className="scroll-mt-28 p-6">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
                 <Users className="h-5 w-5 text-accent" />
                 <h2 className="text-xl font-semibold">Team Members</h2>
               </div>
-              <Button variant="outline" size="sm" onClick={addTeamMember}>
-                <Plus className="mr-2 h-4 w-4" />
-                Add Member
+              <Button variant="outline" size="sm" className="rounded-none border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/60 font-medium text-slate-700 dark:text-slate-200 hover:border-cyan-500/50 hover:bg-cyan-50/60 dark:hover:bg-cyan-950/30" onClick={addTeamMember}>
+                <Plus className="mr-1.5 h-3.5 w-3.5" />
+                Add member
               </Button>
             </div>
 
@@ -545,7 +553,7 @@ export function StartupEditProfile() {
                   <div className="flex items-center justify-between">
                     <h3 className="font-medium">Team Member {index + 1}</h3>
                     {profile.teamMembers.length > 1 ? (
-                      <Button variant="ghost" size="sm" onClick={() => removeTeamMember(index)}>
+                      <Button variant="ghost" size="sm" className="rounded-none hover:bg-rose-50 dark:hover:bg-rose-950/30" onClick={() => removeTeamMember(index)}>
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     ) : null}
@@ -640,14 +648,14 @@ export function StartupEditProfile() {
             </div>
           </Card>
 
-          <div className="flex items-center justify-end gap-4 pt-4">
-            <Button variant="outline" onClick={() => navigate("/startup/profile")}>
+          <div className="flex items-center justify-end gap-3 pt-4">
+            <Button variant="outline" className="rounded-none border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/60 font-medium text-slate-700 dark:text-slate-200 hover:border-cyan-500/50 hover:bg-cyan-50/60 dark:hover:bg-cyan-950/30" onClick={() => navigate("/startup/profile")}>
               <X className="mr-2 h-4 w-4" />
               Cancel
             </Button>
-            <Button onClick={handleSave} disabled={isSaving}>
+            <Button className="rounded-none bg-gradient-to-r from-cyan-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 text-white font-semibold shadow-sm transition-all" onClick={handleSave} disabled={isSaving}>
               <Save className="mr-2 h-4 w-4" />
-              {isSaving ? "Saving..." : "Save Changes"}
+              {isSaving ? "Saving..." : "Save changes"}
             </Button>
           </div>
         </div>

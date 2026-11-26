@@ -175,7 +175,7 @@ xV5zL7kQ1wJ4rP8nT0yA5mE2dC9xV4zL6kQ0wJ3rP7nT9yA4mE1dC8xV3zL
                   <button
                     key={sec.id}
                     onClick={() => scrollTo(sec.id)}
-                    className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                    className={`w-full text-left px-3 py-2 rounded-none text-xs font-medium transition-all ${
                       activeSection === sec.id
                         ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold border-l-2 border-emerald-500"
                         : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/50"
@@ -394,7 +394,7 @@ xV5zL7kQ1wJ4rP8nT0yA5mE2dC9xV4zL6kQ0wJ3rP7nT9yA4mE1dC8xV3zL
                   </pre>
                   <button
                     onClick={handleCopyKey}
-                    className="absolute top-3 right-3 px-3 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-xs font-mono font-semibold flex items-center gap-1.5 transition-colors border border-emerald-500/30"
+                    className="absolute top-3 right-3 px-3 py-1.5 rounded-none bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-xs font-mono font-semibold flex items-center gap-1.5 transition-colors border border-emerald-500/30"
                   >
                     {copiedKey ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                     {copiedKey ? "Copied" : "Copy Key"}

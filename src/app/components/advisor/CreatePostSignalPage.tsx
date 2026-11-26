@@ -168,7 +168,7 @@ export function CreatePostSignalPage() {
     <div className="min-h-screen bg-background">
       <Header userRole="advisor" userName={userName} />
 
-      <div className="container mx-auto px-6 py-8 max-w-4xl">
+      <div className="w-full px-4 py-6 sm:px-8 sm:py-8 xl:px-14">
         <div className="mb-8">
           <h1 className="text-3xl font-semibold mb-2">Create New Content</h1>
           <p className="text-muted-foreground">Share investment signals and insights with your groups</p>
@@ -418,11 +418,11 @@ export function CreatePostSignalPage() {
               <Switch checked={notifyMembers} onCheckedChange={setNotifyMembers} />
             </div>
             {postType === "signal" && (
-              <div className="p-4 border border-accent/30 bg-accent/5 rounded-lg">
+              <div className="p-4 border border-cyan-500/30 bg-cyan-50/60 dark:bg-cyan-950/20 rounded-xl">
                 <div className="flex items-start gap-3">
-                  <AlertCircle className="h-5 w-5 text-accent mt-0.5" />
+                  <AlertCircle className="h-5 w-5 text-cyan-600 dark:text-cyan-400 mt-0.5" />
                   <div>
-                    <div className="font-medium text-accent mb-1">Investment Signal Disclaimer</div>
+                    <div className="font-semibold text-cyan-800 dark:text-cyan-300 mb-1">Investment Signal Disclaimer</div>
                     <p className="text-sm text-muted-foreground">By publishing this signal, you confirm that this is educational content and not financial advice.</p>
                   </div>
                 </div>
@@ -433,14 +433,14 @@ export function CreatePostSignalPage() {
 
         {/* Action Buttons */}
         <div className="flex items-center justify-between">
-          <Button variant="outline" onClick={() => navigate("/advisor/groups")} disabled={isPublishing}>
+          <Button variant="outline" className="rounded-none border-slate-200 dark:border-slate-700" onClick={() => navigate("/advisor/groups")} disabled={isPublishing}>
             <X className="mr-2 h-4 w-4" />Cancel
           </Button>
           <div className="flex items-center gap-3">
-            <Button variant="outline" onClick={() => setShowPreview(true)} disabled={!title.trim()}>
+            <Button variant="outline" className="rounded-none border-slate-200 dark:border-slate-700" onClick={() => setShowPreview(true)} disabled={!title.trim()}>
               <Eye className="mr-2 h-4 w-4" />Preview
             </Button>
-            <Button onClick={handlePublish} disabled={isPublishing}>
+            <Button className="rounded-none bg-gradient-to-r from-cyan-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 text-white font-semibold shadow-sm" onClick={handlePublish} disabled={isPublishing}>
               {isPublishing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
               {isPublishing ? "Publishing..." : `Publish ${postType === "signal" ? "Signal" : "Post"}`}
             </Button>

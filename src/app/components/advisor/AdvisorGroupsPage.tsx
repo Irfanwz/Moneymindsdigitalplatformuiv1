@@ -626,7 +626,7 @@ export function AdvisorGroupsPage() {
     return (
       <div className="min-h-screen bg-background">
         <Header userRole="advisor" userName={userName} />
-        <div className="container mx-auto px-6 py-8">
+        <div className="w-full px-4 py-6 sm:px-8 sm:py-8 xl:px-14">
           <div className="mb-6">
             <Button variant="ghost" onClick={closeSignalFeed} className="mb-4">
               <ArrowLeft className="mr-2 h-4 w-4" />
@@ -951,7 +951,7 @@ export function AdvisorGroupsPage() {
     <div className="min-h-screen bg-background">
       <Header userRole="advisor" userName={userName} />
 
-      <div className="container mx-auto px-6 py-8">
+      <div className="w-full px-4 py-6 sm:px-8 sm:py-8 xl:px-14">
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>

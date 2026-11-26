@@ -30,6 +30,7 @@ export function TrainingMarketplace({ userRole }: TrainingMarketplaceProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [trainingPage, setTrainingPage] = useState(1);
   const trainingPageSize = 5;
+  const [updatingEnrollment, setUpdatingEnrollment] = useState(false);
   const [checkoutTraining, setCheckoutTraining] = useState<Training | null>(null);
 
   const userName = user?.fullName ?? "";
@@ -61,20 +62,28 @@ export function TrainingMarketplace({ userRole }: TrainingMarketplaceProps) {
   const isEnrolled = (id: string) => enrolledIds.has(id);
 
   const handleEnrollment = async (training: Training) => {
-    if (!session?.user) return;
+    if (!session?.user || updatingEnrollment) return;
+    if (!isEnrolled(training.id) && training.type === "paid") {
+      setCheckoutTraining(training);
+      return;
+    }
+    setUpdatingEnrollment(true);
     try {
       if (isEnrolled(training.id)) {
         await unenrollFromTraining((session?.token ?? ""), training.id);
         setEnrolledIds((prev) => { const next = new Set(prev); next.delete(training.id); return next; });
+        setEnrollments((prev) => prev.filter((enrollment) => enrollment.trainingId !== training.id));
         setTrainings((prev) => prev.map((t) => t.id === training.id ? { ...t, enrolled: Math.max(0, t.enrolled - 1) } : t));
-      } else if (training.type === "paid") {
-        setCheckoutTraining(training);
       } else {
         await enrollInTraining((session?.token ?? ""), training.id);
         setEnrolledIds((prev) => new Set(prev).add(training.id));
         setTrainings((prev) => prev.map((t) => t.id === training.id ? { ...t, enrolled: t.enrolled + 1 } : t));
       }
-    } catch (error) { toast.error(error instanceof Error?error.message:'Could not update enrollment.'); }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not update enrollment.");
+    } finally {
+      setUpdatingEnrollment(false);
+    }
   };
 
   const handlePaymentSuccess = () => {
@@ -85,9 +94,9 @@ export function TrainingMarketplace({ userRole }: TrainingMarketplaceProps) {
     }
   };
 
-  const audienceKey = userRole === "investor" ? "Investors" : "Startups";
+  const audiences = [userRole, `${userRole}s`, "all"];
   const relevantTrainings = trainings.filter((t) =>
-    t.targetAudience.length === 0 || t.targetAudience.some((a) => a.toLowerCase() === audienceKey.toLowerCase())
+    t.targetAudience.length === 0 || t.targetAudience.some((audience) => audiences.includes(audience.trim().toLowerCase()))
   );
 
   if (isLoading) {
@@ -103,7 +112,7 @@ export function TrainingMarketplace({ userRole }: TrainingMarketplaceProps) {
     <div className="min-h-screen bg-background">
       <Header userRole={userRole} userName={userName} />
 
-      <div className="container mx-auto px-6 py-8">
+      <div className="w-full px-4 py-6 sm:px-8 sm:py-8 xl:px-14">
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
             <GraduationCap className="h-8 w-8 text-accent" />
@@ -187,13 +196,13 @@ export function TrainingMarketplace({ userRole }: TrainingMarketplaceProps) {
                               </div>
                             </div>
                           )}
-                          <div className="flex items-center gap-2 pt-4 border-t">
+                          <div className="flex flex-wrap items-center gap-2 border-t pt-4">
                             <Button variant="outline" onClick={() => navigate(`/${userRole}/trainings/${training.id}`)}>View Details</Button>
                             {isEnrolled(training.id) ? (
-                              <Button variant="outline" onClick={() => handleEnrollment(training)}>Cancel Enrollment</Button>
+                              <Button variant="outline" disabled={updatingEnrollment} onClick={() => handleEnrollment(training)}>Cancel Enrollment</Button>
                             ) : (
-                              <Button onClick={() => handleEnrollment(training)}>
-                                {training.type === "paid" ? `Enroll - $${training.price}` : "Enroll Free"}
+                              <Button disabled={updatingEnrollment || training.enrolled >= training.capacity} onClick={() => handleEnrollment(training)}>
+                                {training.enrolled >= training.capacity ? "Training Full" : training.type === "paid" ? `Enroll - $${training.price}` : "Enroll Free"}
                               </Button>
                             )}
                           </div>

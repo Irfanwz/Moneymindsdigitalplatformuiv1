@@ -19,8 +19,22 @@ export async function getAiConfig() {
   if (!client) return baseline();
   if (cache && cache.expiresAt > Date.now()) return cache.value;
   const version = revision;
-  const {data, error} = await client.from("ai_provider_config").select("*").eq("singleton",true).maybeSingle();
-  if (error) throw Object.assign(new Error("AI settings could not be loaded. Check database access and apply the AI settings migrations."),{code:"AI_CONFIG_UNAVAILABLE",status:503});
+  let data = null;
+  try {
+    const { data: resData, error } = await client
+      .from("ai_provider_config")
+      .select("*")
+      .eq("singleton", true)
+      .maybeSingle();
+    if (error) {
+      console.warn("[AIConfigStore] ai_provider_config table inaccessible or pending migration. Falling back to environment configuration:", error.message);
+      return baseline();
+    }
+    data = resData;
+  } catch (err) {
+    console.warn("[AIConfigStore] Failed to query ai_provider_config:", err instanceof Error ? err.message : err);
+    return baseline();
+  }
   const value = baseline();
   if (data) {
     value.aiProvider = value.activeProvider = data.active_provider || value.aiProvider;
@@ -28,7 +42,10 @@ export async function getAiConfig() {
       value[provider+"Model"] = data[provider+"_model"] || value[provider+"Model"];
       if (!data[provider+"_key_enc"]) continue;
       const plain = decryptKey(data[provider+"_key_enc"]);
-      if (!plain) throw Object.assign(new Error("A saved AI key could not be decrypted. Restore the server encryption secret."),{code:"AI_CONFIG_UNAVAILABLE",status:503});
+      if (!plain) {
+        console.warn("[AIConfigStore] Decryption failed for saved key, falling back to environment for:", provider);
+        continue;
+      }
       value.keySources[provider] = "saved settings";
       if (provider === "groq") {
         // Existing encrypted single-key rows remain readable.
@@ -46,10 +63,24 @@ export async function getAiConfig() {
 }
 
 export async function getAiConfigForAdmin() {
+  let isTableAvailable = false;
+  if (client) {
+    try {
+      const check = await client.from("ai_provider_config").select("singleton").limit(1);
+      if (!check.error) isTableAvailable = true;
+    } catch {
+      isTableAvailable = false;
+    }
+  }
   const settings = await getAiConfig();
-  const safe = {activeProvider:settings.aiProvider, memoryMode:!client,
-    dailyTokenLimit:settings.dailyTokenLimit, monthlyTokenLimit:settings.monthlyTokenLimit,
-    agentTokenLimits:settings.agentTokenLimits, keySources:settings.keySources};
+  const safe = {
+    activeProvider: settings.aiProvider,
+    memoryMode: !client || !isTableAvailable,
+    dailyTokenLimit: settings.dailyTokenLimit,
+    monthlyTokenLimit: settings.monthlyTokenLimit,
+    agentTokenLimits: settings.agentTokenLimits,
+    keySources: settings.keySources,
+  };
   for (const provider of ["groq","gemini","anthropic","openai"]) {
     safe[provider+"Model"] = settings[provider+"Model"];
     const keys = provider === "groq" ? getGroqApiKeys(settings) : [settings[provider+"ApiKey"]].filter(Boolean);
@@ -61,7 +92,7 @@ export async function getAiConfigForAdmin() {
 }
 
 export async function saveAiConfig(updates, adminId) {
-  if (!client) throw Object.assign(new Error("AI settings are read-only without database storage. Configure them in .env and restart."),{status:501});
+  if (!client) throw Object.assign(new Error("AI settings are read-only without database storage. Configure them in .env and restart."),{status:400});
   // Seed a first row from effective settings so a key-only save preserves policy.
   const current = await getAiConfig();
   const patch = {singleton:true,updated_by:adminId,updated_at:new Date().toISOString()};
@@ -78,7 +109,9 @@ export async function saveAiConfig(updates, adminId) {
     patch[provider+"_key_set"] = !clear;
   }
   const {error} = await client.from("ai_provider_config").upsert(patch,{onConflict:"singleton"});
-  if (error) throw Object.assign(new Error("AI settings could not be saved. Check database access and apply the latest migrations."),{status:503});
+  if (error) {
+    throw Object.assign(new Error(`AI configuration table unavailable (${error.message}). Please run the database migration in Supabase SQL Editor or configure keys in .env.`),{status:400});
+  }
   invalidateAiConfig();
   return getAiConfigForAdmin();
 }

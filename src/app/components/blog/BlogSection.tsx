@@ -67,7 +67,7 @@ export const BlogSection: React.FC = () => {
               <div className="mb-12">
                 <a
                   href="#our-story"
-                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full border border-slate-900 dark:border-white/90 text-xs sm:text-sm font-semibold text-slate-900 dark:text-white hover:bg-slate-900 hover:text-white dark:hover:bg-white dark:hover:text-slate-900 transition-all duration-200 group shadow-sm cursor-pointer"
+                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-none border border-slate-900 dark:border-white/90 text-xs sm:text-sm font-semibold text-slate-900 dark:text-white hover:bg-slate-900 hover:text-white dark:hover:bg-white dark:hover:text-slate-900 transition-all duration-200 group shadow-sm cursor-pointer"
                 >
                   <span>Our Story</span>
                   <ArrowUpRight className="h-4 w-4 transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
@@ -87,7 +87,7 @@ export const BlogSection: React.FC = () => {
                   type="button"
                   onClick={handlePrev}
                   aria-label="Previous slide"
-                  className="h-10 w-10 rounded-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-400 dark:hover:border-slate-600 transition-all duration-150 active:scale-95 shadow-sm"
+                  className="h-10 w-10 rounded-none border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-400 dark:hover:border-slate-600 transition-all duration-150 active:scale-95 shadow-sm"
                 >
                   <ChevronLeft className="h-5 w-5" />
                 </button>
@@ -95,7 +95,7 @@ export const BlogSection: React.FC = () => {
                   type="button"
                   onClick={handleNext}
                   aria-label="Next slide"
-                  className="h-10 w-10 rounded-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-400 dark:hover:border-slate-600 transition-all duration-150 active:scale-95 shadow-sm"
+                  className="h-10 w-10 rounded-none border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-400 dark:hover:border-slate-600 transition-all duration-150 active:scale-95 shadow-sm"
                 >
                   <ChevronRight className="h-5 w-5" />
                 </button>

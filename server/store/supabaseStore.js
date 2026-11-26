@@ -81,6 +81,7 @@ function mapStartupProfileRow(row) {
     isVerified: row.is_verified === true,
     verifiedAt: row.verified_at ?? null,
     companyName: row.company_name,
+    companyLogo: row.photo_url ?? "",
     tagline: row.tagline ?? "",
     industry: row.industry,
     foundedYear: row.founded_year ?? null,
@@ -109,6 +110,7 @@ function mapStartupProfileInsert(userId, profile) {
   return {
     user_id: userId,
     company_name: profile.companyName,
+    ...(profile.companyLogo !== undefined && { photo_url: profile.companyLogo }),
     tagline: profile.tagline,
     industry: profile.industry,
     founded_year: profile.foundedYear,
@@ -792,7 +794,7 @@ export function createSupabaseStore({ supabaseUrl, supabaseServiceRoleKey }) {
     async searchAdvisors({ industry, specialization, query } = {}) {
       let q = client
         .from(ADVISOR_PROFILES_TABLE)
-        .select("id, user_id, title, bio, years_experience, clients_helped, specialization, typical_rate, availability, industries, expertise_areas, credibility_score, credibility_tier, platform_users!inner(full_name, location, avatar_url)")
+        .select("id, user_id, title, bio, years_experience, clients_helped, specialization, typical_rate, availability, industries, expertise_areas, credibility_score, credibility_tier, photo_url, platform_users!inner(full_name, location)")
         .eq("is_public", true)
         .eq("platform_users.status", "approved")
         .eq("platform_users.is_suspended", false)
@@ -817,7 +819,7 @@ export function createSupabaseStore({ supabaseUrl, supabaseServiceRoleKey }) {
           id: row.id,
           userId: row.user_id,
           name: u.full_name ?? "",
-          avatarUrl: u.avatar_url ?? "",
+          avatarUrl: row.photo_url ?? "",
           title: row.title ?? "",
           location: u.location ?? "",
           bio: row.bio ?? "",
