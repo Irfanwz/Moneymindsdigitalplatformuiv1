@@ -2258,10 +2258,14 @@ function UsersPage() {
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-start gap-3">
-                          <div className="h-10 w-10 shrink-0 rounded-xl bg-gradient-to-tr from-cyan-600 to-emerald-500 p-0.5 shadow-sm">
-                            <div className="h-full w-full rounded-[10px] bg-slate-950 flex items-center justify-center font-bold text-xs text-cyan-300">
-                              {u.fullName.trim().split(/\s+/).slice(0, 2).map((n) => n[0]).join("").toUpperCase() || "U"}
-                            </div>
+                          <div className="relative h-10 w-10 shrink-0 rounded-none bg-gradient-to-tr from-cyan-500 to-emerald-500 flex items-center justify-center font-extrabold text-xs tracking-tight text-slate-950 shadow-sm">
+                            {u.fullName.trim().split(/\s+/).slice(0, 2).map((n) => n[0]).join("").toUpperCase() || "U"}
+                            <span
+                              title={u.isSuspended ? "Suspended" : u.status}
+                              className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-none ring-2 ring-white dark:ring-[#070d1a] ${
+                                u.isSuspended ? "bg-rose-500" : u.status === "approved" ? "bg-emerald-400" : u.status === "pending" ? "bg-amber-400" : "bg-slate-400"
+                              }`}
+                            />
                           </div>
                           <div>
                             <button
@@ -2386,10 +2390,14 @@ function UsersPage() {
                           </td>
                           <td className="px-4 py-3.5 align-middle">
                             <div className="flex items-center gap-3">
-                              <div className="h-9 w-9 shrink-0 rounded-xl bg-gradient-to-tr from-cyan-600 to-emerald-500 p-0.5">
-                                <div className="h-full w-full rounded-[10px] bg-slate-950 flex items-center justify-center font-bold text-xs text-cyan-300">
-                                  {u.fullName.trim().split(/\s+/).slice(0, 2).map((n) => n[0]).join("").toUpperCase() || "U"}
-                                </div>
+                              <div className="relative h-9 w-9 shrink-0 rounded-none bg-gradient-to-tr from-cyan-500 to-emerald-500 flex items-center justify-center font-extrabold text-xs tracking-tight text-slate-950 shadow-sm">
+                                {u.fullName.trim().split(/\s+/).slice(0, 2).map((n) => n[0]).join("").toUpperCase() || "U"}
+                                <span
+                                  title={u.isSuspended ? "Suspended" : u.status}
+                                  className={`absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-none ring-2 ring-white dark:ring-[#070d1a] ${
+                                    u.isSuspended ? "bg-rose-500" : u.status === "approved" ? "bg-emerald-400" : u.status === "pending" ? "bg-amber-400" : "bg-slate-400"
+                                  }`}
+                                />
                               </div>
                               <div className="min-w-0">
                                 <button
